@@ -22,6 +22,7 @@ import {
   type OpeningSpeed,
 } from './engine/openingExplorer'
 import type { AnalyzeMode, UciGoLimits } from './engine/uci'
+import { rootFenFromPgnHeaders } from './engine/pgn'
 import { engineProfiles, type EngineProfileId } from './engine/profiles'
 import { useStockfishEngine } from './hooks/useStockfishEngine'
 import { useAiPlayer, type AiDifficulty } from './hooks/useAiPlayer'
@@ -359,13 +360,6 @@ function isHeavyCommand(command: string): boolean {
   if (normalized.startsWith('perft')) return true
   if (normalized.startsWith('go infinite')) return true
   return false
-}
-
-function rootFenFromPgnHeaders(headers: Record<string, string>): string {
-  const fenHeader = headers.FEN?.trim()
-  if (!fenHeader) return new Chess().fen()
-
-  return new Chess(fenHeader).fen()
 }
 
 function App() {

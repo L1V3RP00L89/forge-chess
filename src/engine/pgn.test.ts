@@ -1,8 +1,47 @@
 import { describe, expect, it } from 'vitest'
 import type { GameNode } from '../hooks/useGameTree'
-import { exportAnnotatedPgn } from './pgn'
+import { Chess } from 'chess.js'
+import { exportAnnotatedPgn, rootFenFromPgnHeaders } from './pgn'
 
 describe('PGN export helpers', () => {
+  it('exports FEN roots with setup headers and black-to-move numbering', () => {
+    const game = new Chess()
+    game.move('e4')
+    const rootFen = game.fen()
+    const move = game.move('c5')!
+    const afterFen = game.fen()
+    const mainLine = [
+      {
+        id: 'root',
+        fen: rootFen,
+        move: null,
+        san: '',
+        uci: '',
+        parent: null,
+        children: ['n1'],
+      },
+      {
+        id: 'n1',
+        fen: afterFen,
+        move,
+        san: move.san,
+        uci: 'c7c5',
+        parent: 'root',
+        children: [],
+      },
+    ] as unknown as GameNode[]
+
+    const pgn = exportAnnotatedPgn(mainLine, new Map(), { Result: '*' })
+    const loader = new Chess()
+    loader.loadPgn(pgn)
+
+    expect(pgn).toContain('[SetUp "1"]')
+    expect(pgn).toContain(`[FEN "${rootFen}"]`)
+    expect(pgn).toContain('1... c5')
+    expect(rootFenFromPgnHeaders(loader.getHeaders())).toBe(rootFen)
+    expect(loader.history()).toEqual(['c5'])
+  })
+
   it('preserves mate distance from side-to-move engine scores', () => {
     const fenAfterWhiteMove = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'
     const mainLine = [

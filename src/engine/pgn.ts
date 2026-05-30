@@ -1,5 +1,15 @@
+import { Chess } from 'chess.js'
 import type { GameNode } from '../hooks/useGameTree'
 import type { EvalSnapshot } from './analysis'
+
+const INITIAL_FEN = new Chess().fen()
+
+export function rootFenFromPgnHeaders(headers: Record<string, string>): string {
+    const fenHeader = headers.FEN?.trim()
+    if (!fenHeader) return INITIAL_FEN
+
+    return new Chess(fenHeader).fen()
+}
 
 export function exportAnnotatedPgn(
     mainLine: GameNode[],
@@ -7,6 +17,8 @@ export function exportAnnotatedPgn(
     header: Record<string, string> = {}
 ): string {
     let pgn = ''
+    const rootFen = mainLine[0]?.fen ? new Chess(mainLine[0].fen).fen() : INITIAL_FEN
+    const rootPosition = new Chess(rootFen)
 
     // Set headers (Event, Site, Date, Round, White, Black, Result)
     const defaultHeaders: Record<string, string> = {
@@ -17,15 +29,20 @@ export function exportAnnotatedPgn(
         White: 'Player 1',
         Black: 'Player 2',
         Result: '*',
-        ...header
     }
 
-    for (const [key, value] of Object.entries(defaultHeaders)) {
+    if (rootFen !== INITIAL_FEN) {
+        defaultHeaders.SetUp = '1'
+        defaultHeaders.FEN = rootFen
+    }
+
+    for (const [key, value] of Object.entries({ ...defaultHeaders, ...header })) {
         pgn += `[${key} "${value}"]\n`
     }
     pgn += '\n'
 
-    let plyCount = 0
+    let moveNumber = rootPosition.moveNumber()
+    let sideToMove = rootPosition.turn()
     let currentLine = ''
 
     // mainLine[0] is root. mainLine[1] is the first move.
@@ -33,12 +50,10 @@ export function exportAnnotatedPgn(
         const node = mainLine[i]
         if (!node || !node.move) continue
 
-        // Formatting move number: "1." or "1... " 
-        if (plyCount % 2 === 0) {
-            const moveNum = Math.floor(plyCount / 2) + 1
-            currentLine += `${moveNum}. ${node.san} `
+        if (sideToMove === 'w') {
+            currentLine += `${moveNumber}. ${node.san} `
         } else {
-            currentLine += `${node.san} `
+            currentLine += `${moveNumber}... ${node.san} `
         }
 
         // Lookup evaluation
@@ -68,7 +83,8 @@ export function exportAnnotatedPgn(
             currentLine = ''
         }
 
-        plyCount++
+        if (sideToMove === 'b') moveNumber += 1
+        sideToMove = sideToMove === 'w' ? 'b' : 'w'
     }
 
     if (currentLine.trim()) {
@@ -76,7 +92,7 @@ export function exportAnnotatedPgn(
     }
 
     // Append result at the very end
-    pgn += ` ${defaultHeaders.Result}`
+    pgn += ` ${(header.Result ?? defaultHeaders.Result)}`
 
     return pgn.trim() + '\n'
 }
