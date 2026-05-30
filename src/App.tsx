@@ -99,6 +99,10 @@ type ImportSweepTarget = {
   historyMoves: string[]
 }
 
+type BatchReviewTarget = ImportSweepTarget & {
+  nodeId: string
+}
+
 type AnalysisTarget = {
   fen: string
   rootFen: string
@@ -124,6 +128,24 @@ function buildImportSweepTargets(
   }
 
   return targets
+}
+
+function buildBatchReviewTargets(
+  nodes: Array<{ id: string; fen: string; uci: string }>,
+  rootFen: string,
+): BatchReviewTarget[] {
+  if (!nodes.length) return []
+
+  const historyMoves: string[] = []
+  return nodes.map((node, index) => {
+    if (index > 0 && node.uci) historyMoves.push(node.uci)
+    return {
+      nodeId: node.id,
+      fen: node.fen,
+      rootFen,
+      historyMoves: [...historyMoves],
+    }
+  })
 }
 
 type PersistedAppSettings = {
@@ -625,36 +647,6 @@ function App() {
 
   // Keyboard shortcuts (← →) and no wheel-to-navigate (conflicts with touch)
 
-  // ── Batch Review ─────────────────────────────────────
-  const [isBatchReviewing, setIsBatchReviewing] = useState(false)
-  const batchReviewIdxRef = useRef<number>(0)
-
-  const startBatchReview = useCallback(() => {
-    const nodes = gameTreeRef.current.mainLine()
-    if (nodes.length <= 1) return
-    setIsBatchReviewing(true)
-    batchReviewIdxRef.current = 1
-    navigateAndPause(gameTreeRef.current.navigateTo(nodes[1]!.id))
-  }, [navigateAndPause])
-
-  useEffect(() => {
-    if (!isBatchReviewing) return
-
-    // Auto-advance every 500ms for exact timing per requirement
-    const timer = setTimeout(() => {
-      const nodes = gameTreeRef.current.mainLine()
-      const nextIdx = batchReviewIdxRef.current + 1
-      if (nextIdx < nodes.length) {
-        batchReviewIdxRef.current = nextIdx
-        navigateAndPause(gameTreeRef.current.navigateTo(nodes[nextIdx]!.id))
-      } else {
-        setIsBatchReviewing(false)
-      }
-    }, 500)
-
-    return () => clearTimeout(timer)
-  }, [isBatchReviewing, fen, navigateAndPause])
-
   // ── Engine ───────────────────────────────────────────
   const {
     status,
@@ -675,6 +667,85 @@ function App() {
     setOption,
   } = useStockfishEngine(engineProfile, engineEnabled)
 
+  // ── Batch Review ─────────────────────────────────────
+  const [isBatchReviewing, setIsBatchReviewing] = useState(false)
+  const [batchReviewProgress, setBatchReviewProgress] = useState({ done: 0, total: 0 })
+  const batchReviewQueueRef = useRef<BatchReviewTarget[]>([])
+  const activeBatchReviewRef = useRef<BatchReviewTarget | null>(null)
+
+  const stopBatchReview = useCallback(() => {
+    batchReviewQueueRef.current = []
+    activeBatchReviewRef.current = null
+    setIsBatchReviewing(false)
+    stop()
+  }, [stop])
+
+  const startBatchReview = useCallback(() => {
+    if (!engineEnabled) return
+    const nodes = gameTreeRef.current.mainLine()
+    if (nodes.length <= 1) return
+
+    const rootFen = gameTreeRef.current.root.fen
+    const targets = buildBatchReviewTargets(nodes, rootFen)
+    clearImportSweep()
+    batchReviewQueueRef.current = targets
+    activeBatchReviewRef.current = null
+    setBatchReviewProgress({ done: 0, total: targets.length })
+    setIsBatchReviewing(true)
+    stop()
+  }, [clearImportSweep, engineEnabled, stop])
+
+  useEffect(() => {
+    if (!isBatchReviewing) return
+
+    if (!engineEnabled || status === 'disabled' || status === 'error') {
+      batchReviewQueueRef.current = []
+      activeBatchReviewRef.current = null
+      setIsBatchReviewing(false)
+      return
+    }
+
+    if (activeBatchReviewRef.current && status === 'ready') {
+      activeBatchReviewRef.current = null
+      setBatchReviewProgress(previous => ({
+        total: previous.total,
+        done: Math.min(previous.total, previous.done + 1),
+      }))
+    }
+
+    if (status !== 'ready') return
+    if (activeBatchReviewRef.current) return
+
+    const nextTarget = batchReviewQueueRef.current.shift()
+    if (!nextTarget) {
+      setIsBatchReviewing(false)
+      return
+    }
+
+    activeBatchReviewRef.current = nextTarget
+    navigateAndPause(gameTreeRef.current.navigateTo(nextTarget.nodeId))
+    analyze({
+      fen: nextTarget.fen,
+      purpose: 'batch-review',
+      mode: 'review',
+      limits: { depth: searchDepth },
+      multiPv: 1,
+      hashMb,
+      showWdl,
+      rootFen: nextTarget.rootFen,
+      historyMoves: nextTarget.historyMoves,
+    })
+  }, [
+    analyze,
+    engineEnabled,
+    hashMb,
+    isBatchReviewing,
+    navigateAndPause,
+    searchDepth,
+    showWdl,
+    status,
+  ])
+
   const aiEnabled = workspaceMode === 'play' && (gameMode === 'human-vs-ai' || gameMode === 'ai-vs-ai')
   const aiPlayer = useAiPlayer(aiEnabled)
 
@@ -685,6 +756,9 @@ function App() {
     setPendingShallowAnalyzeFen(null)
     setEvaluationsByFen(new Map())
     setIsBatchReviewing(false)
+    batchReviewQueueRef.current = []
+    activeBatchReviewRef.current = null
+    setBatchReviewProgress({ done: 0, total: 0 })
   }, [clearImportSweep, stop, workspaceMode])
 
   const primaryLine = lines.find(l => l.multipv === 1) ?? lines[0]
@@ -751,6 +825,7 @@ function App() {
   useEffect(() => {
     if (!engineEnabled) return
     if (isImportingGame) return
+    if (isBatchReviewing) return
     if (skipFullAnalyzeFenRef.current && skipFullAnalyzeFenRef.current !== fen) {
       skipFullAnalyzeFenRef.current = null
     }
@@ -815,6 +890,7 @@ function App() {
     engineEnabled,
     fen,
     hashMb,
+    isBatchReviewing,
     isImportingGame,
     multiPv,
     pendingPonderFen,
@@ -828,6 +904,7 @@ function App() {
   useEffect(() => {
     if (!engineEnabled) return
     if (isImportingGame) return
+    if (isBatchReviewing) return
 
     if (activeImportSweepRef.current && !activeImportSweepStartedRef.current && status === 'analyzing') {
       activeImportSweepStartedRef.current = true
@@ -864,7 +941,17 @@ function App() {
       rootFen: nextTarget.rootFen,
       historyMoves: nextTarget.historyMoves,
     })
-  }, [analyze, engineEnabled, hashMb, isImportingGame, pendingPonderFen, pendingShallowAnalyzeFen, showWdl, status])
+  }, [
+    analyze,
+    engineEnabled,
+    hashMb,
+    isBatchReviewing,
+    isImportingGame,
+    pendingPonderFen,
+    pendingShallowAnalyzeFen,
+    showWdl,
+    status,
+  ])
 
   const parsedSearchMoves = useMemo(
     () =>
@@ -2608,10 +2695,12 @@ function App() {
                     <button
                       type="button"
                       className={`batch-review-btn ${isBatchReviewing ? 'btn-primary pulsing' : ''}`}
-                      onClick={isBatchReviewing ? () => setIsBatchReviewing(false) : startBatchReview}
+                      onClick={isBatchReviewing ? stopBatchReview : startBatchReview}
+                      disabled={!engineEnabled || mainLineNodes.length <= 1}
+                      title={!engineEnabled ? 'Enable Stockfish to review the game' : undefined}
                     >
                       {isBatchReviewing ? (
-                        <><IconStop /> Reviewing ({batchReviewIdxRef.current}/{mainLineNodes.length - 1})</>
+                        <><IconStop /> Reviewing ({batchReviewProgress.done}/{batchReviewProgress.total})</>
                       ) : (
                         <><IconSearch /> Review Game</>
                       )}
