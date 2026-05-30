@@ -1555,6 +1555,33 @@ function App() {
     }
   }, [clearImportSweep, engineEnabled, game, gameTree, newGame])
 
+  const handleFenLoad = useCallback((fenText: string) => {
+    try {
+      const loaded = new Chess(fenText.trim())
+      const rootFen = loaded.fen()
+
+      newGame()
+      game.load(rootFen)
+      setFen(rootFen)
+      gameTree.reset(rootFen)
+      setEvaluationsByFen(new Map())
+      clearImportSweep()
+      setPendingShallowAnalyzeFen(engineEnabled ? rootFen : null)
+      setSampleLoadError(null)
+      setPendingPromotion(null)
+      setSelectedSquare(null)
+      setLegalTargets([])
+      setIsImportingGame(false)
+      setIsBatchReviewing(false)
+      pausedRef.current = true
+      setPaused(true)
+      setIsAiThinking(false)
+      aiMoveScheduledRef.current = false
+    } catch {
+      alert('Failed to parse FEN.')
+    }
+  }, [clearImportSweep, engineEnabled, game, gameTree, newGame])
+
   const fetchSamplePgn = useCallback(async (sample: HistoricalSampleGame): Promise<string> => {
     const cached = samplePgnCacheRef.current.get(sample.id)
     if (cached) return cached
@@ -2272,6 +2299,7 @@ function App() {
           open={showPgnDialog}
           onClose={() => setShowPgnDialog(false)}
           onImport={handlePgnImport}
+          onLoadFen={handleFenLoad}
           mainLineNodes={mainLineNodes}
           evaluations={evaluationsByFen}
         />

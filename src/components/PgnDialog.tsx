@@ -11,18 +11,25 @@ type PgnDialogProps = {
     open: boolean
     onClose: () => void
     onImport: (pgn: string) => void
+    onLoadFen: (fen: string) => void
     mainLineNodes: GameNode[]
     evaluations: Map<string, EvalSnapshot>
 }
 
-export function PgnDialog({ open, onClose, onImport, mainLineNodes, evaluations }: PgnDialogProps) {
-    const [tab, setTab] = useState<'import' | 'export'>('import')
+export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, evaluations }: PgnDialogProps) {
+    const [tab, setTab] = useState<'import' | 'fen' | 'export'>('import')
     const [importText, setImportText] = useState('')
+    const [fenText, setFenText] = useState('')
     const panelRef = useRef<HTMLDivElement>(null)
     const titleId = useId()
 
     const handleImport = () => {
         onImport(importText)
+        onClose()
+    }
+
+    const handleLoadFen = () => {
+        onLoadFen(fenText)
         onClose()
     }
 
@@ -106,7 +113,7 @@ export function PgnDialog({ open, onClose, onImport, mainLineNodes, evaluations 
 
                 <div className="dialog-body">
                     <div className="dialog-section mode-selector" style={{ paddingBottom: '0.4rem' }}>
-                        <div className="mode-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                        <div className="mode-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
                             <button
                                 type="button"
                                 className={`mode-card ${tab === 'import' ? 'selected' : ''}`}
@@ -115,6 +122,15 @@ export function PgnDialog({ open, onClose, onImport, mainLineNodes, evaluations 
                             >
                                 <span className="mode-icon"><IconClipboard /></span>
                                 <strong>Import</strong>
+                            </button>
+                            <button
+                                type="button"
+                                className={`mode-card ${tab === 'fen' ? 'selected' : ''}`}
+                                onClick={() => setTab('fen')}
+                                aria-pressed={tab === 'fen'}
+                            >
+                                <span className="mode-icon"><IconDownload /></span>
+                                <strong>FEN</strong>
                             </button>
                             <button
                                 type="button"
@@ -141,6 +157,24 @@ export function PgnDialog({ open, onClose, onImport, mainLineNodes, evaluations 
                                 <button type="button" className="btn-cancel" onClick={onClose}>Cancel</button>
                                 <button type="button" className="btn-start" onClick={handleImport} disabled={!importText.trim()}>
                                     Import Game
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {tab === 'fen' && (
+                        <div className="dialog-section">
+                            <label className="dialog-label">Paste Forsyth-Edwards Notation</label>
+                            <textarea
+                                className="input-textarea"
+                                placeholder="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+                                value={fenText}
+                                onChange={e => setFenText(e.target.value)}
+                            />
+                            <div className="dialog-actions">
+                                <button type="button" className="btn-cancel" onClick={onClose}>Cancel</button>
+                                <button type="button" className="btn-start" onClick={handleLoadFen} disabled={!fenText.trim()}>
+                                    Load Position
                                 </button>
                             </div>
                         </div>
