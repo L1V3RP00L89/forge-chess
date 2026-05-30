@@ -10,6 +10,7 @@ import {
   scoreToCp,
   summarizeReview,
   type EvalSnapshot,
+  type ReviewLabel,
   type WdlPoint,
   type WinratePoint,
 } from './engine/analysis'
@@ -82,6 +83,15 @@ const analyzePresets: Array<{ id: AnalyzePresetId; label: string; summary: strin
   { id: 'deep-candidate', label: 'Deep Candidate Search', summary: 'Higher depth and wider MultiPV.' },
   { id: 'mate-hunt', label: 'Mate Hunt', summary: 'Prioritize forced mating lines.' },
 ]
+
+const REVIEW_LABELS: Record<ReviewLabel, string> = {
+  best: 'Best',
+  good: 'Good',
+  inaccuracy: 'Inaccuracy',
+  mistake: 'Mistake',
+  blunder: 'Blunder',
+  pending: 'Pending',
+}
 
 type ImportSweepTarget = {
   fen: string
@@ -247,6 +257,13 @@ function moveGamesCount(move: OpeningExplorerMove): number {
 function percentage(part: number, total: number): number {
   if (!total) return 0
   return (part / total) * 100
+}
+
+function reviewImpactLabel(deltaCp: number | undefined): string {
+  if (typeof deltaCp !== 'number') return 'Queued'
+  if (deltaCp >= 10) return `Gain +${(deltaCp / 100).toFixed(2)}`
+  if (deltaCp >= -10) return 'No loss'
+  return `Lost ${(Math.abs(deltaCp) / 100).toFixed(2)}`
 }
 
 function resultLabel(result: HistoricalSampleGame['result']): string {
@@ -2559,6 +2576,19 @@ function App() {
                       <span className="chip-blunder">Blunder {reviewSummary.blunder}</span>
                       <span className="chip-pending">Pending {reviewSummary.pending}</span>
                     </div>
+                    {reviewRows.length > 0 && (
+                      <ol className="moves-list review-move-list">
+                        {reviewRows.map(row => (
+                          <li key={`${row.ply}-${row.uci}`} className={`quality-${row.quality}`}>
+                            <span className="move-index">{row.ply % 2 === 1 ? `${row.moveNumber}.` : `${row.moveNumber}...`}</span>
+                            <strong>{row.san}</strong>
+                            <span className="move-uci">{row.uci}</span>
+                            <span className="move-impact">{reviewImpactLabel(row.deltaCp)}</span>
+                            <span className="move-quality">{REVIEW_LABELS[row.quality]}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
                   </div>
                   <div className="opening-intel-card review-book-card">
                     <h3><span className="section-icon"><IconSearch /></span> Book vs Engine</h3>

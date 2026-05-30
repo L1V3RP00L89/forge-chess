@@ -1682,7 +1682,7 @@
 
 .moves-list li {
   display: grid;
-  grid-template-columns: auto auto 1fr auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
   gap: 0.32rem;
   align-items: center;
   padding: 0.32rem 0.48rem;
@@ -1736,6 +1736,17 @@
   font-family: "JetBrains Mono", "SF Mono", monospace;
   opacity: 0.5;
   font-size: 0.66rem !important;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.move-impact {
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  color: var(--text-muted) !important;
+  font-size: 0.66rem !important;
+  white-space: nowrap;
 }
 
 .move-quality {
@@ -1743,6 +1754,7 @@
   justify-self: end;
   font-weight: 600 !important;
   font-size: 0.66rem !important;
+  white-space: nowrap;
 }
 
 /* Quality-colored left borders */
