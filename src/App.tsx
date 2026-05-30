@@ -1,5 +1,5 @@
 import { Chess, type Square } from 'chess.js'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Chessboard } from 'react-chessboard'
 import {
   buildWdlSeries,
@@ -10,6 +10,7 @@ import {
   scoreToCp,
   summarizeReview,
   type EvalSnapshot,
+  type ReviewRow,
   type ReviewLabel,
   type WdlPoint,
   type WinratePoint,
@@ -31,7 +32,7 @@ import { rootFenFromPgnHeaders } from './engine/pgn'
 import { engineProfiles, type EngineProfileId } from './engine/profiles'
 import { useStockfishEngine } from './hooks/useStockfishEngine'
 import { useAiPlayer, type AiDifficulty } from './hooks/useAiPlayer'
-import { useGameTree } from './hooks/useGameTree'
+import { useGameTree, type GameNode } from './hooks/useGameTree'
 import { useOpening } from './hooks/useOpening'
 import { useCloudEvaluation } from './hooks/useCloudEvaluation'
 import { useOpeningExplorer } from './hooks/useOpeningExplorer'
@@ -1904,6 +1905,10 @@ function App() {
     navigateAndPonder(chess)
   }, [navigateAndPonder])
 
+  const navigateReviewNode = useCallback((node: GameNode) => {
+    navigateAndPonder(gameTreeRef.current.navigateTo(node.id))
+  }, [navigateAndPonder])
+
   // ── Step: advance one AI move ─────────────────────────
   const handleStep = useCallback(() => {
     if (game.isGameOver() || aiMoveScheduledRef.current) return
@@ -2860,38 +2865,12 @@ function App() {
                       <span className="chip-pending">Pending {reviewSummary.pending}</span>
                     </div>
                     {reviewRows.length > 0 && (
-                      <ol className="moves-list review-move-list">
-                        {reviewRows.map(row => {
-                          const node = mainLineNodes[row.ply]
-                          const movePrefix = row.sideToMove === 'w' ? `${row.moveNumber}.` : `${row.moveNumber}...`
-                          const isCurrentReviewMove = node?.id === gameTree.current.id
-
-                          return (
-                            <li key={`${row.ply}-${row.uci}`} className={`quality-${row.quality}`}>
-                              <button
-                                type="button"
-                                className={`review-move-row ${isCurrentReviewMove ? 'active' : ''}`}
-                                disabled={!node}
-                                aria-current={isCurrentReviewMove ? 'true' : undefined}
-                                aria-label={`Go to ${movePrefix} ${row.san}`}
-                                onClick={() => {
-                                  if (!node) return
-                                  navigateAndPonder(gameTree.navigateTo(node.id))
-                                }}
-                              >
-                                <span className="move-index">{movePrefix}</span>
-                                <strong>{row.san}</strong>
-                                <span className="move-uci">{row.uci}</span>
-                                <span className="move-impact">{reviewImpactLabel(row.deltaCp)}</span>
-                                <span className={`move-confidence confidence-${row.confidence}`}>
-                                  {reviewConfidenceLabel(row.confidence, row.evalDepth)}
-                                </span>
-                                <span className="move-quality">{REVIEW_LABELS[row.quality]}</span>
-                              </button>
-                            </li>
-                          )
-                        })}
-                      </ol>
+                      <ReviewMoveList
+                        rows={reviewRows}
+                        nodes={mainLineNodes}
+                        currentNodeId={gameTree.current.id}
+                        onSelectNode={navigateReviewNode}
+                      />
                     )}
                   </div>
                   <div className="critical-moments-card">
@@ -3168,6 +3147,49 @@ function App() {
 
 export default App
 
+type ReviewMoveListProps = {
+  rows: ReviewRow[]
+  nodes: GameNode[]
+  currentNodeId: string
+  onSelectNode: (node: GameNode) => void
+}
+
+const ReviewMoveList = memo(function ReviewMoveList({ rows, nodes, currentNodeId, onSelectNode }: ReviewMoveListProps) {
+  return (
+    <ol className="moves-list review-move-list">
+      {rows.map(row => {
+        const node = nodes[row.ply]
+        const movePrefix = row.sideToMove === 'w' ? `${row.moveNumber}.` : `${row.moveNumber}...`
+        const isCurrentReviewMove = node?.id === currentNodeId
+
+        return (
+          <li key={`${row.ply}-${row.uci}`} className={`quality-${row.quality}`}>
+            <button
+              type="button"
+              className={`review-move-row ${isCurrentReviewMove ? 'active' : ''}`}
+              disabled={!node}
+              aria-current={isCurrentReviewMove ? 'true' : undefined}
+              aria-label={`Go to ${movePrefix} ${row.san}`}
+              onClick={() => {
+                if (node) onSelectNode(node)
+              }}
+            >
+              <span className="move-index">{movePrefix}</span>
+              <strong>{row.san}</strong>
+              <span className="move-uci">{row.uci}</span>
+              <span className="move-impact">{reviewImpactLabel(row.deltaCp)}</span>
+              <span className={`move-confidence confidence-${row.confidence}`}>
+                {reviewConfidenceLabel(row.confidence, row.evalDepth)}
+              </span>
+              <span className="move-quality">{REVIEW_LABELS[row.quality]}</span>
+            </button>
+          </li>
+        )
+      })}
+    </ol>
+  )
+})
+
 // ── Engine option control ──────────────────────────────────────────────────────
 
 type EngineOptionControlProps = {
@@ -3262,7 +3284,7 @@ type WinrateGraphProps = {
   onNavigate?: (index: number) => void
 }
 
-function WinrateGraph({ points, currentIndex, onNavigate }: WinrateGraphProps) {
+const WinrateGraph = memo(function WinrateGraph({ points, currentIndex, onNavigate }: WinrateGraphProps) {
   if (points.length === 0) {
     return (
       <div className="empty-state">
@@ -3376,7 +3398,7 @@ function WinrateGraph({ points, currentIndex, onNavigate }: WinrateGraphProps) {
       </div>
     </div>
   )
-}
+})
 
 type WdlProgressGraphProps = {
   points: WdlPoint[]
@@ -3384,7 +3406,7 @@ type WdlProgressGraphProps = {
   onNavigate?: (index: number) => void
 }
 
-function WdlProgressGraph({ points, currentIndex, onNavigate }: WdlProgressGraphProps) {
+const WdlProgressGraph = memo(function WdlProgressGraph({ points, currentIndex, onNavigate }: WdlProgressGraphProps) {
   if (points.length === 0) {
     return (
       <div className="empty-state">
@@ -3493,4 +3515,4 @@ function WdlProgressGraph({ points, currentIndex, onNavigate }: WdlProgressGraph
       </div>
     </div>
   )
-}
+})
