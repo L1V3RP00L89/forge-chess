@@ -1415,6 +1415,53 @@ body.resizing * {
   overflow-wrap: anywhere;
 }
 
+.coach-insight {
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.coach-tags,
+.coach-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.coach-tags {
+  margin-bottom: 0.42rem;
+}
+
+.coach-tags span,
+.coach-metrics span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.45rem;
+  padding: 0.18rem 0.42rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.coach-tags span {
+  border-color: rgba(45, 212, 191, 0.24);
+  color: var(--accent);
+  background: rgba(45, 212, 191, 0.08);
+}
+
+.coach-metrics {
+  margin-top: 0.45rem;
+}
+
+.coach-metrics span {
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+}
+
 .coach-card .coach-opening {
   margin-top: 0.38rem;
   color: var(--text-tertiary);
