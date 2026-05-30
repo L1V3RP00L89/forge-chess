@@ -591,7 +591,8 @@ function App() {
     setOption,
   } = useStockfishEngine(engineProfile)
 
-  const aiPlayer = useAiPlayer()
+  const aiEnabled = workspaceMode === 'play' && (gameMode === 'human-vs-ai' || gameMode === 'ai-vs-ai')
+  const aiPlayer = useAiPlayer(aiEnabled)
 
   useEffect(() => {
     if (workspaceMode !== 'play') return
@@ -917,6 +918,16 @@ function App() {
     currentPathMovesKey,
     clearImportSweep,
   ])
+
+  const handleWorkspaceModeChange = useCallback((mode: WorkspaceMode) => {
+    if (mode === 'analysis') pause()
+    setWorkspaceMode(mode)
+  }, [pause])
+
+  const handleAnalysisTabChange = useCallback((tab: AnalysisTab) => {
+    pause()
+    setAnalysisTab(tab)
+  }, [pause])
 
   const runLabCommand = useCallback(
     async (command: string) => {
@@ -1254,6 +1265,7 @@ function App() {
     aiMoveScheduledRef.current = true
     setIsAiThinking(true)
 
+    const stepModeMove = aiSpeedRef.current === 'step'
     const delayMs = AI_SPEED_MS[aiSpeedRef.current]
 
     const doMove = () => {
@@ -1261,17 +1273,22 @@ function App() {
         aiMoveScheduledRef.current = false
         setIsAiThinking(false)
 
-        if (!uciMove || game.isGameOver() || pausedRef.current) return
+        if (uciMove && !game.isGameOver() && !pausedRef.current) {
+          const from = uciMove.slice(0, 2) as Square
+          const to = uciMove.slice(2, 4) as Square
+          const promo = uciMove[4] as 'q' | 'r' | 'b' | 'n' | undefined
 
-        const from = uciMove.slice(0, 2) as Square
-        const to = uciMove.slice(2, 4) as Square
-        const promo = uciMove[4] as 'q' | 'r' | 'b' | 'n' | undefined
+          const move = game.move({ from, to, promotion: promo })
+          if (move) {
+            const newFen = game.fen()
+            setFen(newFen)
+            gameTreeRef.current.addMove(move, newFen)
+          }
+        }
 
-        const move = game.move({ from, to, promotion: promo })
-        if (move) {
-          const newFen = game.fen()
-          setFen(newFen)
-          gameTreeRef.current.addMove(move, newFen)
+        if (stepModeMove && aiSpeedRef.current === 'step') {
+          pausedRef.current = true
+          setPaused(true)
         }
       })
     }
@@ -1474,19 +1491,19 @@ function App() {
 
   // ── Step: advance one AI move ─────────────────────────
   const handleStep = useCallback(() => {
+    if (game.isGameOver() || aiMoveScheduledRef.current) return
+    const currentTurn = game.turn()
+    const isAiTurn =
+      gameMode === 'ai-vs-ai' ||
+      (gameMode === 'human-vs-ai' && currentTurn !== playerColor[0])
+    if (!isAiTurn) return
+
     stepPendingRef.current = true
     pausedRef.current = false
     setPaused(false)
     aiMoveScheduledRef.current = false
     setFen(f => f) // nudge loop
-    // Re-pause after one move fires (the loop resets stepPendingRef)
-    // The loop sets aiMoveScheduledRef = true synchronously, so after the move
-    // we re-pause via the game-over guard path
-    setTimeout(() => {
-      pausedRef.current = true
-      setPaused(true)
-    }, AI_SPEED_MS.fast + 200)
-  }, [])
+  }, [game, gameMode, playerColor])
 
   // ── Flip ──────────────────────────────────────────────
   const flipBoard = () => setOrientation(v => v === 'white' ? 'black' : 'white')
@@ -1578,7 +1595,7 @@ function App() {
                     key={id}
                     type="button"
                     className={`gc-pill ${workspaceMode === id ? 'gc-pill-active' : ''}`}
-                    onClick={() => setWorkspaceMode(id)}
+                    onClick={() => handleWorkspaceModeChange(id)}
                   >
                     <span className="gc-pill-icon">{icon}</span>
                     {label}
@@ -2118,7 +2135,7 @@ function App() {
                       key={tab.id}
                       type="button"
                       className={`analysis-tab-btn ${analysisTab === tab.id ? 'active' : ''}`}
-                      onClick={() => setAnalysisTab(tab.id)}
+                      onClick={() => handleAnalysisTabChange(tab.id)}
                     >
                       {tab.label}
                     </button>
@@ -2142,7 +2159,7 @@ function App() {
                       />
                       <span>Show board arrow overlays</span>
                     </label>
-                    <button type="button" onClick={() => setWorkspaceMode('analysis')}>
+                    <button type="button" onClick={() => handleWorkspaceModeChange('analysis')}>
                       Switch to Analysis mode
                     </button>
                   </div>
