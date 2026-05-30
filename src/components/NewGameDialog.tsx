@@ -13,6 +13,9 @@ type NewGameConfig = {
 
 type Props = {
     open: boolean
+    initialMode: GameMode
+    initialPlayerColor: PlayerColor
+    initialDifficulty: AiDifficulty
     onStart: (config: NewGameConfig) => void
     onCancel: () => void
 }
@@ -39,10 +42,17 @@ const MODE_OPTIONS: { value: GameMode; icon: React.ReactNode; label: string; des
     { value: 'ai-vs-ai', icon: <IconZap />, label: 'AI vs AI', description: 'Watch engines battle it out' },
 ]
 
-export function NewGameDialog({ open, onStart, onCancel }: Props) {
-    const [mode, setMode] = useState<GameMode>('human-vs-ai')
-    const [playerColor, setPlayerColor] = useState<PlayerColor>('white')
-    const [difficulty, setDifficulty] = useState<AiDifficulty>(4)
+export function NewGameDialog({
+    open,
+    initialMode,
+    initialPlayerColor,
+    initialDifficulty,
+    onStart,
+    onCancel,
+}: Props) {
+    const [mode, setMode] = useState<GameMode>(initialMode)
+    const [playerColor, setPlayerColor] = useState<PlayerColor>(initialPlayerColor)
+    const [difficulty, setDifficulty] = useState<AiDifficulty>(initialDifficulty)
     const panelRef = useRef<HTMLDivElement>(null)
     const titleId = useId()
 
@@ -74,7 +84,8 @@ export function NewGameDialog({ open, onStart, onCancel }: Props) {
                 .filter(el => !el.hasAttribute('disabled') && el.tabIndex !== -1)
 
         const focusable = getFocusable()
-        focusable[0]?.focus()
+        const selectedModeButton = panelEl.querySelector<HTMLElement>('[data-selected-mode="true"]')
+        ;(selectedModeButton ?? focusable[0])?.focus()
 
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
@@ -110,7 +121,7 @@ export function NewGameDialog({ open, onStart, onCancel }: Props) {
             document.removeEventListener('keydown', onKeyDown)
             previouslyFocused?.focus?.()
         }
-    }, [onCancel, open])
+    }, [mode, onCancel, open])
 
     if (!open) return null
 
@@ -140,6 +151,7 @@ export function NewGameDialog({ open, onStart, onCancel }: Props) {
                                 className={`mode-card ${mode === opt.value ? 'selected' : ''}`}
                                 onClick={() => setMode(opt.value)}
                                 aria-pressed={mode === opt.value}
+                                data-selected-mode={mode === opt.value ? 'true' : undefined}
                             >
                                 <span className="mode-icon">{opt.icon}</span>
                                 <strong>{opt.label}</strong>

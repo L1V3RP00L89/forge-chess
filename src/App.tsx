@@ -1770,6 +1770,7 @@ function App() {
   const handleNewGameStart = useCallback(
     ({ mode, playerColor: color, difficulty }: { mode: GameMode; playerColor: PlayerColor; difficulty: AiDifficulty }) => {
       setShowNewGameDialog(false)
+      setWorkspaceMode('play')
       setGameMode(mode)
       setPlayerColor(color)
       setAiDifficulty(difficulty)
@@ -2453,7 +2454,11 @@ function App() {
 
         {/* ── New Game Dialog ── */}
         <NewGameDialog
+          key={showNewGameDialog ? `${gameMode}-${playerColor}-${aiDifficulty}` : 'closed'}
           open={showNewGameDialog}
+          initialMode={gameMode}
+          initialPlayerColor={playerColor}
+          initialDifficulty={aiDifficulty}
           onStart={handleNewGameStart}
           onCancel={() => setShowNewGameDialog(false)}
         />
