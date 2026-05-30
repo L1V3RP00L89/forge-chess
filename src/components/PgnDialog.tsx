@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { GameNode } from '../hooks/useGameTree'
 import type { EvalSnapshot } from '../engine/analysis'
 import { exportAnnotatedPgn } from '../engine/pgn'
@@ -10,30 +10,66 @@ import './NewGameDialog.css'
 type PgnDialogProps = {
     open: boolean
     onClose: () => void
-    onImport: (pgn: string) => void
-    onLoadFen: (fen: string) => void
+    onImport: (pgn: string) => ImportResult
+    onLoadFen: (fen: string) => ImportResult
     mainLineNodes: GameNode[]
     evaluations: Map<string, EvalSnapshot>
+}
+
+type ImportResult = {
+    ok: boolean
+    error?: string
 }
 
 export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, evaluations }: PgnDialogProps) {
     const [tab, setTab] = useState<'import' | 'fen' | 'export'>('import')
     const [importText, setImportText] = useState('')
     const [fenText, setFenText] = useState('')
+    const [error, setError] = useState<string | null>(null)
+    const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
     const panelRef = useRef<HTMLDivElement>(null)
     const titleId = useId()
 
-    const handleImport = () => {
-        onImport(importText)
+    const resetFeedback = useCallback(() => {
+        setError(null)
+        setCopyStatus('idle')
+    }, [])
+
+    const closeDialog = useCallback(() => {
+        resetFeedback()
         onClose()
+    }, [onClose, resetFeedback])
+
+    const handleImport = () => {
+        const result = onImport(importText)
+        if (result.ok) {
+            setImportText('')
+            closeDialog()
+            return
+        }
+        setError(result.error ?? 'Could not import that PGN.')
     }
 
     const handleLoadFen = () => {
-        onLoadFen(fenText)
-        onClose()
+        const result = onLoadFen(fenText)
+        if (result.ok) {
+            setFenText('')
+            closeDialog()
+            return
+        }
+        setError(result.error ?? 'Could not load that FEN.')
     }
 
     const exportText = tab === 'export' ? exportAnnotatedPgn(mainLineNodes, evaluations) : ''
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(exportText)
+            setCopyStatus('copied')
+        } catch {
+            setCopyStatus('failed')
+        }
+    }
 
     useEffect(() => {
         if (!open) return
@@ -61,7 +97,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, e
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
                 event.preventDefault()
-                onClose()
+                closeDialog()
                 return
             }
 
@@ -92,12 +128,12 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, e
             document.removeEventListener('keydown', onKeyDown)
             previouslyFocused?.focus?.()
         }
-    }, [onClose, open])
+    }, [closeDialog, open])
 
     if (!open) return null
 
     return (
-        <div className="dialog-backdrop" onClick={onClose}>
+        <div className="dialog-backdrop" onClick={closeDialog}>
             <div
                 ref={panelRef}
                 className="dialog-panel pgn-dialog"
@@ -117,7 +153,10 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, e
                             <button
                                 type="button"
                                 className={`mode-card ${tab === 'import' ? 'selected' : ''}`}
-                                onClick={() => setTab('import')}
+                                onClick={() => {
+                                    resetFeedback()
+                                    setTab('import')
+                                }}
                                 aria-pressed={tab === 'import'}
                             >
                                 <span className="mode-icon"><IconClipboard /></span>
@@ -126,7 +165,10 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, e
                             <button
                                 type="button"
                                 className={`mode-card ${tab === 'fen' ? 'selected' : ''}`}
-                                onClick={() => setTab('fen')}
+                                onClick={() => {
+                                    resetFeedback()
+                                    setTab('fen')
+                                }}
                                 aria-pressed={tab === 'fen'}
                             >
                                 <span className="mode-icon"><IconDownload /></span>
@@ -135,7 +177,10 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, e
                             <button
                                 type="button"
                                 className={`mode-card ${tab === 'export' ? 'selected' : ''}`}
-                                onClick={() => setTab('export')}
+                                onClick={() => {
+                                    resetFeedback()
+                                    setTab('export')
+                                }}
                                 aria-pressed={tab === 'export'}
                             >
                                 <span className="mode-icon"><IconUpload /></span>
@@ -151,10 +196,15 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, e
                                 className="input-textarea"
                                 placeholder="[Event &quot;FIDE World Cup 2023&quot;]..."
                                 value={importText}
-                                onChange={e => setImportText(e.target.value)}
+                                onChange={e => {
+                                    setImportText(e.target.value)
+                                    setError(null)
+                                }}
+                                aria-invalid={Boolean(error)}
                             />
+                            {error && <p className="dialog-error" role="alert">{error}</p>}
                             <div className="dialog-actions">
-                                <button type="button" className="btn-cancel" onClick={onClose}>Cancel</button>
+                                <button type="button" className="btn-cancel" onClick={closeDialog}>Cancel</button>
                                 <button type="button" className="btn-start" onClick={handleImport} disabled={!importText.trim()}>
                                     Import Game
                                 </button>
@@ -169,10 +219,15 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, e
                                 className="input-textarea"
                                 placeholder="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
                                 value={fenText}
-                                onChange={e => setFenText(e.target.value)}
+                                onChange={e => {
+                                    setFenText(e.target.value)
+                                    setError(null)
+                                }}
+                                aria-invalid={Boolean(error)}
                             />
+                            {error && <p className="dialog-error" role="alert">{error}</p>}
                             <div className="dialog-actions">
-                                <button type="button" className="btn-cancel" onClick={onClose}>Cancel</button>
+                                <button type="button" className="btn-cancel" onClick={closeDialog}>Cancel</button>
                                 <button type="button" className="btn-start" onClick={handleLoadFen} disabled={!fenText.trim()}>
                                     Load Position
                                 </button>
@@ -189,11 +244,14 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, e
                                 value={exportText}
                             />
                             <div className="dialog-actions">
-                                <button type="button" className="btn-cancel" onClick={onClose}>Close</button>
-                                <button type="button" className="btn-start" onClick={() => navigator.clipboard.writeText(exportText)}>
-                                    Copy PGN
+                                <button type="button" className="btn-cancel" onClick={closeDialog}>Close</button>
+                                <button type="button" className="btn-start" onClick={handleCopy}>
+                                    {copyStatus === 'copied' ? 'Copied' : 'Copy PGN'}
                                 </button>
                             </div>
+                            {copyStatus === 'failed' && (
+                                <p className="dialog-error" role="alert">Clipboard access failed. Select the text and copy it manually.</p>
+                            )}
                         </div>
                     )}
                 </div>

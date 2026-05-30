@@ -1569,9 +1569,10 @@ function App() {
       setIsAiThinking(false)
       aiMoveScheduledRef.current = false
       setIsImportingGame(false)
+      return { ok: true }
     } catch {
       setIsImportingGame(false)
-      alert("Failed to parse PGN.")
+      return { ok: false, error: 'Failed to parse PGN. Check the move text, headers, and move numbers.' }
     }
   }, [clearImportSweep, engineEnabled, game, gameTree, newGame])
 
@@ -1597,8 +1598,9 @@ function App() {
       setPaused(true)
       setIsAiThinking(false)
       aiMoveScheduledRef.current = false
+      return { ok: true }
     } catch {
-      alert('Failed to parse FEN.')
+      return { ok: false, error: 'Failed to parse FEN. Check piece placement, side to move, castling rights, and counters.' }
     }
   }, [clearImportSweep, engineEnabled, game, gameTree, newGame])
 
@@ -1755,13 +1757,13 @@ function App() {
               <span className="app-brand-text">Web Chess</span>
             </div>
             <div className="mobile-actions">
-              <button type="button" onClick={openNewGameDialog}>
+              <button type="button" onClick={openNewGameDialog} aria-label="Start new game" title="New game">
                 <span className="btn-icon"><IconRefresh /></span> <span className="btn-label">New game</span>
               </button>
-              <button type="button" onClick={flipBoard}>
+              <button type="button" onClick={flipBoard} aria-label="Flip board" title="Flip board">
                 <span className="btn-icon"><IconFlip /></span> <span className="btn-label">Flip</span>
               </button>
-              <button type="button" onClick={openPgnDialog}>
+              <button type="button" onClick={openPgnDialog} aria-label="Open PGN and FEN dialog" title="PGN and FEN">
                 <span className="btn-icon"><IconDownload /></span> <span className="btn-label">PGN</span>
               </button>
             </div>
