@@ -16,6 +16,14 @@ import {
 } from './engine/analysis'
 import { historicalSampleGames, type HistoricalSampleGame, type HistoricalSampleFormat } from './assets/historicalSamples'
 import {
+  cloudEvalRequestKey,
+  cloudEvalToSnapshot,
+  cloudLineToSideToMoveScore,
+  fetchCloudEvaluation,
+  getCachedCloudEvaluation,
+  type CloudEvalResult,
+} from './engine/cloudEval'
+import {
   getCachedOpeningExplorer,
   prefetchOpeningExplorer,
   type OpeningDatabaseSource,
@@ -48,6 +56,7 @@ type OpeningRatingPresetId = 'all' | 'club' | 'advanced'
 type SampleLibraryFilter = 'all' | HistoricalSampleFormat
 type PromotionPiece = 'q' | 'r' | 'b' | 'n'
 type PendingPromotion = { from: Square; to: Square }
+type CloudEvalStatus = 'idle' | 'loading' | 'hit' | 'missing' | 'error'
 
 const ANALYSIS_SETTINGS_STORAGE_KEY = 'webchess:analysis-settings:v1'
 const ANALYZE_MODE_IDS: AnalyzeMode[] = ['quick', 'deep', 'infinite', 'mate', 'review']
@@ -76,6 +85,7 @@ const MOVE_PONDER_MIN_DEPTH = 20
 const IMPORT_SWEEP_MOVETIME_MS = 70
 const IMPORT_SWEEP_MULTIPV = 1
 const AUTO_ANALYZE_DEBOUNCE_MS = 140
+const CLOUD_EVAL_DEBOUNCE_MS = 320
 
 const analyzePresets: Array<{ id: AnalyzePresetId; label: string; summary: string }> = [
   { id: 'blunder-check', label: 'Fast Blunder Check', summary: 'Quick scan after each move.' },
@@ -295,6 +305,11 @@ function reviewConfidenceLabel(confidence: 'pending' | 'shallow' | 'standard' | 
   return depth ? `D${depth}` : 'Evaluated'
 }
 
+function formatCloudNodes(knodes: number): string {
+  if (knodes >= 1000) return `${(knodes / 1000).toFixed(1)}M nodes`
+  return `${knodes.toLocaleString()}k nodes`
+}
+
 function resultLabel(result: HistoricalSampleGame['result']): string {
   if (result === '1-0') return 'White won'
   if (result === '0-1') return 'Black won'
@@ -474,6 +489,9 @@ function App() {
 
   // ── Evaluations ──────────────────────────────────────
   const [evaluationsByFen, setEvaluationsByFen] = useState<Map<string, EvalSnapshot>>(new Map())
+  const [cloudEvaluations, setCloudEvaluations] = useState<Map<string, CloudEvalResult>>(new Map())
+  const [cloudEvalStatus, setCloudEvalStatus] = useState<CloudEvalStatus>('idle')
+  const [cloudEvalError, setCloudEvalError] = useState<string | null>(null)
 
   // ── Game mode ────────────────────────────────────────
   const [showNewGameDialog, setShowNewGameDialog] = useState(false)
@@ -600,6 +618,12 @@ function App() {
   const opening = useOpening(openingFenPath, workspaceMode === 'analysis' && currentPathNodes.length > 1)
   const canGoBack = currentPathNodes.length > 1
   const canGoForward = gameTree.current.children.length > 0
+  const cloudEvalMultiPv = Math.max(1, Math.min(5, multiPv))
+  const currentCloudEvalKey = useMemo(
+    () => cloudEvalRequestKey({ fen, multiPv: cloudEvalMultiPv }),
+    [cloudEvalMultiPv, fen],
+  )
+  const currentCloudEval = cloudEvaluations.get(currentCloudEvalKey) ?? null
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -771,6 +795,25 @@ function App() {
     const evaluationFen = primaryLine?.fen ?? fen
     setEvaluationsByFen(prev => {
       const cur = prev.get(evaluationFen)
+      const localDepth = primaryLine?.depth
+      if (
+        cur?.purpose === 'cloud-eval'
+        && typeof cur.depth === 'number'
+        && typeof localDepth === 'number'
+        && localDepth < cur.depth
+      ) {
+        const sameWdl = cur.wdl?.w === primaryLine?.wdl?.w
+          && cur.wdl?.d === primaryLine?.wdl?.d
+          && cur.wdl?.l === primaryLine?.wdl?.l
+        if (!primaryLine?.wdl || sameWdl) return prev
+
+        const next = new Map(prev)
+        next.set(evaluationFen, {
+          ...cur,
+          wdl: primaryLine.wdl,
+        })
+        return next
+      }
       // Check if cp and wdl are exactly the same
       const sameCp = cur?.cp === cp
       const sameMate = cur?.mate === primaryLine?.mate
@@ -813,6 +856,96 @@ function App() {
     primaryLine?.time,
     primaryLine?.wdl,
   ])
+
+  useEffect(() => {
+    if (!engineEnabled) {
+      setCloudEvalStatus('idle')
+      setCloudEvalError(null)
+      return
+    }
+    if (isImportingGame || isBatchReviewing) return
+
+    const request = { fen, multiPv: cloudEvalMultiPv }
+    const cached = getCachedCloudEvaluation(request)
+    if (cached) {
+      setCloudEvaluations(previous => {
+        if (previous.get(currentCloudEvalKey) === cached) return previous
+        const next = new Map(previous)
+        next.set(currentCloudEvalKey, cached)
+        return next
+      })
+      setCloudEvalStatus('hit')
+      setCloudEvalError(null)
+      return
+    }
+
+    const controller = new AbortController()
+    setCloudEvalStatus('idle')
+    setCloudEvalError(null)
+    const timer = window.setTimeout(() => {
+      setCloudEvalStatus('loading')
+      setCloudEvalError(null)
+
+      fetchCloudEvaluation(request, controller.signal)
+        .then(result => {
+          if (controller.signal.aborted) return
+          if (!result) {
+            setCloudEvalStatus('missing')
+            return
+          }
+
+          setCloudEvaluations(previous => {
+            const next = new Map(previous)
+            next.set(currentCloudEvalKey, result)
+            return next
+          })
+          setCloudEvalStatus('hit')
+        })
+        .catch(error => {
+          if (controller.signal.aborted) return
+          setCloudEvalStatus('error')
+          setCloudEvalError(error instanceof Error ? error.message : String(error))
+        })
+    }, CLOUD_EVAL_DEBOUNCE_MS)
+
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [
+    cloudEvalMultiPv,
+    currentCloudEvalKey,
+    engineEnabled,
+    fen,
+    isBatchReviewing,
+    isImportingGame,
+  ])
+
+  useEffect(() => {
+    if (!engineEnabled || !currentCloudEval) return
+    const snapshot = cloudEvalToSnapshot(fen, currentCloudEval)
+    if (!snapshot) return
+
+    setEvaluationsByFen(previous => {
+      const current = previous.get(fen)
+      const currentDepth = current?.depth ?? 0
+      const cloudDepth = snapshot.depth ?? 0
+      if (current && current.purpose !== 'cloud-eval' && currentDepth >= cloudDepth) return previous
+      if (
+        current?.purpose === 'cloud-eval'
+        && current.cp === snapshot.cp
+        && current.mate === snapshot.mate
+        && current.depth === snapshot.depth
+        && current.nodes === snapshot.nodes
+      ) {
+        return previous
+      }
+
+      const next = new Map(previous)
+      next.set(fen, snapshot)
+      return next
+    })
+  }, [currentCloudEval, engineEnabled, fen])
 
   // ── Viewport ─────────────────────────────────────────
   useEffect(() => {
@@ -2565,6 +2698,38 @@ function App() {
                   <p className="panel-copy small command-summary">
                     {activeGoCommand ? `Command: ${activeGoCommand}` : 'Command: idle'} {queueLength > 0 ? `· queue ${queueLength}` : ''}
                   </p>
+                  {(currentCloudEval || cloudEvalStatus === 'loading' || cloudEvalStatus === 'missing' || cloudEvalStatus === 'error') && (
+                    <div className="cloud-eval-card">
+                      <h3><span className="section-icon"><IconZap /></span> Cloud Eval</h3>
+                      <p className="panel-copy small command-summary">
+                        {currentCloudEval
+                          ? `Lichess cache · D${currentCloudEval.depth} · ${formatCloudNodes(currentCloudEval.knodes)}`
+                          : cloudEvalStatus === 'loading'
+                            ? 'Checking Lichess cache...'
+                            : cloudEvalStatus === 'missing'
+                              ? 'No cloud eval for this position.'
+                              : `Cloud eval: ${cloudEvalError ?? 'unavailable'}`}
+                      </p>
+                      {currentCloudEval && (
+                        <div className="cloud-line-list">
+                          {currentCloudEval.pvs.slice(0, cloudEvalMultiPv).map((line, index) => {
+                            const score = cloudLineToSideToMoveScore(fen, line)
+                            return (
+                              <article key={`${index}-${line.moves.join(' ')}`} className="cloud-line-row">
+                                <header>
+                                  <strong>#{index + 1}</strong>
+                                  <span>D{currentCloudEval.depth}</span>
+                                  <span>{formatWhitePovEvaluation(fen, score.cp, score.mate)}</span>
+                                </header>
+                                <p>{pvToSan(fen, { multipv: index + 1, depth: currentCloudEval.depth, pv: line.moves }) || line.moves.slice(0, 8).join(' ')}</p>
+                                <p className="pv-uci">{line.moves.slice(0, 8).join(' ')}</p>
+                              </article>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="opening-intel-card">
                     <div className="opening-intel-head">
                       <h3><span className="section-icon"><IconBarChart /></span> Opening Intel</h3>

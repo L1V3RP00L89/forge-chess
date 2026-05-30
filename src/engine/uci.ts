@@ -1,5 +1,12 @@
 export type AnalyzeMode = 'quick' | 'deep' | 'infinite' | 'mate' | 'review' | 'custom'
-export type AnalyzePurpose = 'auto' | 'manual' | 'import-load' | 'import-sweep' | 'review-ponder' | 'batch-review'
+export type AnalyzePurpose =
+  | 'auto'
+  | 'manual'
+  | 'import-load'
+  | 'import-sweep'
+  | 'review-ponder'
+  | 'batch-review'
+  | 'cloud-eval'
 
 export type UciGoLimits = {
   depth?: number

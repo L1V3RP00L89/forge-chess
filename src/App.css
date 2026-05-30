@@ -1327,6 +1327,76 @@
   color: var(--text-muted);
 }
 
+.cloud-eval-card {
+  margin-bottom: var(--space-md);
+  border: 1px solid rgba(88, 166, 255, 0.22);
+  border-radius: var(--radius-sm);
+  background: rgba(13, 17, 23, 0.34);
+  padding: 0.55rem;
+}
+
+.cloud-eval-card h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cloud-line-list {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.cloud-line-row {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  padding: 0.42rem 0.5rem;
+}
+
+.cloud-line-row header {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: baseline;
+  font-size: 0.71rem;
+  color: var(--text-tertiary);
+  margin-bottom: 0.22rem;
+}
+
+.cloud-line-row header strong {
+  color: var(--info);
+  font-weight: 700;
+}
+
+.cloud-line-row header span:last-child {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.78rem;
+}
+
+.cloud-line-row p {
+  margin: 0;
+  font-size: 0.73rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.cloud-line-row p.pv-uci {
+  margin-top: 0.18rem;
+  font-size: 0.63rem;
+  color: var(--text-muted);
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  letter-spacing: 0.02em;
+}
+
 .engine-command-inline {
   font-family: "JetBrains Mono", "SF Mono", monospace;
   font-size: 0.66rem;
