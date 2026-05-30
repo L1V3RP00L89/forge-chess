@@ -9,6 +9,7 @@ import {
   pvToSan,
   scoreToCp,
   summarizeReview,
+  uciToSan,
   type EvalSnapshot,
   type ReviewRow,
   type ReviewLabel,
@@ -318,6 +319,11 @@ function formatCloudNodes(knodes: number): string {
   return `${knodes.toLocaleString()}k nodes`
 }
 
+function bestMoveLabel(fen: string, uci: string | null | undefined): string {
+  if (!uci) return '...'
+  return uciToSan(fen, uci) ?? uci
+}
+
 function resultLabel(result: HistoricalSampleGame['result']): string {
   if (result === '1-0') return 'White won'
   if (result === '0-1') return 'Black won'
@@ -609,6 +615,7 @@ function App() {
   const openingRequestRatings = openingSource === 'lichess' ? openingRatings : undefined
   const openingExplorer = useOpeningExplorer({
     source: openingSource,
+    fen: currentRootFen,
     moves: currentPathMoves,
     speeds: openingRequestSpeeds,
     ratings: openingRequestRatings,
@@ -1080,6 +1087,7 @@ function App() {
         ? formatWhitePovEvaluation(fen, evaluationsByFen.get(fen)?.cp, evaluationsByFen.get(fen)?.mate)
         : '...'
   const coachBestMove = coachLine?.pv[0] ?? currentCloudEval?.pvs[0]?.moves[0] ?? lastBestMove ?? null
+  const coachBestMoveText = bestMoveLabel(fen, coachBestMove)
   const coachDepth = coachLine?.depth ?? currentCloudEval?.depth
   const coachLineSan = coachLine
     ? pvToSan(coachLine.fen ?? fen, coachLine, 6)
@@ -1415,6 +1423,7 @@ function App() {
         if (cancelled) return
         await prefetchOpeningExplorer({
           source: openingSource,
+          fen: currentRootFen,
           moves: mainLineUciMoves.slice(0, idx),
           speeds: openingSource === 'lichess' ? openingSpeeds : undefined,
           ratings: openingSource === 'lichess' ? openingRatings : undefined,
@@ -1429,7 +1438,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [analysisTab, mainLineUciMoves, openingAuthToken, openingRatings, openingSource, openingSpeeds, workspaceMode])
+  }, [analysisTab, currentRootFen, mainLineUciMoves, openingAuthToken, openingRatings, openingSource, openingSpeeds, workspaceMode])
 
   const reviewBookRows = useMemo(() => {
     void openingPrefetchTick
@@ -1437,6 +1446,7 @@ function App() {
       const beforeMoves = mainLineUciMoves.slice(0, index)
       const fromCache = getCachedOpeningExplorer({
         source: openingSource,
+        fen: currentRootFen,
         moves: beforeMoves,
         speeds: openingSource === 'lichess' ? openingSpeeds : undefined,
         ratings: openingSource === 'lichess' ? openingRatings : undefined,
@@ -1487,6 +1497,7 @@ function App() {
   }, [
     mainLineUciMoves,
     mainLineNodes,
+    currentRootFen,
     openingAuthToken,
     openingPrefetchTick,
     openingRatings,
@@ -2700,7 +2711,7 @@ function App() {
                       </div>
                       <div>
                         <span>Best move</span>
-                        <strong>{coachBestMove ?? '...'}</strong>
+                        <strong title={coachBestMove ?? undefined}>{coachBestMoveText}</strong>
                       </div>
                       <div>
                         <span>Depth</span>
@@ -2911,7 +2922,11 @@ function App() {
                           )}
                         </article>
                       ))}
-                    {lastBestMove && <p className="best-move">Best move: {lastBestMove}</p>}
+                    {lastBestMove && (
+                      <p className="best-move" title={lastBestMove}>
+                        Best move: {bestMoveLabel(fen, lastBestMove)}
+                      </p>
+                    )}
                     {lastPonderMove && <p className="best-move">Ponder: {lastPonderMove}</p>}
                   </div>
                 </>
@@ -3215,7 +3230,7 @@ function App() {
               )}
 
               {lastBestMove && !game.isGameOver() && (
-                <p className="best-move">Best: {lastBestMove}</p>
+                <p className="best-move" title={lastBestMove}>Best: {bestMoveLabel(fen, lastBestMove)}</p>
               )}
             </div>
           </div>

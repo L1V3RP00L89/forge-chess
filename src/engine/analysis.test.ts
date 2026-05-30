@@ -1,6 +1,6 @@
 import { Chess } from 'chess.js'
 import { describe, expect, it } from 'vitest'
-import { buildReviewRows, buildWinrateSeries, formatWhitePovEvaluation, summarizeReview } from './analysis'
+import { buildReviewRows, buildWinrateSeries, formatWhitePovEvaluation, summarizeReview, uciToSan } from './analysis'
 
 describe('review analysis helpers', () => {
   it('labels reviewed moves from side-to-move centipawn deltas', () => {
@@ -91,6 +91,12 @@ describe('review analysis helpers', () => {
     expect(formatWhitePovEvaluation(blackToMove, -10000, -3)).toBe('#3')
     expect(formatWhitePovEvaluation(blackToMove, 10000, 2)).toBe('#-2')
     expect(formatWhitePovEvaluation(whiteToMove, 42)).toBe('+0.42')
+  })
+
+  it('formats a single UCI move as SAN for the current position', () => {
+    const game = new Chess()
+    expect(uciToSan(game.fen(), 'e2e4')).toBe('e4')
+    expect(uciToSan(game.fen(), 'not-a-move')).toBeNull()
   })
 
   it('builds graph series from an imported root FEN', () => {

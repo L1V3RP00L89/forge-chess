@@ -40,6 +40,7 @@ describe('opening explorer client', () => {
 
     const request = {
       source: 'lichess' as const,
+      fen: '8/8/8/8/8/8/4K3/6k1 w - - 0 1',
       moves: [' e2e4 '],
       speeds: ['rapid' as const, 'blitz' as const],
       ratings: [1600, 5000],
@@ -54,7 +55,9 @@ describe('opening explorer client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
     const [url, options] = fetchMock.mock.calls[0] as [string, { headers: HeadersInit }]
+    const parsedUrl = new URL(url)
     expect(url).toContain('https://explorer.lichess.org/lichess?')
+    expect(parsedUrl.searchParams.get('fen')).toBe(request.fen)
     expect(url).toContain('play=e2e4')
     expect(url).toContain('speeds=rapid%2Cblitz')
     expect(url).toContain('ratings=1600')
@@ -82,7 +85,7 @@ describe('opening explorer client', () => {
       opening: { eco: 'D00', name: 'Queen Pawn Game' },
     }
     const stored = {
-      'masters|d2d4||': {
+      'masters||d2d4||': {
         expiresAt: Date.now() + 60_000,
         payload,
       },

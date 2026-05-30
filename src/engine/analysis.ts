@@ -90,6 +90,22 @@ export function pvToSan(fen: string, line: EngineLine, maxMoves = 8): string {
   return chunks.join(' ')
 }
 
+export function uciToSan(fen: string, uci: string): string | null {
+  if (uci.length < 4) return null
+
+  const replay = new Chess(fen)
+  try {
+    const move = replay.move({
+      from: uci.slice(0, 2),
+      to: uci.slice(2, 4),
+      promotion: uci[4],
+    })
+    return move?.san ?? null
+  } catch {
+    return null
+  }
+}
+
 function qualityFromDelta(deltaCp: number): ReviewLabel {
   if (deltaCp >= -20) return 'best'
   if (deltaCp >= -70) return 'good'

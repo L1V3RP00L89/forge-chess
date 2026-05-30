@@ -3,6 +3,7 @@ export type OpeningSpeed = 'bullet' | 'blitz' | 'rapid' | 'classical'
 
 export type OpeningExplorerRequest = {
   source: OpeningDatabaseSource
+  fen?: string
   moves: string[]
   speeds?: OpeningSpeed[]
   ratings?: number[]
@@ -129,6 +130,10 @@ function normalizeMoves(moves: string[]): string[] {
     .filter(Boolean)
 }
 
+function normalizeFen(fen: string | undefined): string {
+  return fen?.trim().replace(/\s+/g, ' ') ?? ''
+}
+
 function normalizeAuthToken(authToken: string | undefined): string {
   const trimmed = authToken?.trim() ?? ''
   return trimmed.replace(/^Bearer(?:\s+|$)/i, '').trim()
@@ -144,16 +149,19 @@ function authHeaders(authToken: string | undefined): HeadersInit {
 }
 
 function requestCacheKey(request: OpeningExplorerRequest): string {
+  const fen = normalizeFen(request.fen)
   const moves = normalizeMoves(request.moves)
   const speeds = (request.speeds ?? []).slice().sort().join(',')
   const ratings = clampUniqueInts(request.ratings, 400, 3200).sort((a, b) => a - b).join(',')
-  return [request.source, moves.join(','), speeds, ratings].join('|')
+  return [request.source, fen, moves.join(','), speeds, ratings].join('|')
 }
 
 function buildUrl(request: OpeningExplorerRequest): string {
   const sourcePath = request.source === 'masters' ? 'masters' : 'lichess'
   const url = new URL(`${EXPLORER_BASE_URL}/${sourcePath}`)
+  const fen = normalizeFen(request.fen)
   const moves = normalizeMoves(request.moves)
+  if (fen) url.searchParams.set('fen', fen)
   if (moves.length) url.searchParams.set('play', moves.join(','))
 
   if (request.source === 'lichess') {
