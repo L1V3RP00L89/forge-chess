@@ -2115,13 +2115,14 @@ function App() {
   // ── Mode switch mid-game ──────────────────────────────
   const handleModeChange = useCallback((mode: GameMode) => {
     setGameMode(mode)
+    if (workspaceMode !== 'play') setWorkspaceMode('play')
     aiMoveScheduledRef.current = false
-    if (pausedRef.current && mode === 'human-vs-human') {
+    if (pausedRef.current) {
       pausedRef.current = false
       setPaused(false)
     }
     setFen(f => f)
-  }, [])
+  }, [workspaceMode])
 
   const navigateMoveListAndPause = useCallback((chess: Chess) => {
     navigateAndPause(chess)
