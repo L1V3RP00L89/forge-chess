@@ -1,6 +1,6 @@
 import { Chess } from 'chess.js'
 import { describe, expect, it } from 'vitest'
-import { buildReviewRows, buildWinrateSeries, summarizeReview } from './analysis'
+import { buildReviewRows, buildWinrateSeries, formatWhitePovEvaluation, summarizeReview } from './analysis'
 
 describe('review analysis helpers', () => {
   it('labels reviewed moves from side-to-move centipawn deltas', () => {
@@ -44,6 +44,15 @@ describe('review analysis helpers', () => {
       quality: 'pending',
     })
     expect(summarizeReview(rows).pending).toBe(1)
+  })
+
+  it('formats mate scores from White perspective', () => {
+    const blackToMove = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'
+    const whiteToMove = new Chess().fen()
+
+    expect(formatWhitePovEvaluation(blackToMove, -10000, -3)).toBe('#3')
+    expect(formatWhitePovEvaluation(blackToMove, 10000, 2)).toBe('#-2')
+    expect(formatWhitePovEvaluation(whiteToMove, 42)).toBe('+0.42')
   })
 
   it('builds graph series from an imported root FEN', () => {

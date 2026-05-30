@@ -5,8 +5,7 @@ import {
   buildWdlSeries,
   buildWinrateSeries,
   buildReviewRows,
-  formatEvaluation,
-  normalizeWhitePovCp,
+  formatWhitePovEvaluation,
   pvToSan,
   scoreToCp,
   summarizeReview,
@@ -2205,9 +2204,8 @@ function App() {
           <div className="board-wrap">
             {engineEnabled && showWdl && (() => {
               const evalSnap = evaluationsByFen.get(fen)
-              const rawCp = evalSnap?.cp
-              const evalLabel = typeof rawCp === 'number'
-                ? formatEvaluation(normalizeWhitePovCp(fen, rawCp), undefined)
+              const evalLabel = evalSnap
+                ? formatWhitePovEvaluation(fen, evalSnap.cp, evalSnap.mate)
                 : null
               return (
                 <>
@@ -2527,7 +2525,7 @@ function App() {
                           <header>
                             <strong>#{line.multipv}</strong>
                             <span>D{line.depth}</span>
-                            <span>{formatEvaluation(typeof line.cp === 'number' ? normalizeWhitePovCp(line.fen ?? fen, line.cp) : undefined, line.mate)}</span>
+                            <span>{formatWhitePovEvaluation(line.fen ?? fen, line.cp, line.mate)}</span>
                           </header>
                           <p>{pvToSan(line.fen ?? fen, line) || line.pv.slice(0, 8).join(' ')}</p>
                           <p className="pv-uci">{line.pv.slice(0, 8).join(' ')}</p>

@@ -144,6 +144,17 @@ export function normalizeWhitePovCp(fen: string, cp: number): number {
   return turn === 'w' ? cp : -cp
 }
 
+export function normalizeWhitePovMate(fen: string, mate: number): number {
+  const turn = fen.split(' ')[1]
+  return turn === 'w' ? mate : -mate
+}
+
+export function formatWhitePovEvaluation(fen: string, cp?: number, mate?: number): string {
+  if (typeof mate === 'number') return formatEvaluation(undefined, normalizeWhitePovMate(fen, mate))
+  if (typeof cp === 'number') return formatEvaluation(normalizeWhitePovCp(fen, cp), undefined)
+  return formatEvaluation()
+}
+
 function normalizeWhitePovWdl(fen: string, wdl: { w: number; d: number; l: number }): { white: number; draw: number; black: number } | null {
   const total = wdl.w + wdl.d + wdl.l
   if (total <= 0) return null
