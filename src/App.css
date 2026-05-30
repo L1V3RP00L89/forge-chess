@@ -1300,6 +1300,66 @@ body.resizing * {
   margin-right: 0.2rem;
 }
 
+.tablebase-card {
+  margin-bottom: var(--space-md);
+  border: 1px solid rgba(240, 246, 252, 0.14);
+  border-left: 3px solid var(--info);
+  border-radius: var(--radius-md);
+  background: rgba(13, 17, 23, 0.42);
+  padding: 0.55rem;
+}
+
+.tablebase-card h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tablebase-move-list {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.tablebase-move-row {
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  display: grid;
+  grid-template-columns: minmax(3rem, 0.7fr) minmax(0, 1.2fr) auto;
+  align-items: center;
+  gap: 0.42rem;
+  text-align: left;
+  padding: 0.3rem 0.45rem;
+}
+
+.tablebase-move-row strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.tablebase-move-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tablebase-move-row span:last-child {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
 .preset-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

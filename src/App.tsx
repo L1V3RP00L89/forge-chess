@@ -31,12 +31,14 @@ import {
 import type { AnalyzeMode, UciGoLimits } from './engine/uci'
 import { rootFenFromPgnHeaders } from './engine/pgn'
 import { engineProfiles, type EngineProfileId } from './engine/profiles'
+import type { TablebaseCategory, TablebaseMove, TablebaseResult } from './engine/tablebase'
 import { useStockfishEngine } from './hooks/useStockfishEngine'
 import { useAiPlayer, type AiDifficulty } from './hooks/useAiPlayer'
 import { useGameTree, type GameNode } from './hooks/useGameTree'
 import { useOpening } from './hooks/useOpening'
 import { useCloudEvaluation } from './hooks/useCloudEvaluation'
 import { useOpeningExplorer } from './hooks/useOpeningExplorer'
+import { useTablebase } from './hooks/useTablebase'
 import { NewGameDialog, type GameMode, type PlayerColor } from './components/NewGameDialog'
 import { PgnDialog } from './components/PgnDialog'
 import { WatchControls } from './components/WatchControls'
@@ -100,6 +102,19 @@ const REVIEW_LABELS: Record<ReviewLabel, string> = {
   mistake: 'Mistake',
   blunder: 'Blunder',
   pending: 'Pending',
+}
+
+const TABLEBASE_CATEGORY_LABELS: Record<TablebaseCategory, string> = {
+  win: 'Win',
+  unknown: 'Unknown',
+  'syzygy-win': 'Win',
+  'maybe-win': 'Maybe win',
+  'cursed-win': 'Cursed win',
+  draw: 'Draw',
+  'blessed-loss': 'Blessed loss',
+  'maybe-loss': 'Maybe loss',
+  'syzygy-loss': 'Loss',
+  loss: 'Loss',
 }
 
 type ImportSweepTarget = {
@@ -317,6 +332,26 @@ function reviewConfidenceLabel(confidence: 'pending' | 'shallow' | 'standard' | 
 function formatCloudNodes(knodes: number): string {
   if (knodes >= 1000) return `${(knodes / 1000).toFixed(1)}M nodes`
   return `${knodes.toLocaleString()}k nodes`
+}
+
+function formatTablebaseDistance(label: string, value: number | null | undefined): string | null {
+  return typeof value === 'number' && value !== 0 ? `${label} ${Math.abs(value)}` : null
+}
+
+function tablebaseSummary(result: TablebaseResult): string {
+  return [
+    TABLEBASE_CATEGORY_LABELS[result.category],
+    formatTablebaseDistance('DTM', result.dtm),
+    formatTablebaseDistance('DTZ', result.preciseDtz ?? result.dtz),
+  ].filter(Boolean).join(' · ')
+}
+
+function tablebaseMoveSummary(move: TablebaseMove): string {
+  return [
+    TABLEBASE_CATEGORY_LABELS[move.category],
+    formatTablebaseDistance('DTM', move.dtm),
+    formatTablebaseDistance('DTZ', move.preciseDtz ?? move.dtz),
+  ].filter(Boolean).join(' · ')
 }
 
 function bestMoveLabel(fen: string, uci: string | null | undefined): string {
@@ -727,6 +762,10 @@ function App() {
     fen,
     multiPv,
     enabled: engineEnabled && !isImportingGame && !isBatchReviewing,
+  })
+  const tablebase = useTablebase({
+    fen,
+    enabled: workspaceMode === 'analysis',
   })
 
   const stopBatchReview = useCallback(() => {
@@ -2725,6 +2764,41 @@ function App() {
                       </p>
                     )}
                   </div>
+                  {tablebase.eligible && (
+                    <div className="tablebase-card">
+                      <h3><span className="section-icon"><IconKing /></span> Endgame Tablebase</h3>
+                      <p className="panel-copy small command-summary">
+                        {tablebase.status === 'loading'
+                          ? `${tablebase.pieceCount} pieces · checking exact result...`
+                          : tablebase.result
+                            ? `${tablebase.pieceCount} pieces · ${tablebaseSummary(tablebase.result)}`
+                            : tablebase.error
+                              ? `Tablebase: ${tablebase.error}`
+                              : `${tablebase.pieceCount} pieces · no tablebase result`}
+                      </p>
+                      {tablebase.result?.moves.length ? (
+                        <div className="tablebase-move-list">
+                          {tablebase.result.moves.slice(0, 4).map(move => (
+                            <button
+                              key={move.uci}
+                              type="button"
+                              className="tablebase-move-row"
+                              title={move.uci}
+                              onClick={() => {
+                                setShowAdvancedAnalyze(true)
+                                setActivePreset(null)
+                                setSearchMovesInput(move.uci)
+                              }}
+                            >
+                              <strong>{move.san}</strong>
+                              <span>{tablebaseMoveSummary(move)}</span>
+                              <span>{move.uci}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                   {analysisExperience === 'pro' && (
                     <>
                       <div className="preset-grid">
