@@ -543,11 +543,17 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
       setStatus('disabled')
       return
     }
-    if (isSearchingRef.current && !stopRequestedRef.current) {
-      send('stop')
-      stopRequestedRef.current = true
+    if (isSearchingRef.current) {
+      if (!stopRequestedRef.current) {
+        send('stop')
+        stopRequestedRef.current = true
+      }
+      return
     }
-    setStatus((value) => (value === 'error' ? value : 'ready'))
+    setStatus((value) => {
+      if (value === 'error') return value
+      return isReadyRef.current ? 'ready' : value
+    })
   }, [enabled, send])
 
   const newGame = useCallback(() => {
