@@ -418,7 +418,7 @@ function App() {
   const [movesToGo, setMovesToGo] = useState<number | ''>(persistedSettings.movesToGo ?? '')
   const [engineLabCommand, setEngineLabCommand] = useState('')
   const [engineLabError, setEngineLabError] = useState<string | null>(null)
-  const [rawLogOffset, setRawLogOffset] = useState(0)
+  const [engineLabOutputLines, setEngineLabOutputLines] = useState<string[]>([])
   const [expertModeEnabled, setExpertModeEnabled] = useState(persistedSettings.expertModeEnabled)
   const [labCommandHistory, setLabCommandHistory] = useState<string[]>(persistedSettings.labCommandHistory)
   const [lastLabRun, setLastLabRun] = useState<{ command: string; durationMs: number } | null>(null)
@@ -657,7 +657,6 @@ function App() {
     lastPonderMove,
     activeGoCommand,
     queueLength,
-    rawLines,
     capabilities,
     activeProfile,
     profileMessage,
@@ -913,6 +912,7 @@ function App() {
     setTopMoveArrowCount(DEFAULT_PERSISTED_SETTINGS.topMoveArrowCount)
     setOpeningPrefetchTick(0)
     setEngineLabError(null)
+    setEngineLabOutputLines([])
     setPendingPromotion(null)
   }, [])
 
@@ -1035,11 +1035,20 @@ function App() {
 
       setLabCommandHistory(previous => [trimmed, ...previous.filter(item => item !== trimmed)].slice(0, 20))
       const startTime = performance.now()
+      const outputLines = [`> ${trimmed}`]
+      setEngineLabOutputLines(outputLines)
       try {
-        await sendCommand(trimmed)
+        const lines = await sendCommand(trimmed, {
+          stream: line => {
+            outputLines.push(line)
+            setEngineLabOutputLines(outputLines.slice(-300))
+          },
+        })
+        if (!lines.length) setEngineLabOutputLines([`> ${trimmed}`, '(no direct response)'])
         setLastLabRun({ command: trimmed, durationMs: Math.round(performance.now() - startTime) })
         setEngineLabCommand('')
       } catch (error) {
+        if (outputLines.length === 1) setEngineLabOutputLines([`> ${trimmed}`, '(no response before error)'])
         setLastLabRun({ command: trimmed, durationMs: Math.round(performance.now() - startTime) })
         setEngineLabError(error instanceof Error ? error.message : String(error))
       }
@@ -1047,22 +1056,20 @@ function App() {
     [engineEnabled, expertModeEnabled, sendCommand],
   )
 
-  const clearRawConsole = useCallback(() => {
-    setRawLogOffset(rawLines.length)
+  const clearLabConsole = useCallback(() => {
+    setEngineLabOutputLines([])
     setEngineLabError(null)
-  }, [rawLines.length])
+  }, [])
 
-  const visibleRawLines = useMemo(() => rawLines.slice(rawLogOffset).slice(-300), [rawLines, rawLogOffset])
-
-  const copyRawConsole = useCallback(async () => {
+  const copyLabConsole = useCallback(async () => {
     try {
-      if (!visibleRawLines.length) return
-      await navigator.clipboard.writeText(visibleRawLines.join('\n'))
+      if (!engineLabOutputLines.length) return
+      await navigator.clipboard.writeText(engineLabOutputLines.join('\n'))
       setEngineLabError(null)
     } catch (error) {
       setEngineLabError(error instanceof Error ? error.message : 'Failed to copy console output.')
     }
-  }, [visibleRawLines])
+  }, [engineLabOutputLines])
 
   useEffect(() => {
     persistSettings({
@@ -2703,8 +2710,8 @@ function App() {
                         placeholder="go depth 16"
                       />
                       <button type="submit">Send</button>
-                      <button type="button" onClick={() => void copyRawConsole()}>Copy</button>
-                      <button type="button" onClick={clearRawConsole}>Clear</button>
+                      <button type="button" onClick={() => void copyLabConsole()}>Copy</button>
+                      <button type="button" onClick={clearLabConsole}>Clear</button>
                     </form>
                     {lastLabRun && (
                       <p className="panel-copy small command-summary">
@@ -2745,7 +2752,7 @@ function App() {
                     )}
                     {engineLabError && <p className="panel-copy small error-copy">{engineLabError}</p>}
                     <pre className="engine-lab-output">
-                      {(visibleRawLines.join('\n')) || 'No engine output yet.'}
+                      {(engineLabOutputLines.join('\n')) || 'No command output yet.'}
                     </pre>
                   </div>
 

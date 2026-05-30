@@ -377,7 +377,13 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
       })
     }
 
-    if (queueIndex < 0) queueIndex = 0
+    if (queueIndex < 0) {
+      const firstItem = queue[0]
+      const firstItemConsumesSearchOutput =
+        firstItem?.kind === 'go' || firstItem?.firstWord === 'bench' || firstItem?.firstWord === 'perft'
+      if (lineKind === 'go' && !firstItemConsumesSearchOutput) return
+      queueIndex = 0
+    }
     const item = queue[queueIndex]
     if (!item) return
 
