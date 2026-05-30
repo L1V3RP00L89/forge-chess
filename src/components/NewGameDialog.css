@@ -5,7 +5,7 @@
     resize: vertical;
     padding: 0.8rem;
     font-size: 0.82rem;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
     color: var(--text-primary, #e6edf3);
     background: rgba(1, 4, 9, 0.4);
     border: 1px solid var(--border-default, rgba(240, 246, 252, 0.10));
@@ -55,7 +55,7 @@
 .dialog-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 100;
+    z-index: 3000;
     background: rgba(0, 0, 0, 0.72);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
@@ -238,7 +238,7 @@
 /* ── Difficulty slider ─────────────────────────────── */
 .difficulty-label-value {
     color: var(--accent, #3fb950);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono);
 }
 
 .difficulty-slider {
