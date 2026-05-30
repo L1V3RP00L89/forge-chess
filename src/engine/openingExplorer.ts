@@ -49,6 +49,8 @@ export type OpeningExplorerResponse = {
 
 const EXPLORER_BASE_URL = 'https://explorer.lichess.org'
 const CACHE_TTL_MS = 5 * 60 * 1000
+const CACHE_STORAGE_KEY = 'webchess:opening-explorer-cache:v1'
+const CACHE_STORAGE_LIMIT = 80
 const AUTH_REQUIRED_MESSAGE = 'Opening Explorer requires a Lichess API token.'
 const AUTH_REJECTED_MESSAGE = 'Opening Explorer rejected the Lichess API token.'
 
@@ -58,6 +60,43 @@ type CacheEntry = {
 }
 
 const responseCache = new Map<string, CacheEntry>()
+
+function readStorageCache(): Record<string, CacheEntry> {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = window.localStorage.getItem(CACHE_STORAGE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, CacheEntry>
+      : {}
+  } catch {
+    return {}
+  }
+}
+
+function writeStorageCache(cache: Record<string, CacheEntry>) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(cache))
+  } catch {
+    // Cache persistence is optional; ignore private-mode/quota failures.
+  }
+}
+
+function writeStorageCacheEntry(key: string, entry: CacheEntry) {
+  const now = Date.now()
+  const stored = readStorageCache()
+  stored[key] = entry
+
+  const pruned = Object.fromEntries(
+    Object.entries(stored)
+      .filter(([, value]) => value.expiresAt > now)
+      .sort(([, a], [, b]) => b.expiresAt - a.expiresAt)
+      .slice(0, CACHE_STORAGE_LIMIT),
+  )
+  writeStorageCache(pruned)
+}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
@@ -215,19 +254,28 @@ function parseResponse(raw: unknown): OpeningExplorerResponse {
 function readCached(request: OpeningExplorerRequest): OpeningExplorerResponse | null {
   const key = requestCacheKey(request)
   const cached = responseCache.get(key)
-  if (!cached) return null
-  if (cached.expiresAt <= Date.now()) {
+  const now = Date.now()
+  if (cached) {
+    if (cached.expiresAt > now) return cached.payload
     responseCache.delete(key)
-    return null
   }
-  return cached.payload
+
+  const stored = readStorageCache()[key]
+  if (!stored) return null
+  if (stored.expiresAt <= now) return null
+
+  responseCache.set(key, stored)
+  return stored.payload
 }
 
 function writeCached(request: OpeningExplorerRequest, payload: OpeningExplorerResponse) {
-  responseCache.set(requestCacheKey(request), {
+  const key = requestCacheKey(request)
+  const entry = {
     expiresAt: Date.now() + CACHE_TTL_MS,
     payload,
-  })
+  }
+  responseCache.set(key, entry)
+  writeStorageCacheEntry(key, entry)
 }
 
 export function getCachedOpeningExplorer(request: OpeningExplorerRequest): OpeningExplorerResponse | null {
