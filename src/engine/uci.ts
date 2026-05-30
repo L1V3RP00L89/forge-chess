@@ -64,10 +64,9 @@ export function normalizeUciMoves(moves: string[] | undefined): string[] {
 
 export function buildPositionCommand(fen: string, historyMoves?: string[], rootFen?: string): string {
   const normalizedMoves = normalizeUciMoves(historyMoves)
-  if (!normalizedMoves.length) return `position fen ${fen}`
+  if (!normalizedMoves.length || !rootFen) return `position fen ${fen}`
 
-  const rootPosition = rootFen ? `fen ${rootFen}` : `fen ${fen}`
-  return `position ${rootPosition} moves ${normalizedMoves.join(' ')}`
+  return `position fen ${rootFen} moves ${normalizedMoves.join(' ')}`
 }
 
 function modeDefaults(mode: AnalyzeMode | undefined): UciGoLimits {

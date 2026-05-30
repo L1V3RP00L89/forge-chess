@@ -84,10 +84,14 @@ const analyzePresets: Array<{ id: AnalyzePresetId; label: string; summary: strin
 
 type ImportSweepTarget = {
   fen: string
+  rootFen: string
   historyMoves: string[]
 }
 
-function buildImportSweepTargets(entries: Array<{ move: { from: string; to: string; promotion?: string }; fen: string }>): ImportSweepTarget[] {
+function buildImportSweepTargets(
+  entries: Array<{ move: { from: string; to: string; promotion?: string }; fen: string }>,
+  rootFen: string,
+): ImportSweepTarget[] {
   if (!entries.length) return []
 
   const historyMoves: string[] = []
@@ -97,6 +101,7 @@ function buildImportSweepTargets(entries: Array<{ move: { from: string; to: stri
     historyMoves.push(`${entry.move.from}${entry.move.to}${entry.move.promotion ?? ''}`)
     targets.push({
       fen: entry.fen,
+      rootFen,
       historyMoves: [...historyMoves],
     })
   }
@@ -350,6 +355,13 @@ function isHeavyCommand(command: string): boolean {
   return false
 }
 
+function rootFenFromPgnHeaders(headers: Record<string, string>): string {
+  const fenHeader = headers.FEN?.trim()
+  if (!fenHeader) return new Chess().fen()
+
+  return new Chess(fenHeader).fen()
+}
+
 function App() {
   // ── Chess game instance ──────────────────────────────
   const game = useMemo(() => new Chess(), [])
@@ -504,12 +516,15 @@ function App() {
   }, [engineEnabled, navigateAndPause])
 
   // ── Playback helpers for WatchControls ───────────────
-  const currentPathNodes = useMemo(() => gameTree.currentPath(), [gameTree.currentPath, gameTree.tick])
+  const getCurrentPath = gameTree.currentPath
+  const getMainLine = gameTree.mainLine
+  const currentPathNodes = getCurrentPath()
   const currentPathMoves = useMemo(
     () => currentPathNodes.slice(1).map(node => node.uci).filter(Boolean),
     [currentPathNodes],
   )
   const currentPathMovesKey = currentPathMoves.join(' ')
+  const currentRootFen = gameTree.root.fen
   const openingRatings = useMemo(
     () => OPENING_RATING_PRESETS.find(preset => preset.id === openingRatingPreset)?.ratings ?? [],
     [openingRatingPreset],
@@ -641,13 +656,14 @@ function App() {
       const cur = prev.get(evaluationFen)
       // Check if cp and wdl are exactly the same
       const sameCp = cur?.cp === cp
+      const sameMate = cur?.mate === primaryLine?.mate
       const sameWdl = cur?.wdl?.w === primaryLine?.wdl?.w
         && cur?.wdl?.d === primaryLine?.wdl?.d
         && cur?.wdl?.l === primaryLine?.wdl?.l
-      if (sameCp && sameWdl) return prev
+      if (sameCp && sameMate && sameWdl) return prev
 
       const next = new Map(prev)
-      next.set(evaluationFen, { cp, wdl: primaryLine?.wdl })
+      next.set(evaluationFen, { cp, mate: primaryLine?.mate, wdl: primaryLine?.wdl })
       return next
     })
   }, [engineEnabled, fen, primaryLine?.cp, primaryLine?.fen, primaryLine?.mate, primaryLine?.wdl])
@@ -675,6 +691,7 @@ function App() {
         multiPv: IMPORT_SHALLOW_MULTIPV,
         hashMb,
         showWdl,
+        rootFen: currentRootFen,
         historyMoves: currentPathMovesKey ? currentPathMovesKey.split(' ') : [],
       })
       // Prevent immediately kicking off a full-depth pass on the same imported position.
@@ -691,6 +708,7 @@ function App() {
         multiPv,
         hashMb,
         showWdl,
+        rootFen: currentRootFen,
         historyMoves: currentPathMovesKey ? currentPathMovesKey.split(' ') : [],
       })
       skipFullAnalyzeFenRef.current = fen
@@ -708,12 +726,14 @@ function App() {
       multiPv,
       hashMb,
       showWdl,
+      rootFen: currentRootFen,
       historyMoves: currentPathMovesKey ? currentPathMovesKey.split(' ') : [],
     })
   }, [
     analyze,
     autoAnalyze,
     currentPathMovesKey,
+    currentRootFen,
     engineEnabled,
     fen,
     hashMb,
@@ -761,6 +781,7 @@ function App() {
       multiPv: IMPORT_SWEEP_MULTIPV,
       hashMb,
       showWdl,
+      rootFen: nextTarget.rootFen,
       historyMoves: nextTarget.historyMoves,
     })
   }, [analyze, engineEnabled, hashMb, isImportingGame, pendingPonderFen, pendingShallowAnalyzeFen, showWdl, status])
@@ -919,6 +940,7 @@ function App() {
       multiPv,
       hashMb,
       showWdl,
+      rootFen: currentRootFen,
       searchMoves: showAdvancedAnalyze ? parsedSearchMoves : [],
       historyMoves: currentPathMovesKey ? currentPathMovesKey.split(' ') : [],
     })
@@ -943,6 +965,7 @@ function App() {
     whiteIncMs,
     whiteTimeMs,
     currentPathMovesKey,
+    currentRootFen,
     clearImportSweep,
   ])
 
@@ -1066,11 +1089,14 @@ function App() {
   ])
 
   // ── Derived move data ─────────────────────────────────
-  const mainLineNodes = useMemo(() => gameTree.mainLine(), [gameTree.mainLine, gameTree.tick])
+  const mainLineNodes = getMainLine()
   const mainLineMoves = useMemo(() => mainLineNodes.slice(1).map(n => n.move!).filter(Boolean), [mainLineNodes])
   const mainLineUciMoves = useMemo(() => mainLineNodes.slice(1).map(node => node.uci).filter(Boolean), [mainLineNodes])
 
-  const reviewRows = useMemo(() => buildReviewRows(mainLineMoves, evaluationsByFen), [evaluationsByFen, mainLineMoves])
+  const reviewRows = useMemo(
+    () => buildReviewRows(mainLineMoves, evaluationsByFen, currentRootFen),
+    [currentRootFen, evaluationsByFen, mainLineMoves],
+  )
   const reviewSummary = useMemo(() => summarizeReview(reviewRows), [reviewRows])
 
   useEffect(() => {
@@ -1089,6 +1115,7 @@ function App() {
           moves: mainLineUciMoves.slice(0, idx),
           speeds: openingSource === 'lichess' ? openingSpeeds : undefined,
           ratings: openingSource === 'lichess' ? openingRatings : undefined,
+          authToken: openingAuthToken,
         })
         if (cancelled) return
         setOpeningPrefetchTick(tick => tick + 1)
@@ -1099,7 +1126,7 @@ function App() {
     return () => {
       cancelled = true
     }
-  }, [analysisTab, mainLineUciMoves, openingRatings, openingSource, openingSpeeds, workspaceMode])
+  }, [analysisTab, mainLineUciMoves, openingAuthToken, openingRatings, openingSource, openingSpeeds, workspaceMode])
 
   const reviewBookRows = useMemo(() => {
     void openingPrefetchTick
@@ -1118,7 +1145,7 @@ function App() {
           ply: index + 1,
           san,
           uci,
-          status: 'loading' as const,
+          status: openingAuthToken.trim() ? 'loading' as const : 'auth-required' as const,
         }
       }
 
@@ -1157,6 +1184,7 @@ function App() {
   }, [
     mainLineUciMoves,
     mainLineNodes,
+    openingAuthToken,
     openingPrefetchTick,
     openingRatings,
     openingSource,
@@ -1167,8 +1195,9 @@ function App() {
     const inBook = reviewBookRows.filter(row => row.status === 'in-book').length
     const outOfBook = reviewBookRows.filter(row => row.status === 'out-of-book').length
     const loading = reviewBookRows.filter(row => row.status === 'loading').length
+    const authRequired = reviewBookRows.filter(row => row.status === 'auth-required').length
     const firstOutOfBook = reviewBookRows.find(row => row.status === 'out-of-book') ?? null
-    return { inBook, outOfBook, loading, firstOutOfBook }
+    return { inBook, outOfBook, loading, authRequired, firstOutOfBook }
   }, [reviewBookRows])
 
   // Graph uses active path up to its deepest child to show the entire branch history
@@ -1190,19 +1219,19 @@ function App() {
   const winratePoints = useMemo(
     () => {
       const moves = currentLineNodes.slice(1).map(n => n.move!).filter(Boolean)
-      return buildWinrateSeries(moves, evaluationsByFen)
+      return buildWinrateSeries(moves, evaluationsByFen, currentRootFen)
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [evaluationsByFen, currentLineNodes.length, currentLineNodes[currentLineNodes.length - 1]?.id],
+    [currentRootFen, evaluationsByFen, currentLineNodes.length, currentLineNodes[currentLineNodes.length - 1]?.id],
   )
 
   const wdlPoints = useMemo(
     () => {
       const moves = currentLineNodes.slice(1).map(n => n.move!).filter(Boolean)
-      return buildWdlSeries(moves, evaluationsByFen)
+      return buildWdlSeries(moves, evaluationsByFen, currentRootFen)
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [evaluationsByFen, currentLineNodes.length, currentLineNodes[currentLineNodes.length - 1]?.id],
+    [currentRootFen, evaluationsByFen, currentLineNodes.length, currentLineNodes[currentLineNodes.length - 1]?.id],
   )
 
   // ── Move quality → annotate tree nodes ───────────────
@@ -1456,8 +1485,9 @@ function App() {
       clearImportSweep()
       const loader = new Chess()
       loader.loadPgn(pgnText)
+      const rootFen = rootFenFromPgnHeaders(loader.getHeaders())
       newGame()
-      game.reset()
+      game.load(rootFen)
       setFen(game.fen())
       setEvaluationsByFen(new Map())
       setPendingShallowAnalyzeFen(null)
@@ -1471,13 +1501,13 @@ function App() {
         const nextFen = game.fen()
         mainLineEntries.push({ move: m, fen: nextFen })
       }
-      gameTree.loadMainLine(mainLineEntries)
+      gameTree.loadMainLine(mainLineEntries, rootFen)
 
       const finalFen = game.fen()
       setFen(finalFen)
       if (engineEnabled) {
         setPendingShallowAnalyzeFen(finalFen)
-        const allSweepTargets = buildImportSweepTargets(mainLineEntries)
+        const allSweepTargets = buildImportSweepTargets(mainLineEntries, rootFen)
         const sweepTargets = allSweepTargets.slice(0, -1)
         importSweepQueueRef.current = sweepTargets
         setImportSweepProgress({ done: 0, total: sweepTargets.length })
@@ -2434,7 +2464,7 @@ function App() {
                           <p>{pvToSan(line.fen ?? fen, line) || line.pv.slice(0, 8).join(' ')}</p>
                           <p className="pv-uci">{line.pv.slice(0, 8).join(' ')}</p>
                           {showWdl && line.wdl && (
-                            <HorizontalWdlBar wdl={line.wdl} orientation={orientation} />
+                            <HorizontalWdlBar fen={line.fen ?? fen} wdl={line.wdl} orientation={orientation} />
                           )}
                         </article>
                       ))}
@@ -2475,6 +2505,7 @@ function App() {
                     <p className="panel-copy small command-summary">
                       In book {reviewBookSummary.inBook} · Out of book {reviewBookSummary.outOfBook}
                       {reviewBookSummary.loading > 0 ? ` · checking ${reviewBookSummary.loading}` : ''}
+                      {reviewBookSummary.authRequired > 0 ? ' · token needed' : ''}
                     </p>
                     {reviewBookSummary.firstOutOfBook && (
                       <p className="panel-copy small">
@@ -2493,7 +2524,9 @@ function App() {
                                 ? 'Novelty'
                                 : row.status === 'loading'
                                   ? '...'
-                                  : 'n/a'}
+                                  : row.status === 'auth-required'
+                                    ? 'Token'
+                                    : 'n/a'}
                           </span>
                         </div>
                       ))}

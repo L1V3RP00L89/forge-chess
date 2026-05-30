@@ -73,8 +73,8 @@ export function useGameTree(startFen?: string) {
         return treeRef.current.nodes.get(id)
     }, [])
 
-    const current = treeState.nodes.get(treeState.currentId) ?? makeRoot()
-    const root = treeState.nodes.get(treeState.rootId) ?? makeRoot()
+    const root = treeState.nodes.get(treeState.rootId)!
+    const current = treeState.nodes.get(treeState.currentId) ?? root
 
     /**
      * Walk parent pointers from a node back to root, return ordered path root→node.
@@ -192,13 +192,14 @@ export function useGameTree(startFen?: string) {
      */
     const navigateTo = useCallback((id: string): Chess => {
         const tree = treeRef.current
-        if (!tree.nodes.has(id)) return new Chess()
+        const rootNode = tree.nodes.get(tree.rootId)
+        if (!tree.nodes.has(id)) return new Chess(rootNode?.fen ?? INITIAL_FEN)
 
         publishTree({ ...tree, currentId: id })
 
         // Reconstruct chess state by replaying moves from root
         const path = pathToNode(id)
-        const chess = new Chess()
+        const chess = new Chess(rootNode?.fen ?? INITIAL_FEN)
         for (const node of path) {
             if (node.move) {
                 chess.move({ from: node.move.from, to: node.move.to, promotion: node.move.promotion })
@@ -211,7 +212,8 @@ export function useGameTree(startFen?: string) {
     const goBack = useCallback((): Chess => {
         const tree = treeRef.current
         const cur = tree.nodes.get(tree.currentId)
-        if (!cur || cur.parent === null) return new Chess()
+        const rootNode = tree.nodes.get(tree.rootId)
+        if (!cur || cur.parent === null) return new Chess(rootNode?.fen ?? INITIAL_FEN)
         return navigateTo(cur.parent)
     }, [navigateTo])
 

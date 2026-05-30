@@ -49,7 +49,10 @@ export function exportAnnotatedPgn(
             const cpPov = turn === 'w' ? evaluation.cp : -evaluation.cp
 
             let evalStr = ''
-            if (Math.abs(cpPov) >= 10000) {
+            if (typeof evaluation.mate === 'number') {
+                const matePov = turn === 'w' ? evaluation.mate : -evaluation.mate
+                evalStr = `#${matePov}`
+            } else if (Math.abs(cpPov) >= 10000) {
                 evalStr = cpPov > 0 ? '#1' : '#-1'
             } else {
                 const cpVal = cpPov / 100

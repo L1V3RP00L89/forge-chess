@@ -47,7 +47,7 @@ export type OpeningExplorerResponse = {
   } | null
 }
 
-const EXPLORER_BASE_URL = 'https://explorer.lichess.ovh'
+const EXPLORER_BASE_URL = 'https://explorer.lichess.org'
 const CACHE_TTL_MS = 5 * 60 * 1000
 const AUTH_REQUIRED_MESSAGE = 'Opening Explorer requires a Lichess API token.'
 const AUTH_REJECTED_MESSAGE = 'Opening Explorer rejected the Lichess API token.'

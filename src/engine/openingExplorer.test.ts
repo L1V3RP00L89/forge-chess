@@ -47,7 +47,7 @@ describe('opening explorer client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
     const [url, options] = fetchMock.mock.calls[0] as [string, { headers: HeadersInit }]
-    expect(url).toContain('/lichess?')
+    expect(url).toContain('https://explorer.lichess.org/lichess?')
     expect(url).toContain('play=e2e4')
     expect(url).toContain('speeds=rapid%2Cblitz')
     expect(url).toContain('ratings=1600')

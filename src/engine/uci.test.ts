@@ -30,6 +30,19 @@ describe('UCI helpers', () => {
     expect(built.go).toBe('go depth 16 searchmoves c7c5')
   })
 
+  it('does not append move history to the current FEN without a root FEN', () => {
+    const built = buildAnalyzeCommand({
+      fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
+      historyMoves: ['e2e4'],
+      mode: 'custom',
+      limits: { depth: 8 },
+    })
+
+    expect(built.position).toBe(
+      'position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
+    )
+  })
+
   it('parses bestmove lines with optional ponder moves', () => {
     expect(parseBestMoveLine('bestmove e2e4 ponder e7e5')).toEqual({
       bestMove: 'e2e4',

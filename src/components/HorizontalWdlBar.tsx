@@ -1,18 +1,22 @@
 import './HorizontalWdlBar.css'
 
 type Props = {
+    fen: string
     wdl: { w: number; d: number; l: number }
     orientation?: 'white' | 'black'
 }
 
-export function HorizontalWdlBar({ wdl, orientation = 'white' }: Props) {
+export function HorizontalWdlBar({ fen, wdl, orientation = 'white' }: Props) {
     const total = wdl.w + wdl.d + wdl.l
     // fallback if sum is zero
     if (total === 0) return null
 
-    const whitePct = (wdl.w / total) * 100
+    const turn = fen.split(' ')[1]
+    const whiteWins = turn === 'w' ? wdl.w : wdl.l
+    const blackWins = turn === 'w' ? wdl.l : wdl.w
+    const whitePct = (whiteWins / total) * 100
     const drawPct = (wdl.d / total) * 100
-    const blackPct = (wdl.l / total) * 100
+    const blackPct = (blackWins / total) * 100
 
     const isFlipped = orientation === 'black'
     const leftPct = isFlipped ? blackPct : whitePct

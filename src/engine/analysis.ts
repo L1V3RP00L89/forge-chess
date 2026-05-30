@@ -3,6 +3,7 @@ import type { EngineLine } from '../hooks/useStockfishEngine'
 
 export type EvalSnapshot = {
   cp: number
+  mate?: number
   wdl?: { w: number; d: number; l: number }
 }
 
@@ -164,8 +165,12 @@ function cpToWhiteWinrate(cp: number): number {
   return Math.max(0, Math.min(100, raw))
 }
 
-export function buildWinrateSeries(history: Move[], evaluationsByFen: Map<string, EvalSnapshot>): WinratePoint[] {
-  const replay = new Chess()
+export function buildWinrateSeries(
+  history: Move[],
+  evaluationsByFen: Map<string, EvalSnapshot>,
+  rootFen = new Chess().fen(),
+): WinratePoint[] {
+  const replay = new Chess(rootFen)
   const series: WinratePoint[] = []
 
   const startFen = replay.fen()
@@ -196,8 +201,12 @@ export function buildWinrateSeries(history: Move[], evaluationsByFen: Map<string
   return series
 }
 
-export function buildWdlSeries(history: Move[], evaluationsByFen: Map<string, EvalSnapshot>): WdlPoint[] {
-  const replay = new Chess()
+export function buildWdlSeries(
+  history: Move[],
+  evaluationsByFen: Map<string, EvalSnapshot>,
+  rootFen = new Chess().fen(),
+): WdlPoint[] {
+  const replay = new Chess(rootFen)
   const series: WdlPoint[] = []
 
   const startFen = replay.fen()

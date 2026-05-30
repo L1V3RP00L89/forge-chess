@@ -1,6 +1,6 @@
 import { Chess } from 'chess.js'
 import { describe, expect, it } from 'vitest'
-import { buildReviewRows, summarizeReview } from './analysis'
+import { buildReviewRows, buildWinrateSeries, summarizeReview } from './analysis'
 
 describe('review analysis helpers', () => {
   it('labels reviewed moves from side-to-move centipawn deltas', () => {
@@ -44,5 +44,25 @@ describe('review analysis helpers', () => {
       quality: 'pending',
     })
     expect(summarizeReview(rows).pending).toBe(1)
+  })
+
+  it('builds graph series from an imported root FEN', () => {
+    const rootFen = '8/8/8/8/8/8/4K3/6k1 w - - 0 1'
+    const game = new Chess(rootFen)
+    const move = game.move('Kf3')
+    const afterFen = game.fen()
+
+    const series = buildWinrateSeries(
+      [move],
+      new Map([
+        [rootFen, { cp: 0 }],
+        [afterFen, { cp: -50 }],
+      ]),
+      rootFen,
+    )
+
+    expect(series).toHaveLength(2)
+    expect(series[0]?.label).toBe('Start')
+    expect(series[1]?.label).toBe('1. Kf3')
   })
 })
