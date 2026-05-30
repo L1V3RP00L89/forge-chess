@@ -12,10 +12,12 @@ function loadOpeningMap(): Promise<Record<string, OpeningInfo>> {
     return openingMapPromise
 }
 
-export function useOpening(fens: string[]): OpeningInfo | undefined {
+export function useOpening(fens: string[], enabled = true): OpeningInfo | undefined {
     const [map, setMap] = useState<Record<string, OpeningInfo> | null>(null)
 
     useEffect(() => {
+        if (!enabled) return
+
         let cancelled = false
         void loadOpeningMap().then(loadedMap => {
             if (!cancelled) setMap(loadedMap)
@@ -23,9 +25,10 @@ export function useOpening(fens: string[]): OpeningInfo | undefined {
         return () => {
             cancelled = true
         }
-    }, [])
+    }, [enabled])
 
     return useMemo(() => {
+        if (!enabled) return undefined
         if (!map) return undefined
         // Search backwards from the most recent position so we get the deepest matching opening
         for (let i = fens.length - 1; i >= 0; i--) {
@@ -37,5 +40,5 @@ export function useOpening(fens: string[]): OpeningInfo | undefined {
             }
         }
         return undefined
-    }, [fens, map])
+    }, [enabled, fens, map])
 }

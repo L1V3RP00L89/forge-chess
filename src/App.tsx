@@ -567,7 +567,8 @@ function App() {
     [sampleFilter],
   )
   const isImportSweepActive = importSweepProgress.total > 0 && importSweepProgress.done < importSweepProgress.total
-  const opening = useOpening(currentPathNodes.map(n => n.fen))
+  const openingFenPath = useMemo(() => currentPathNodes.map(n => n.fen), [currentPathNodes])
+  const opening = useOpening(openingFenPath, workspaceMode === 'analysis' && currentPathNodes.length > 1)
   const canGoBack = currentPathNodes.length > 1
   const canGoForward = gameTree.current.children.length > 0
 
