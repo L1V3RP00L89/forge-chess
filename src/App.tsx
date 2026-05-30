@@ -572,9 +572,7 @@ function App() {
   }, [engineEnabled, navigateAndPause])
 
   // ── Playback helpers for WatchControls ───────────────
-  const getCurrentPath = gameTree.currentPath
-  const getMainLine = gameTree.mainLine
-  const currentPathNodes = getCurrentPath()
+  const currentPathNodes = useMemo(() => gameTree.currentPath(), [gameTree])
   const currentPathMoves = useMemo(
     () => currentPathNodes.slice(1).map(node => node.uci).filter(Boolean),
     [currentPathNodes],
@@ -1334,7 +1332,7 @@ function App() {
   ])
 
   // ── Derived move data ─────────────────────────────────
-  const mainLineNodes = getMainLine()
+  const mainLineNodes = useMemo(() => gameTree.mainLine(), [gameTree])
   const mainLineMoves = useMemo(() => mainLineNodes.slice(1).map(n => n.move!).filter(Boolean), [mainLineNodes])
   const mainLineUciMoves = useMemo(() => mainLineNodes.slice(1).map(node => node.uci).filter(Boolean), [mainLineNodes])
 
@@ -1879,6 +1877,14 @@ function App() {
     }
     setFen(f => f)
   }, [])
+
+  const navigateMoveListAndPause = useCallback((chess: Chess) => {
+    navigateAndPause(chess)
+  }, [navigateAndPause])
+
+  const navigateMoveListAndPonder = useCallback((chess: Chess) => {
+    navigateAndPonder(chess)
+  }, [navigateAndPonder])
 
   // ── Step: advance one AI move ─────────────────────────
   const handleStep = useCallback(() => {
@@ -2598,7 +2604,7 @@ function App() {
                     <h3><span className="section-icon"><IconSwords /></span> Moves</h3>
                     <MoveListTree
                       tree={gameTree}
-                      onNavigate={chess => navigateAndPause(chess)}
+                      onNavigate={navigateMoveListAndPause}
                     />
                   </div>
                 </>
@@ -2929,7 +2935,7 @@ function App() {
                     <p className="panel-copy small">Click any move to run a deeper local ponder at that position.</p>
                     <MoveListTree
                       tree={gameTree}
-                      onNavigate={chess => navigateAndPonder(chess)}
+                      onNavigate={navigateMoveListAndPonder}
                     />
                   </div>
                 </>

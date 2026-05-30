@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { memo, useEffect, useRef } from 'react'
 import type { GameTreeHandle, GameNode } from '../hooks/useGameTree'
 import { IconPawn, IconBranch } from './icons'
 
@@ -12,7 +12,7 @@ type Props = {
  * Main line: "1. e4  e5   2. Nf3  Nc6 …"
  * Variation nodes are shown as indented continuation rows.
  */
-export function MoveListTree({ tree, onNavigate }: Props) {
+export const MoveListTree = memo(function MoveListTree({ tree, onNavigate }: Props) {
     const { current, mainLine, nodesSnapshot, navigateTo } = tree
     const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -125,7 +125,7 @@ export function MoveListTree({ tree, onNavigate }: Props) {
             {rows}
         </div>
     )
-}
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 

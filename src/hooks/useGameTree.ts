@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Chess, type Move } from 'chess.js'
 import type { ReviewLabel } from '../engine/analysis'
 
@@ -236,7 +236,7 @@ export function useGameTree(startFen?: string) {
     // Expose a snapshot of all nodes (for renders that need to traverse)
     const nodesSnapshot = treeState.nodes
 
-    return {
+    return useMemo(() => ({
         // State
         current,
         root,
@@ -255,7 +255,23 @@ export function useGameTree(startFen?: string) {
         goForward,
         setNodeQuality,
         reset,
-    }
+    }), [
+        addMove,
+        current,
+        currentPath,
+        getNode,
+        goBack,
+        goForward,
+        loadMainLine,
+        mainLine,
+        navigateTo,
+        nodesSnapshot,
+        pathToNode,
+        reset,
+        root,
+        setNodeQuality,
+        tick,
+    ])
 }
 
 export type GameTreeHandle = ReturnType<typeof useGameTree>
