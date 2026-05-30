@@ -22,6 +22,16 @@ A modern, highly polished chess application built with React, TypeScript, and Vi
 - **Chess Engine**: `stockfish.js`
 - **UI Components**: `react-chessboard` and `lucide-react`
 
+## Stockfish Assets
+
+Local browser engine files are synced from the installed `stockfish` npm package:
+
+```bash
+npm run sync:stockfish
+```
+
+The bundled Stockfish engine assets in `public/engine` are GPL-3.0 licensed. See `public/engine/Copying.txt`.
+
 ## Getting Started
 
 1. **Clone the repository:**
@@ -46,4 +56,4 @@ This project includes a GitHub Actions workflow to automatically deploy the appl
 
 ## License
 
-Distributed under the MIT License.
+Application code is distributed under the MIT License where applicable. Bundled Stockfish engine assets are distributed under GPL-3.0.

@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
+    "sync:stockfish": "node scripts/sync-stockfish-assets.js",
     "preview": "vite preview"
   },
   "dependencies": {
