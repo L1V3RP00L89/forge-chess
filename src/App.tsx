@@ -121,7 +121,11 @@ function buildImportSweepTargets(
   if (!entries.length) return []
 
   const historyMoves: string[] = []
-  const targets: ImportSweepTarget[] = []
+  const targets: ImportSweepTarget[] = [{
+    fen: rootFen,
+    rootFen,
+    historyMoves: [],
+  }]
 
   for (const entry of entries) {
     historyMoves.push(`${entry.move.from}${entry.move.to}${entry.move.promotion ?? ''}`)
