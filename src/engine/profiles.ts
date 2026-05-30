@@ -48,7 +48,7 @@ export const engineProfiles: EngineProfile[] = [
     id: 'full-single-cdn',
     name: 'Full Single (CDN)',
     description: 'Full-strength single-thread profile from jsDelivr (~113MB wasm).',
-    workerPath: 'https://cdn.jsdelivr.net/npm/stockfish@18.0.5/bin/stockfish-18-single.js',
+    workerPath: 'https://cdn.jsdelivr.net/npm/stockfish@18.0.7/bin/stockfish-18-single.js',
     strength: 'full',
     requiresIsolation: false,
     source: 'cdn',
@@ -57,7 +57,7 @@ export const engineProfiles: EngineProfile[] = [
     id: 'full-multi-cdn',
     name: 'Full Multi (CDN)',
     description: 'Strongest profile. Requires cross-origin isolation and larger download.',
-    workerPath: 'https://cdn.jsdelivr.net/npm/stockfish@18.0.5/bin/stockfish-18.js',
+    workerPath: 'https://cdn.jsdelivr.net/npm/stockfish@18.0.7/bin/stockfish-18.js',
     strength: 'full',
     requiresIsolation: true,
     source: 'cdn',
@@ -79,9 +79,16 @@ export function detectEngineCapabilities(): EngineCapabilities {
 
 export function pickAutoProfile(capabilities: EngineCapabilities): EngineProfile {
   const canUseThreads = capabilities.sharedArrayBuffer && capabilities.crossOriginIsolated
+  const lowMemory = typeof capabilities.deviceMemoryGb === 'number' && capabilities.deviceMemoryGb <= 4
+  const lowCpu = capabilities.hardwareConcurrency <= 2
 
-  if (canUseThreads) return profileById('lite-multi-local')
+  if (canUseThreads && !lowMemory && !lowCpu && !capabilities.isMobile) return profileById('lite-multi-local')
   return profileById('lite-single-local')
+}
+
+export function fallbackProfileFor(profile: EngineProfile): EngineProfile {
+  if (profile.id !== 'lite-single-local') return profileById('lite-single-local')
+  return profile
 }
 
 export function profileById(id: Exclude<EngineProfileId, 'auto'>): EngineProfile {

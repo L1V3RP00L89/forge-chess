@@ -118,11 +118,11 @@ Based on local code and docs review of:
 
 ## Stockfish integration design
 
-Use `stockfish@18.0.5` with a capability ladder:
+Use `stockfish@18.0.7` with a GitHub Pages-safe capability ladder:
 
-1. `stockfish-18.js` (MT) when cross-origin isolated.
-2. `stockfish-18-single.js` for standard GitHub Pages compatibility.
-3. `stockfish-18-lite-single.js` for low-memory or mobile fallback.
+1. `stockfish-18-lite.js` when cross-origin isolated and desktop class.
+2. `stockfish-18-lite-single.js` for default GitHub Pages compatibility.
+3. `stockfish-18-single.js` and `stockfish-18.js` as explicit CDN full-strength choices.
 
 Optional high-performance toggle:
 

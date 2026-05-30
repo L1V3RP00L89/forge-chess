@@ -3,7 +3,7 @@
 ## Overview
 
 A world-class, free, browser-native chess analysis tool deployed on GitHub Pages.
-Engine: **Stockfish 18 WASM** (`nmrugg/stockfish.js` v18.0.5 — the latest, via `npm install stockfish`).
+Engine: **Stockfish 18 WASM** (`nmrugg/stockfish.js` v18.0.7, via `npm install stockfish`).
 Stack kept as-is: **Vite + React + TypeScript**.
 
 ---
@@ -27,13 +27,13 @@ Stack kept as-is: **Vite + React + TypeScript**.
 ### Engine Flavor Selection (smart auto-detect)
 ```
 Priority order:
-1. stockfish-18.js + .wasm      [Full, multi-thread] — requires CORS isolation (COOP/COEP)
-2. stockfish-18-single.js       [Full, single-thread] — ~113MB, no CORS needed
-3. stockfish-18-lite.js         [Lite, multi-thread] — ~7MB, CORS needed  (current default when isolated)
-4. stockfish-18-lite-single.js  [Lite, single-thread] — ~7MB, no CORS (current fallback)
-5. stockfish-18-asm.js          [ASM.js, JS only]     — last resort, very slow
+1. stockfish-18-lite.js         [Lite, multi-thread] — ~7MB, CORS isolation needed
+2. stockfish-18-lite-single.js  [Lite, single-thread] — ~7MB, no CORS isolation needed
+3. stockfish-18-single.js       [Full, single-thread] — ~113MB, CDN opt-in only
+4. stockfish-18.js + .wasm      [Full, multi-thread] — ~113MB, CDN opt-in + CORS isolation needed
+5. stockfish-18-asm.js          [ASM.js, JS only]     — last-resort legacy option
 ```
-For GitHub Pages we'll use the same strategy: lite-single → lite-multi → full-single → full-multi CDN path.
+For GitHub Pages auto-detect stays on local lite builds. Full builds are available as explicit CDN profiles because committing the 113MB full WASM through Git LFS breaks Pages deployments unless LFS is handled at deploy time.
 
 ### Key UCI Options We'll Expose
 ```
@@ -164,7 +164,7 @@ font-family: 'Inter', system-ui, -apple-system, sans-serif;
 11. **Full-game batch review** — "Review Game" button triggers bulk analysis at user-selected depth
 12. **Comparison arrows** — show what was played vs. what engine suggests simultaneously
 13. **WDL bar** — Win/Draw/Loss probability breakdown per line (requires UCI_ShowWDL)
-14. **Engine profile switcher** — Lite / Full Single / Full Multi with intelligent auto-detect
+14. **Engine profile switcher** — local lite auto-detect plus explicit full CDN profiles
 15. **Hash & Threads sliders** — dynamically applied via setoption
 16. **Skill Level mode** — for play-against-AI integration
 17. **FEN input** — paste any FEN to jump to position
