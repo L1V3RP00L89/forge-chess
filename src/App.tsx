@@ -1157,6 +1157,10 @@ function App() {
       const trimmed = command.trim()
       if (!trimmed) return
       setEngineLabError(null)
+      if (status === 'analyzing' && trimmed.toLowerCase() !== 'stop') {
+        setEngineLabError('Stop the active analysis before sending Engine Lab commands.')
+        return
+      }
       if (!expertModeEnabled && isHeavyCommand(trimmed)) {
         setEngineLabError('Enable expert mode before running heavy commands (bench/perft/go infinite).')
         return
@@ -1182,7 +1186,7 @@ function App() {
         setEngineLabError(error instanceof Error ? error.message : String(error))
       }
     },
-    [engineEnabled, expertModeEnabled, sendCommand],
+    [engineEnabled, expertModeEnabled, sendCommand, status],
   )
 
   const clearLabConsole = useCallback(() => {
@@ -2213,7 +2217,12 @@ function App() {
                       <div className="engine-options">
                         <h3>Engine options</h3>
                         {options.map(option => (
-                          <EngineOptionControl key={option.name} option={option} onSetOption={setOption} />
+                          <EngineOptionControl
+                            key={option.name}
+                            option={option}
+                            disabled={status === 'analyzing'}
+                            onSetOption={setOption}
+                          />
                         ))}
                       </div>
                       <p className="panel-copy small">
@@ -2855,12 +2864,12 @@ function App() {
                       </p>
                     )}
                     <div className="inline-actions diagnostics-actions">
-                      <button type="button" onClick={() => void runLabCommand('d')}>d</button>
-                      <button type="button" onClick={() => void runLabCommand('eval')}>eval</button>
+                      <button type="button" disabled={status === 'analyzing'} onClick={() => void runLabCommand('d')}>d</button>
+                      <button type="button" disabled={status === 'analyzing'} onClick={() => void runLabCommand('eval')}>eval</button>
                       <button
                         type="button"
                         className="danger-lite"
-                        disabled={!expertModeEnabled}
+                        disabled={!expertModeEnabled || status === 'analyzing'}
                         onClick={() => void runLabCommand('bench')}
                       >
                         bench
@@ -2868,7 +2877,7 @@ function App() {
                       <button
                         type="button"
                         className="danger-lite"
-                        disabled={!expertModeEnabled}
+                        disabled={!expertModeEnabled || status === 'analyzing'}
                         onClick={() => void runLabCommand('perft 3')}
                       >
                         perft 3
@@ -2896,7 +2905,12 @@ function App() {
                     <h3><span className="section-icon"><IconSettings /></span> Engine options</h3>
                     <div className="engine-options">
                       {options.map(option => (
-                        <EngineOptionControl key={option.name} option={option} onSetOption={setOption} />
+                        <EngineOptionControl
+                          key={option.name}
+                          option={option}
+                          disabled={status === 'analyzing'}
+                          onSetOption={setOption}
+                        />
                       ))}
                     </div>
                     <p className="panel-copy small">
@@ -2978,15 +2992,16 @@ type EngineOptionControlProps = {
     max?: number
   }
   onSetOption: (name: string, value?: string | number | boolean) => void
+  disabled?: boolean
 }
 
-function EngineOptionControl({ option, onSetOption }: EngineOptionControlProps) {
+function EngineOptionControl({ option, onSetOption, disabled = false }: EngineOptionControlProps) {
   const [value, setValue] = useState(option.defaultValue ?? '')
 
   if (option.type === 'button') {
     return (
       <div className="engine-option-row">
-        <button type="button" onClick={() => onSetOption(option.name)}>
+        <button type="button" disabled={disabled} onClick={() => onSetOption(option.name)}>
           {option.name}
         </button>
       </div>
@@ -2997,7 +3012,7 @@ function EngineOptionControl({ option, onSetOption }: EngineOptionControlProps) 
     const checked = value === 'true'
     return (
       <label className="switch-control">
-        <input type="checkbox" checked={checked}
+        <input type="checkbox" checked={checked} disabled={disabled}
           onChange={e => {
             const nv = e.target.checked ? 'true' : 'false'
             setValue(nv)
@@ -3012,7 +3027,7 @@ function EngineOptionControl({ option, onSetOption }: EngineOptionControlProps) 
     return (
       <label className="engine-option-row">
         <span>{option.name}</span>
-        <input type="number" min={option.min} max={option.max} value={value}
+        <input type="number" min={option.min} max={option.max} value={value} disabled={disabled}
           onChange={e => setValue(e.target.value)}
           onBlur={() => onSetOption(option.name, Number(value))} />
       </label>
@@ -3022,7 +3037,7 @@ function EngineOptionControl({ option, onSetOption }: EngineOptionControlProps) 
   return (
     <label className="engine-option-row">
       <span>{option.name}</span>
-      <input type="text" value={value}
+      <input type="text" value={value} disabled={disabled}
         onChange={e => setValue(e.target.value)}
         onBlur={() => onSetOption(option.name, value)} />
     </label>
