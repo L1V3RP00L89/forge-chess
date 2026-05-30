@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchOpeningExplorer, prefetchOpeningExplorer } from './openingExplorer'
+import { fetchOpeningExplorer, hasOpeningExplorerAuthToken, prefetchOpeningExplorer } from './openingExplorer'
 
 describe('opening explorer client', () => {
   afterEach(() => {
@@ -14,6 +14,13 @@ describe('opening explorer client', () => {
       'Opening Explorer requires a Lichess API token.',
     )
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('normalizes bearer tokens before auth gating', () => {
+    expect(hasOpeningExplorerAuthToken('')).toBe(false)
+    expect(hasOpeningExplorerAuthToken('Bearer   ')).toBe(false)
+    expect(hasOpeningExplorerAuthToken('Bearer test-token')).toBe(true)
+    expect(hasOpeningExplorerAuthToken('test-token')).toBe(true)
   })
 
   it('sends bearer auth, normalizes filters, and caches responses by position', async () => {

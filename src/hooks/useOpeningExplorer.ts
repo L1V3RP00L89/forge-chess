@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   fetchOpeningExplorer,
   getCachedOpeningExplorer,
+  hasOpeningExplorerAuthToken,
   type OpeningDatabaseSource,
   type OpeningExplorerResponse,
   type OpeningSpeed,
@@ -22,6 +23,7 @@ export type OpeningExplorerState = {
   loading: boolean
   error: string | null
   stale: boolean
+  authRequired: boolean
 }
 
 export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplorerState {
@@ -30,7 +32,8 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
   const movesKey = args.moves.map(move => move.trim().toLowerCase()).filter(Boolean).join(',')
   const speedsKey = (args.speeds ?? []).slice().sort().join(',')
   const ratingsKey = (args.ratings ?? []).slice().sort((a, b) => a - b).join(',')
-  const authKey = args.authToken?.trim() ? 'auth' : 'anon'
+  const hasAuth = hasOpeningExplorerAuthToken(args.authToken)
+  const authKey = hasAuth ? 'auth' : 'anon'
   const normalizedMoves = useMemo(() => (movesKey ? movesKey.split(',') : []), [movesKey])
   const normalizedSpeeds = useMemo(
     () => (speedsKey ? speedsKey.split(',') : []) as OpeningSpeed[],
@@ -66,6 +69,7 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
     })) {
       return
     }
+    if (!hasAuth) return
 
     const controller = new AbortController()
     const timer = window.setTimeout(() => {
@@ -108,6 +112,7 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
     authKey,
     debounceMs,
     enabled,
+    hasAuth,
     hasLocalData,
     movesKey,
     normalizedMoves,
@@ -118,7 +123,8 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
     speedsKey,
   ])
 
-  const loading = enabled && !data && !error
+  const authRequired = enabled && !data && !hasAuth
+  const loading = enabled && !authRequired && !data && !error
   const stale = enabled && Boolean(data) && !getCachedOpeningExplorer({
     source: args.source,
     moves: normalizedMoves,
@@ -131,5 +137,6 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
     loading,
     error,
     stale,
+    authRequired,
   }
 }

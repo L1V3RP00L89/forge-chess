@@ -2456,6 +2456,11 @@ function App() {
                     {openingExplorer.loading && !openingExplorer.data && (
                       <p className="panel-copy small">Loading opening database...</p>
                     )}
+                    {openingExplorer.authRequired && !openingExplorer.data && (
+                      <p className="panel-copy small warning-copy">
+                        Add a session-only Lichess token to load Masters or Lichess book stats. Local ECO names stay available offline.
+                      </p>
+                    )}
                     {openingExplorer.error && (
                       <p className="panel-copy small error-copy">Opening DB: {openingExplorer.error}</p>
                     )}
@@ -2573,6 +2578,11 @@ function App() {
                     {reviewBookSummary.firstOutOfBook && (
                       <p className="panel-copy small">
                         First novelty: ply {reviewBookSummary.firstOutOfBook.ply} ({reviewBookSummary.firstOutOfBook.san})
+                      </p>
+                    )}
+                    {reviewBookSummary.authRequired > 0 && (
+                      <p className="panel-copy small warning-copy">
+                        Add a session-only Lichess token in Analyze to compare the line against cloud book stats.
                       </p>
                     )}
                     <div className="review-book-list">

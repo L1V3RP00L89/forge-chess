@@ -131,7 +131,11 @@ function normalizeMoves(moves: string[]): string[] {
 
 function normalizeAuthToken(authToken: string | undefined): string {
   const trimmed = authToken?.trim() ?? ''
-  return trimmed.replace(/^Bearer\s+/i, '').trim()
+  return trimmed.replace(/^Bearer(?:\s+|$)/i, '').trim()
+}
+
+export function hasOpeningExplorerAuthToken(authToken: string | undefined): boolean {
+  return Boolean(normalizeAuthToken(authToken))
 }
 
 function authHeaders(authToken: string | undefined): HeadersInit {
