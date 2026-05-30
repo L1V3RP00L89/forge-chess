@@ -7,13 +7,16 @@ import {
   type EngineProfile,
   type EngineProfileId,
 } from '../engine/profiles'
-import { buildAnalyzeCommand, parseBestMoveLine, type AnalyzeRequest } from '../engine/uci'
+import { buildAnalyzeCommand, parseBestMoveLine, type AnalyzeMode, type AnalyzePurpose, type AnalyzeRequest, type UciGoLimits } from '../engine/uci'
 
 type EngineStatus = 'loading' | 'ready' | 'analyzing' | 'error' | 'disabled'
 
 type EngineLine = {
   fen?: string
   searchId?: number
+  purpose?: AnalyzePurpose
+  mode?: AnalyzeMode
+  limits?: UciGoLimits
   multipv: number
   depth: number
   cp?: number
@@ -255,6 +258,9 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
   const isSearchingRef = useRef(false)
   const stopRequestedRef = useRef(false)
   const currentAnalysisFenRef = useRef<string>('')
+  const currentAnalysisPurposeRef = useRef<AnalyzePurpose | undefined>(undefined)
+  const currentAnalysisModeRef = useRef<AnalyzeMode | undefined>(undefined)
+  const currentAnalysisLimitsRef = useRef<UciGoLimits | undefined>(undefined)
   const currentSearchIdRef = useRef<number>(0)
   const commandQueueRef = useRef<QueuedCommand[]>([])
   const nextCommandIdRef = useRef(0)
@@ -475,6 +481,9 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
       setLastBestMove(null)
       setLastPonderMove(null)
       currentAnalysisFenRef.current = request.fen
+      currentAnalysisPurposeRef.current = request.purpose
+      currentAnalysisModeRef.current = request.mode
+      currentAnalysisLimitsRef.current = request.limits
       setActiveGoCommand(built.go)
 
       for (const option of built.setOptions) {
@@ -694,6 +703,9 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
             ...parsed,
             fen: currentAnalysisFenRef.current,
             searchId: currentSearchIdRef.current,
+            purpose: currentAnalysisPurposeRef.current,
+            mode: currentAnalysisModeRef.current,
+            limits: currentAnalysisLimitsRef.current,
           })
           scheduleLinesMapFlush()
         }

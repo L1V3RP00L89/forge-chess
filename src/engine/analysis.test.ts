@@ -46,6 +46,30 @@ describe('review analysis helpers', () => {
     expect(summarizeReview(rows).pending).toBe(1)
   })
 
+  it('does not assign a final quality label from shallow import scans', () => {
+    const game = new Chess()
+    const rootFen = game.fen()
+    const move = game.move('e4')
+    const afterFen = game.fen()
+
+    const rows = buildReviewRows(
+      [move],
+      new Map([
+        [rootFen, { cp: 30, depth: 4, purpose: 'import-sweep' }],
+        [afterFen, { cp: -20, depth: 5, purpose: 'import-sweep' }],
+      ]),
+      rootFen,
+    )
+
+    expect(rows[0]).toMatchObject({
+      san: 'e4',
+      deltaCp: -10,
+      evalDepth: 4,
+      confidence: 'shallow',
+      quality: 'pending',
+    })
+  })
+
   it('keeps review move numbering from a black-to-move root', () => {
     const game = new Chess()
     game.move('e4')

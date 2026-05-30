@@ -1,10 +1,19 @@
 import { Chess, type Move } from 'chess.js'
 import type { EngineLine } from '../hooks/useStockfishEngine'
+import type { AnalyzeMode, AnalyzePurpose } from './uci'
 
 export type EvalSnapshot = {
   cp: number
   mate?: number
   wdl?: { w: number; d: number; l: number }
+  depth?: number
+  nodes?: number
+  nps?: number
+  time?: number
+  searchId?: number
+  mode?: AnalyzeMode
+  purpose?: AnalyzePurpose
+  searchedAt?: number
 }
 
 export type ReviewLabel = 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder' | 'pending'
@@ -17,6 +26,8 @@ export type ReviewRow = {
   uci: string
   quality: ReviewLabel
   deltaCp?: number
+  evalDepth?: number
+  confidence: 'pending' | 'shallow' | 'standard' | 'deep'
 }
 
 export type WinratePoint = {
@@ -87,6 +98,18 @@ function qualityFromDelta(deltaCp: number): ReviewLabel {
   return 'blunder'
 }
 
+function isShallowEvaluation(snapshot: EvalSnapshot): boolean {
+  if (snapshot.purpose === 'import-load' || snapshot.purpose === 'import-sweep') return true
+  if (typeof snapshot.depth === 'number' && snapshot.depth < 10) return true
+  if (typeof snapshot.time === 'number' && snapshot.time < 150 && typeof snapshot.depth !== 'number') return true
+  return false
+}
+
+function minDepth(a: EvalSnapshot, b: EvalSnapshot): number | undefined {
+  if (typeof a.depth === 'number' && typeof b.depth === 'number') return Math.min(a.depth, b.depth)
+  return a.depth ?? b.depth
+}
+
 function toUci(move: Move): string {
   return `${move.from}${move.to}${move.promotion ?? ''}`
 }
@@ -105,9 +128,11 @@ export function buildReviewRows(
     replay.move({ from: move.from, to: move.to, promotion: move.promotion })
     const afterFen = replay.fen()
 
-    const before = evaluationsByFen.get(beforeFen)?.cp
-    const after = evaluationsByFen.get(afterFen)?.cp
-    if (typeof before !== 'number' || typeof after !== 'number') {
+    const beforeSnapshot = evaluationsByFen.get(beforeFen)
+    const afterSnapshot = evaluationsByFen.get(afterFen)
+    const before = beforeSnapshot?.cp
+    const after = afterSnapshot?.cp
+    if (!beforeSnapshot || !afterSnapshot || typeof before !== 'number' || typeof after !== 'number') {
       return {
         ply: index + 1,
         moveNumber,
@@ -115,11 +140,19 @@ export function buildReviewRows(
         san: move.san,
         uci: toUci(move),
         quality: 'pending',
+        confidence: 'pending',
       }
     }
 
     // Engine score is POV side-to-move. After the move, perspective flips.
     const deltaCp = Math.round(-after - before)
+    const evalDepth = minDepth(beforeSnapshot, afterSnapshot)
+    const shallow = isShallowEvaluation(beforeSnapshot) || isShallowEvaluation(afterSnapshot)
+    const confidence = shallow
+      ? 'shallow'
+      : typeof evalDepth === 'number' && evalDepth >= 20
+        ? 'deep'
+        : 'standard'
 
     return {
       ply: index + 1,
@@ -128,7 +161,9 @@ export function buildReviewRows(
       san: move.san,
       uci: toUci(move),
       deltaCp,
-      quality: qualityFromDelta(deltaCp),
+      evalDepth,
+      confidence,
+      quality: shallow ? 'pending' : qualityFromDelta(deltaCp),
     }
   })
 }

@@ -1,4 +1,5 @@
 export type AnalyzeMode = 'quick' | 'deep' | 'infinite' | 'mate' | 'review' | 'custom'
+export type AnalyzePurpose = 'auto' | 'manual' | 'import-load' | 'import-sweep' | 'review-ponder' | 'batch-review'
 
 export type UciGoLimits = {
   depth?: number
@@ -17,6 +18,7 @@ export type UciGoLimits = {
 export type AnalyzeRequest = {
   fen: string
   rootFen?: string
+  purpose?: AnalyzePurpose
   mode?: AnalyzeMode
   limits?: UciGoLimits
   hashMb?: number

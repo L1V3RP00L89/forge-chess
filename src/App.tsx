@@ -266,6 +266,13 @@ function reviewImpactLabel(deltaCp: number | undefined): string {
   return `Lost ${(Math.abs(deltaCp) / 100).toFixed(2)}`
 }
 
+function reviewConfidenceLabel(confidence: 'pending' | 'shallow' | 'standard' | 'deep', depth: number | undefined): string {
+  if (confidence === 'pending') return 'Needs eval'
+  if (confidence === 'shallow') return depth ? `Shallow d${depth}` : 'Shallow'
+  if (confidence === 'deep') return depth ? `Deep d${depth}` : 'Deep'
+  return depth ? `D${depth}` : 'Evaluated'
+}
+
 function resultLabel(result: HistoricalSampleGame['result']): string {
   if (result === '1-0') return 'White won'
   if (result === '0-1') return 'Black won'
@@ -696,13 +703,42 @@ function App() {
       const sameWdl = cur?.wdl?.w === primaryLine?.wdl?.w
         && cur?.wdl?.d === primaryLine?.wdl?.d
         && cur?.wdl?.l === primaryLine?.wdl?.l
-      if (sameCp && sameMate && sameWdl) return prev
+      const sameSearch = cur?.searchId === primaryLine?.searchId
+      const sameDepth = cur?.depth === primaryLine?.depth
+      const samePurpose = cur?.purpose === primaryLine?.purpose
+      if (sameCp && sameMate && sameWdl && sameSearch && sameDepth && samePurpose) return prev
 
       const next = new Map(prev)
-      next.set(evaluationFen, { cp, mate: primaryLine?.mate, wdl: primaryLine?.wdl })
+      next.set(evaluationFen, {
+        cp,
+        mate: primaryLine?.mate,
+        wdl: primaryLine?.wdl,
+        depth: primaryLine?.depth,
+        nodes: primaryLine?.nodes,
+        nps: primaryLine?.nps,
+        time: primaryLine?.time,
+        searchId: primaryLine?.searchId,
+        mode: primaryLine?.mode,
+        purpose: primaryLine?.purpose,
+        searchedAt: Date.now(),
+      })
       return next
     })
-  }, [engineEnabled, fen, primaryLine?.cp, primaryLine?.fen, primaryLine?.mate, primaryLine?.wdl])
+  }, [
+    engineEnabled,
+    fen,
+    primaryLine?.cp,
+    primaryLine?.depth,
+    primaryLine?.fen,
+    primaryLine?.mate,
+    primaryLine?.mode,
+    primaryLine?.nodes,
+    primaryLine?.nps,
+    primaryLine?.purpose,
+    primaryLine?.searchId,
+    primaryLine?.time,
+    primaryLine?.wdl,
+  ])
 
   // ── Viewport ─────────────────────────────────────────
   useEffect(() => {
@@ -722,6 +758,7 @@ function App() {
     if (pendingShallowAnalyzeFen && pendingShallowAnalyzeFen === fen) {
       analyze({
         fen,
+        purpose: 'import-load',
         mode: 'custom',
         limits: { movetime: IMPORT_LOAD_MOVETIME_MS },
         multiPv: IMPORT_SHALLOW_MULTIPV,
@@ -739,6 +776,7 @@ function App() {
     if (pendingPonderFen && pendingPonderFen === fen) {
       analyze({
         fen,
+        purpose: 'review-ponder',
         mode: 'custom',
         limits: { depth: Math.max(searchDepth, MOVE_PONDER_MIN_DEPTH) },
         multiPv,
@@ -760,6 +798,7 @@ function App() {
 
     analyze({
       fen: settledAnalysisTarget.fen,
+      purpose: 'auto',
       mode: 'custom',
       limits: { depth: searchDepth },
       multiPv,
@@ -816,6 +855,7 @@ function App() {
     activeImportSweepStartedRef.current = false
     analyze({
       fen: nextTarget.fen,
+      purpose: 'import-sweep',
       mode: 'custom',
       limits: { movetime: IMPORT_SWEEP_MOVETIME_MS },
       multiPv: IMPORT_SWEEP_MULTIPV,
@@ -976,6 +1016,7 @@ function App() {
 
     analyze({
       fen,
+      purpose: 'manual',
       mode: analyzeMode,
       limits,
       multiPv,
@@ -2594,6 +2635,9 @@ function App() {
                             <strong>{row.san}</strong>
                             <span className="move-uci">{row.uci}</span>
                             <span className="move-impact">{reviewImpactLabel(row.deltaCp)}</span>
+                            <span className={`move-confidence confidence-${row.confidence}`}>
+                              {reviewConfidenceLabel(row.confidence, row.evalDepth)}
+                            </span>
                             <span className="move-quality">{REVIEW_LABELS[row.quality]}</span>
                           </li>
                         ))}

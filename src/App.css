@@ -1682,7 +1682,7 @@
 
 .moves-list li {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
   gap: 0.32rem;
   align-items: center;
   padding: 0.32rem 0.48rem;
@@ -1747,6 +1747,20 @@
   color: var(--text-muted) !important;
   font-size: 0.66rem !important;
   white-space: nowrap;
+}
+
+.move-confidence {
+  color: var(--text-muted) !important;
+  font-size: 0.64rem !important;
+  white-space: nowrap;
+}
+
+.confidence-shallow {
+  color: #f0b429 !important;
+}
+
+.confidence-deep {
+  color: var(--accent) !important;
 }
 
 .move-quality {
