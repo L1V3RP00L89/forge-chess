@@ -1209,6 +1209,97 @@ body.resizing * {
   margin-bottom: 0.5rem;
 }
 
+.analysis-experience-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+  margin: 0.52rem 0 0.5rem;
+  padding: 0.14rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+}
+
+.analysis-experience-toggle .mode-pill {
+  flex: 1;
+  justify-content: center;
+}
+
+.coach-card {
+  margin-bottom: var(--space-md);
+  border: 1px solid rgba(63, 185, 80, 0.22);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(16, 185, 129, 0.10), rgba(13, 17, 23, 0.34)),
+    var(--bg-card);
+  padding: 0.6rem;
+}
+
+.coach-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.coach-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.coach-grid div {
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(5, 5, 5, 0.24);
+  padding: 0.38rem 0.44rem;
+}
+
+.coach-grid span {
+  display: block;
+  margin-bottom: 0.12rem;
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.coach-grid strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.coach-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.coach-card .coach-opening {
+  margin-top: 0.38rem;
+  color: var(--text-tertiary);
+}
+
+.coach-opening strong {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  margin-right: 0.2rem;
+}
+
 .preset-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

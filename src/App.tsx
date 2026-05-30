@@ -49,6 +49,7 @@ import './App.css'
 type Orientation = 'white' | 'black'
 type WorkspaceMode = 'play' | 'analysis'
 type AnalysisTab = 'analyze' | 'review' | 'engine-lab'
+type AnalysisExperience = 'beginner' | 'pro'
 type AnalyzePresetId = 'blunder-check' | 'game-review' | 'deep-candidate' | 'mate-hunt'
 type OpeningRatingPresetId = 'all' | 'club' | 'advanced'
 type SampleLibraryFilter = 'all' | HistoricalSampleFormat
@@ -58,6 +59,7 @@ type PendingPromotion = { from: Square; to: Square }
 const ANALYSIS_SETTINGS_STORAGE_KEY = 'webchess:analysis-settings:v1'
 const ANALYZE_MODE_IDS: AnalyzeMode[] = ['quick', 'deep', 'infinite', 'mate', 'review']
 const ANALYSIS_TAB_IDS: AnalysisTab[] = ['analyze', 'review', 'engine-lab']
+const ANALYSIS_EXPERIENCE_IDS: AnalysisExperience[] = ['beginner', 'pro']
 const WORKSPACE_MODE_IDS: WorkspaceMode[] = ['play', 'analysis']
 const OPENING_SOURCES: OpeningDatabaseSource[] = ['masters', 'lichess']
 const OPENING_SPEEDS: OpeningSpeed[] = ['bullet', 'blitz', 'rapid', 'classical']
@@ -163,6 +165,7 @@ type PersistedAppSettings = {
   autoAnalyze: boolean
   engineProfile: EngineProfileId
   analysisTab: AnalysisTab
+  analysisExperience: AnalysisExperience
   activePreset: AnalyzePresetId | null
   analyzeMode: AnalyzeMode
   showAdvancedAnalyze: boolean
@@ -195,6 +198,7 @@ const DEFAULT_PERSISTED_SETTINGS: PersistedAppSettings = {
   autoAnalyze: true,
   engineProfile: 'auto',
   analysisTab: 'analyze',
+  analysisExperience: 'beginner',
   activePreset: 'game-review',
   analyzeMode: 'deep',
   showAdvancedAnalyze: false,
@@ -232,6 +236,10 @@ function isAnalyzeMode(value: unknown): value is AnalyzeMode {
 
 function isAnalysisTab(value: unknown): value is AnalysisTab {
   return typeof value === 'string' && ANALYSIS_TAB_IDS.includes(value as AnalysisTab)
+}
+
+function isAnalysisExperience(value: unknown): value is AnalysisExperience {
+  return typeof value === 'string' && ANALYSIS_EXPERIENCE_IDS.includes(value as AnalysisExperience)
 }
 
 function isWorkspaceMode(value: unknown): value is WorkspaceMode {
@@ -364,6 +372,9 @@ function loadPersistedSettings(): PersistedAppSettings {
       autoAnalyze: typeof parsed.autoAnalyze === 'boolean' ? parsed.autoAnalyze : DEFAULT_PERSISTED_SETTINGS.autoAnalyze,
       engineProfile: isEngineProfileId(parsed.engineProfile) ? parsed.engineProfile : DEFAULT_PERSISTED_SETTINGS.engineProfile,
       analysisTab: isAnalysisTab(parsed.analysisTab) ? parsed.analysisTab : DEFAULT_PERSISTED_SETTINGS.analysisTab,
+      analysisExperience: isAnalysisExperience(parsed.analysisExperience)
+        ? parsed.analysisExperience
+        : DEFAULT_PERSISTED_SETTINGS.analysisExperience,
       activePreset: parsed.activePreset === null ? null : (isAnalyzePresetId(parsed.activePreset) ? parsed.activePreset : DEFAULT_PERSISTED_SETTINGS.activePreset),
       analyzeMode: isAnalyzeMode(parsed.analyzeMode) ? parsed.analyzeMode : DEFAULT_PERSISTED_SETTINGS.analyzeMode,
       showAdvancedAnalyze: typeof parsed.showAdvancedAnalyze === 'boolean'
@@ -447,6 +458,7 @@ function App() {
   const [autoAnalyze, setAutoAnalyze] = useState(persistedSettings.autoAnalyze)
   const [engineProfile, setEngineProfile] = useState<EngineProfileId>(persistedSettings.engineProfile)
   const [analysisTab, setAnalysisTab] = useState<AnalysisTab>(persistedSettings.analysisTab)
+  const [analysisExperience, setAnalysisExperience] = useState<AnalysisExperience>(persistedSettings.analysisExperience)
   const [activePreset, setActivePreset] = useState<AnalyzePresetId | null>(persistedSettings.activePreset)
   const [analyzeMode, setAnalyzeMode] = useState<AnalyzeMode>(persistedSettings.analyzeMode)
   const [showAdvancedAnalyze, setShowAdvancedAnalyze] = useState(persistedSettings.showAdvancedAnalyze)
@@ -1056,6 +1068,24 @@ function App() {
   const openingTopMoves = useMemo(() => (openingExplorer.data?.moves ?? []).slice(0, 5), [openingExplorer.data?.moves])
   const openingTopBookMove = openingTopMoves[0]
   const currentFenLines = useMemo(() => lines.filter(line => !line.fen || line.fen === fen), [fen, lines])
+  const coachLine = currentFenLines.find(line => line.multipv === 1) ?? currentFenLines[0] ?? null
+  const coachCloudScore = currentCloudEval?.pvs[0]
+    ? cloudLineToSideToMoveScore(fen, currentCloudEval.pvs[0])
+    : null
+  const coachEvaluation = coachLine
+    ? formatWhitePovEvaluation(coachLine.fen ?? fen, coachLine.cp, coachLine.mate)
+    : coachCloudScore
+      ? formatWhitePovEvaluation(fen, coachCloudScore.cp, coachCloudScore.mate)
+      : evaluationsByFen.get(fen)
+        ? formatWhitePovEvaluation(fen, evaluationsByFen.get(fen)?.cp, evaluationsByFen.get(fen)?.mate)
+        : '...'
+  const coachBestMove = coachLine?.pv[0] ?? currentCloudEval?.pvs[0]?.moves[0] ?? lastBestMove ?? null
+  const coachDepth = coachLine?.depth ?? currentCloudEval?.depth
+  const coachLineSan = coachLine
+    ? pvToSan(coachLine.fen ?? fen, coachLine, 6)
+    : currentCloudEval?.pvs[0]
+      ? pvToSan(fen, { multipv: 1, depth: currentCloudEval.depth, pv: currentCloudEval.pvs[0].moves }, 6)
+      : ''
   const currentEngineBestUci = currentFenLines.find(line => line.multipv === 1)?.pv[0] ?? null
   const engineBookAgreement = currentEngineBestUci && openingTopBookMove
     ? currentEngineBestUci === openingTopBookMove.uci
@@ -1098,6 +1128,7 @@ function App() {
     setAutoAnalyze(DEFAULT_PERSISTED_SETTINGS.autoAnalyze)
     setEngineProfile(DEFAULT_PERSISTED_SETTINGS.engineProfile)
     setAnalysisTab(DEFAULT_PERSISTED_SETTINGS.analysisTab)
+    setAnalysisExperience(DEFAULT_PERSISTED_SETTINGS.analysisExperience)
     setActivePreset(DEFAULT_PERSISTED_SETTINGS.activePreset)
     setAnalyzeMode(DEFAULT_PERSISTED_SETTINGS.analyzeMode)
     setShowAdvancedAnalyze(DEFAULT_PERSISTED_SETTINGS.showAdvancedAnalyze)
@@ -1292,6 +1323,7 @@ function App() {
       autoAnalyze,
       engineProfile,
       analysisTab,
+      analysisExperience,
       activePreset,
       analyzeMode,
       showAdvancedAnalyze,
@@ -1322,6 +1354,7 @@ function App() {
     workspaceMode,
     activePreset,
     analysisTab,
+    analysisExperience,
     analyzeMode,
     autoAnalyze,
     blackIncMs,
@@ -2643,23 +2676,65 @@ function App() {
                       <IconStop /> Stop
                     </button>
                   </div>
-                  <div className="preset-grid">
-                    {analyzePresets.map(preset => (
+                  <div className="analysis-experience-toggle" aria-label="Analysis experience">
+                    {([
+                      { id: 'beginner', label: 'Coach' },
+                      { id: 'pro', label: 'Pro' },
+                    ] as const).map(option => (
                       <button
-                        key={preset.id}
+                        key={option.id}
                         type="button"
-                        className={`preset-card ${activePreset === preset.id ? 'active' : ''}`}
-                        onClick={() => applyPreset(preset.id)}
+                        className={`mode-pill ${analysisExperience === option.id ? 'active' : ''}`}
+                        onClick={() => setAnalysisExperience(option.id)}
                       >
-                        <strong>{preset.label}</strong>
-                        <span>{preset.summary}</span>
+                        {option.label}
                       </button>
                     ))}
                   </div>
-                  <p className="panel-copy small command-summary">
-                    {activeGoCommand ? `Command: ${activeGoCommand}` : 'Command: idle'} {queueLength > 0 ? `· queue ${queueLength}` : ''}
-                  </p>
-                  {(currentCloudEval || cloudEvalStatus === 'loading' || cloudEvalStatus === 'missing' || cloudEvalStatus === 'error') && (
+                  <div className="coach-card">
+                    <h3><span className="section-icon"><IconKing /></span> Coach</h3>
+                    <div className="coach-grid">
+                      <div>
+                        <span>Position</span>
+                        <strong>{coachEvaluation}</strong>
+                      </div>
+                      <div>
+                        <span>Best move</span>
+                        <strong>{coachBestMove ?? '...'}</strong>
+                      </div>
+                      <div>
+                        <span>Depth</span>
+                        <strong>{coachDepth ? `D${coachDepth}` : status}</strong>
+                      </div>
+                    </div>
+                    <p>{coachLineSan || 'Start analysis to get a candidate line.'}</p>
+                    {opening && (
+                      <p className="coach-opening">
+                        <strong>{opening.eco}</strong> {opening.name}
+                      </p>
+                    )}
+                  </div>
+                  {analysisExperience === 'pro' && (
+                    <>
+                      <div className="preset-grid">
+                        {analyzePresets.map(preset => (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            className={`preset-card ${activePreset === preset.id ? 'active' : ''}`}
+                            onClick={() => applyPreset(preset.id)}
+                          >
+                            <strong>{preset.label}</strong>
+                            <span>{preset.summary}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <p className="panel-copy small command-summary">
+                        {activeGoCommand ? `Command: ${activeGoCommand}` : 'Command: idle'} {queueLength > 0 ? `· queue ${queueLength}` : ''}
+                      </p>
+                    </>
+                  )}
+                  {analysisExperience === 'pro' && (currentCloudEval || cloudEvalStatus === 'loading' || cloudEvalStatus === 'missing' || cloudEvalStatus === 'error') && (
                     <div className="cloud-eval-card">
                       <h3><span className="section-icon"><IconZap /></span> Cloud Eval</h3>
                       <p className="panel-copy small command-summary">
@@ -2691,6 +2766,7 @@ function App() {
                       )}
                     </div>
                   )}
+                  {analysisExperience === 'pro' && (
                   <div className="opening-intel-card">
                     <div className="opening-intel-head">
                       <h3><span className="section-icon"><IconBarChart /></span> Opening Intel</h3>
@@ -2807,6 +2883,7 @@ function App() {
                       </>
                     )}
                   </div>
+                  )}
                   <div className="pv-list">
                     <h3><span className="section-icon"><IconSearch /></span> Lines</h3>
                     {lines.length === 0 && !activeGoCommand && !lastBestMove && (
@@ -2817,6 +2894,7 @@ function App() {
                     )}
                     {lines
                       .filter(l => !l.fen || l.fen === fen)
+                      .slice(0, analysisExperience === 'beginner' ? 2 : undefined)
                       .map(line => (
                         <article key={`${line.multipv}-${line.depth}-${line.pv[0] ?? 'pv'}`}>
                           <header>
@@ -2825,7 +2903,9 @@ function App() {
                             <span>{formatWhitePovEvaluation(line.fen ?? fen, line.cp, line.mate)}</span>
                           </header>
                           <p>{pvToSan(line.fen ?? fen, line) || line.pv.slice(0, 8).join(' ')}</p>
-                          <p className="pv-uci">{line.pv.slice(0, 8).join(' ')}</p>
+                          {analysisExperience === 'pro' && (
+                            <p className="pv-uci">{line.pv.slice(0, 8).join(' ')}</p>
+                          )}
                           {showWdl && line.wdl && (
                             <HorizontalWdlBar fen={line.fen ?? fen} wdl={line.wdl} orientation={orientation} />
                           )}
