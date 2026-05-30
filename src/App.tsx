@@ -999,9 +999,19 @@ function App() {
 
   // ── Viewport ─────────────────────────────────────────
   useEffect(() => {
-    const onResize = () => setViewport({ width: window.innerWidth, height: window.innerHeight })
+    let resizeFrame: number | null = null
+    const onResize = () => {
+      if (resizeFrame !== null) return
+      resizeFrame = window.requestAnimationFrame(() => {
+        resizeFrame = null
+        setViewport({ width: window.innerWidth, height: window.innerHeight })
+      })
+    }
     window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
+    return () => {
+      if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame)
+      window.removeEventListener('resize', onResize)
+    }
   }, [])
 
   // ── Auto-analyze ─────────────────────────────────────
