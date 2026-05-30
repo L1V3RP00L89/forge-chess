@@ -645,19 +645,33 @@ function App() {
     if (tip) navigateAndPonder(gameTree.navigateTo(tip.id))
   }, [gameTree, navigateAndPonder])
 
-  // Keyboard shortcuts (← →)
+  // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName
-      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
+      const target = e.target as HTMLElement | null
+      const tag = target?.tagName
+      if (target?.isContentEditable || tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
+
       if (e.key === 'ArrowLeft') { e.preventDefault(); goPrev() }
       if (e.key === 'ArrowRight') { e.preventDefault(); goNext() }
+      if (e.key === 'Home') { e.preventDefault(); goFirst() }
+      if (e.key === 'End') { e.preventDefault(); goLast() }
+      if (e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        setOrientation(value => value === 'white' ? 'black' : 'white')
+      }
+      if (e.key === ' ' && workspaceMode === 'play') {
+        if (tag === 'BUTTON') return
+        e.preventDefault()
+        if (pausedRef.current) resume()
+        else pause()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [goPrev, goNext])
+  }, [goFirst, goLast, goPrev, goNext, pause, resume, workspaceMode])
 
-  // Keyboard shortcuts (← →) and no wheel-to-navigate (conflicts with touch)
+  // No wheel-to-navigate; it conflicts with trackpads and touch.
 
   // ── Engine ───────────────────────────────────────────
   const {
