@@ -46,6 +46,20 @@ describe('review analysis helpers', () => {
     expect(summarizeReview(rows).pending).toBe(1)
   })
 
+  it('keeps review move numbering from a black-to-move root', () => {
+    const game = new Chess()
+    game.move('e4')
+    const rootFen = game.fen()
+    const move = game.move('c5')!
+    const rows = buildReviewRows([move], new Map([[rootFen, { cp: 0 }]]), rootFen)
+
+    expect(rows[0]).toMatchObject({
+      moveNumber: 1,
+      sideToMove: 'b',
+      san: 'c5',
+    })
+  })
+
   it('formats mate scores from White perspective', () => {
     const blackToMove = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'
     const whiteToMove = new Chess().fen()

@@ -2580,7 +2580,7 @@ function App() {
                       <ol className="moves-list review-move-list">
                         {reviewRows.map(row => (
                           <li key={`${row.ply}-${row.uci}`} className={`quality-${row.quality}`}>
-                            <span className="move-index">{row.ply % 2 === 1 ? `${row.moveNumber}.` : `${row.moveNumber}...`}</span>
+                            <span className="move-index">{row.sideToMove === 'w' ? `${row.moveNumber}.` : `${row.moveNumber}...`}</span>
                             <strong>{row.san}</strong>
                             <span className="move-uci">{row.uci}</span>
                             <span className="move-impact">{reviewImpactLabel(row.deltaCp)}</span>

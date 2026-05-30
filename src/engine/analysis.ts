@@ -12,6 +12,7 @@ export type ReviewLabel = 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder'
 export type ReviewRow = {
   ply: number
   moveNumber: number
+  sideToMove: 'w' | 'b'
   san: string
   uci: string
   quality: ReviewLabel
@@ -100,6 +101,7 @@ export function buildReviewRows(
   return history.map((move, index) => {
     const beforeFen = replay.fen()
     const moveNumber = replay.moveNumber()
+    const sideToMove = replay.turn()
     replay.move({ from: move.from, to: move.to, promotion: move.promotion })
     const afterFen = replay.fen()
 
@@ -109,6 +111,7 @@ export function buildReviewRows(
       return {
         ply: index + 1,
         moveNumber,
+        sideToMove,
         san: move.san,
         uci: toUci(move),
         quality: 'pending',
@@ -121,6 +124,7 @@ export function buildReviewRows(
     return {
       ply: index + 1,
       moveNumber,
+      sideToMove,
       san: move.san,
       uci: toUci(move),
       deltaCp,
