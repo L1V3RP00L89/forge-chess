@@ -2264,8 +2264,8 @@
   }
 
   .bottom {
-    position: sticky !important;
-    bottom: 0 !important;
+    position: relative !important;
+    bottom: auto !important;
     order: 2;
     width: 100% !important;
     overflow-x: hidden;
@@ -2437,10 +2437,7 @@
   }
 
   .bottom-status-row {
-    justify-content: center;
-    width: 100%;
-    margin: 0;
-    padding-bottom: 0.15rem;
+    display: none !important;
   }
 
   .game-controls,
