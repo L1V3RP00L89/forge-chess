@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   detectEngineCapabilities,
+  profileById,
   resolveProfile,
   type EngineCapabilities,
   type EngineProfile,
@@ -157,6 +158,23 @@ try {
     worker: new Worker(`${blobUrl}#${encodeURIComponent(wasmPath)},worker`),
     blobUrl,
   }
+}
+
+function profileRuntimeMessage(
+  selectedProfile: EngineProfileId,
+  activeProfile: EngineProfile,
+  capabilities: EngineCapabilities,
+): string {
+  if (selectedProfile === 'auto') return activeProfile.description
+
+  const requested = profileById(selectedProfile)
+  if (requested.id === activeProfile.id) return activeProfile.description
+
+  if (requested.requiresIsolation && !(capabilities.sharedArrayBuffer && capabilities.crossOriginIsolated)) {
+    return `${requested.name} needs cross-origin isolation and SharedArrayBuffer. Running ${activeProfile.name} instead.`
+  }
+
+  return `Running ${activeProfile.name} instead of ${requested.name}.`
 }
 
 function parseInfoLine(line: string): EngineLine | null {
@@ -561,6 +579,7 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
           selected: selectedProfile,
           profile: 'lite-single-local',
         })
+        setActiveProfile(fallback)
         setProfileMessage(`${reason} Falling back to ${fallback.name}.`)
       } else {
         setProfileMessage(reason)
@@ -610,7 +629,7 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
       setActiveGoCommand('')
       setQueueLength(0)
       setActiveProfile(profile)
-      setProfileMessage(profile.description)
+      setProfileMessage(profileRuntimeMessage(selectedProfile, profile, capabilities))
     })
 
     worker.onmessage = (event: MessageEvent<unknown>) => {
@@ -683,10 +702,12 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
           stopRequestedRef.current = false
 
           if (pendingAnalyzeRef.current) {
+            setActiveGoCommand('')
             flushPendingAnalyze()
             continue
           }
 
+          setActiveGoCommand('')
           setStatus((value) => (value === 'error' ? value : 'ready'))
         }
       }
@@ -703,6 +724,7 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
           selected: selectedProfile,
           profile: 'lite-single-local',
         })
+        setActiveProfile(fallback)
         setProfileMessage(`Failed to load ${profile.name}; fell back to ${fallback.name}.`)
       } else {
         setProfileMessage(`Failed to load ${profile.name}.`)

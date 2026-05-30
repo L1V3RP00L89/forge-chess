@@ -649,6 +649,8 @@ function App() {
     queueLength,
     rawLines,
     capabilities,
+    activeProfile,
+    profileMessage,
     analyze,
     sendCommand,
     newGame,
@@ -1808,6 +1810,11 @@ function App() {
                 <p className="panel-copy small command-summary">
                   Workspace: <strong>{workspaceMode === 'play' ? 'Play mode' : 'Analysis mode'}</strong>
                 </p>
+                {engineEnabled && (
+                  <p className="panel-copy small command-summary">
+                    Engine: <strong>{activeProfile.name}</strong> · {profileMessage}
+                  </p>
+                )}
                 <label className="switch-control">
                   <input
                     type="checkbox"
@@ -2618,6 +2625,9 @@ function App() {
                       {capabilities.sharedArrayBuffer ? 'yes' : 'no'} / Cores: {capabilities.hardwareConcurrency}
                     </p>
                     <p className="panel-copy small command-summary">
+                      Loaded: <strong>{activeProfile.name}</strong> · {profileMessage}
+                    </p>
+                    <p className="panel-copy small command-summary">
                       Active: {activeGoCommand || 'none'}
                     </p>
                     <label className="switch-control expert-toggle">
@@ -2754,8 +2764,8 @@ function App() {
             />
 
             <div className="bottom-status-row">
-              <span className="bottom-engine-info">
-                {engineName} · <strong className={`status ${status}`}>{status}</strong>
+              <span className="bottom-engine-info" title={profileMessage}>
+                {engineName} · {activeProfile.name} · <strong className={`status ${status}`}>{status}</strong>
               </span>
               {activeGoCommand && (
                 <span className="engine-command-inline">{activeGoCommand}</span>
