@@ -46,7 +46,7 @@ import { AI_SPEED_MS, type AiSpeed } from './components/aiSpeed'
 import { WdlBar } from './components/WdlBar'
 import { HorizontalWdlBar } from './components/HorizontalWdlBar'
 import { MoveListTree } from './components/MoveListTree'
-import { IconBot, IconBarChart, IconSearch, IconSwords, IconAlert, IconKing, IconRefresh, IconFlip, IconDownload, IconUsers, IconZap, IconSettings, IconPlay, IconStop } from './components/icons'
+import { IconBot, IconBarChart, IconSearch, IconSwords, IconAlert, IconKing, IconRefresh, IconFlip, IconDownload, IconUsers, IconZap, IconSettings, IconPlay, IconStop, IconTrendingUp } from './components/icons'
 import './App.css'
 
 type Orientation = 'white' | 'black'
@@ -2102,6 +2102,13 @@ function App() {
       viewport.height - (bottomPanelOpen ? 140 : 80) - (topPanelOpen ? 80 : 40),
       800,
     )
+  const turnLabel = game.turn() === 'w' ? 'White to move' : 'Black to move'
+  const moveNumberLabel = `Move ${fen.split(/\s+/)[5] ?? '1'}`
+  const gameModeLabel = gameMode === 'human-vs-human'
+    ? 'Human vs Human'
+    : gameMode === 'human-vs-ai'
+      ? 'Human vs AI'
+      : 'AI vs AI'
 
   // ─────────────────────────────────────────────────────
   return (
@@ -2148,7 +2155,7 @@ function App() {
 
               {/* Game mode switcher */}
               <span className="toolbar-divider desktop-only" />
-              <div className="top-mode-pills">
+              <div className="top-mode-pills" aria-label="Game mode">
                 {([
                   { id: 'human-vs-human', label: 'H vs H', icon: <IconUsers /> },
                   { id: 'human-vs-ai', label: 'H vs AI', icon: <IconBot /> },
@@ -2483,47 +2490,61 @@ function App() {
           </div>
           <div className="panel-inner" style={{ opacity: (!isMobile && leftWidth === 0) ? 0 : 1 }}>
             <div className="panel-content">
-              <WinrateGraph
-                points={winratePoints}
-                currentIndex={currentPathNodes.length - 1}
-                onNavigate={(idx) => {
-                  const targetNode = currentLineNodes[idx] || currentLineNodes[currentLineNodes.length - 1]
-                  if (!targetNode) return
-                  const chess = gameTree.navigateTo(targetNode.id)
-                  if (workspaceMode === 'analysis') {
-                    navigateAndPonder(chess)
-                    return
-                  }
-                  navigateAndPause(chess)
-                }}
-              />
-              {winratePoints.length > 0 && (
-                <div className="graph-legend">
-                  <span>White win chance</span>
-                  <strong>{winratePoints[winratePoints.length - 1]!.whiteWinrate.toFixed(1)}%</strong>
-                </div>
-              )}
-              <WdlProgressGraph
-                points={wdlPoints}
-                currentIndex={currentPathNodes.length - 1}
-                onNavigate={(idx) => {
-                  const targetNode = currentLineNodes[idx] || currentLineNodes[currentLineNodes.length - 1]
-                  if (!targetNode) return
-                  const chess = gameTree.navigateTo(targetNode.id)
-                  if (workspaceMode === 'analysis') {
-                    navigateAndPonder(chess)
-                    return
-                  }
-                  navigateAndPause(chess)
-                }}
-              />
-              {wdlPoints.length > 0 && (
-                <div className="graph-legend wdl">
-                  <span className="wdl-white-label">White {wdlPoints[wdlPoints.length - 1]!.white.toFixed(1)}%</span>
-                  <span className="wdl-draw-label">Draw {wdlPoints[wdlPoints.length - 1]!.draw.toFixed(1)}%</span>
-                  <span className="wdl-black-label">Black {wdlPoints[wdlPoints.length - 1]!.black.toFixed(1)}%</span>
-                </div>
-              )}
+              <section className="analytics-card">
+                <header className="section-heading">
+                  <h3><span className="section-icon"><IconTrendingUp /></span> Winrate</h3>
+                  {winratePoints.length > 0 && (
+                    <strong>{winratePoints[winratePoints.length - 1]!.whiteWinrate.toFixed(1)}%</strong>
+                  )}
+                </header>
+                <WinrateGraph
+                  points={winratePoints}
+                  currentIndex={currentPathNodes.length - 1}
+                  onNavigate={(idx) => {
+                    const targetNode = currentLineNodes[idx] || currentLineNodes[currentLineNodes.length - 1]
+                    if (!targetNode) return
+                    const chess = gameTree.navigateTo(targetNode.id)
+                    if (workspaceMode === 'analysis') {
+                      navigateAndPonder(chess)
+                      return
+                    }
+                    navigateAndPause(chess)
+                  }}
+                />
+                {winratePoints.length > 0 && (
+                  <div className="graph-legend">
+                    <span>White win chance</span>
+                    <strong>{winratePoints[winratePoints.length - 1]!.whiteWinrate.toFixed(1)}%</strong>
+                  </div>
+                )}
+              </section>
+              <section className="analytics-card">
+                <header className="section-heading">
+                  <h3><span className="section-icon"><IconBarChart /></span> WDL Trend</h3>
+                  {wdlPoints.length > 0 && <strong>{wdlPoints.length} plies</strong>}
+                </header>
+                <WdlProgressGraph
+                  points={wdlPoints}
+                  currentIndex={currentPathNodes.length - 1}
+                  onNavigate={(idx) => {
+                    const targetNode = currentLineNodes[idx] || currentLineNodes[currentLineNodes.length - 1]
+                    if (!targetNode) return
+                    const chess = gameTree.navigateTo(targetNode.id)
+                    if (workspaceMode === 'analysis') {
+                      navigateAndPonder(chess)
+                      return
+                    }
+                    navigateAndPause(chess)
+                  }}
+                />
+                {wdlPoints.length > 0 && (
+                  <div className="graph-legend wdl">
+                    <span className="wdl-white-label">White {wdlPoints[wdlPoints.length - 1]!.white.toFixed(1)}%</span>
+                    <span className="wdl-draw-label">Draw {wdlPoints[wdlPoints.length - 1]!.draw.toFixed(1)}%</span>
+                    <span className="wdl-black-label">Black {wdlPoints[wdlPoints.length - 1]!.black.toFixed(1)}%</span>
+                  </div>
+                )}
+              </section>
               <section className="sample-library-card">
                 <header className="sample-library-head">
                   <h3><span className="section-icon"><IconKing /></span> Historical Library</h3>
@@ -2585,19 +2606,12 @@ function App() {
 
         {/* ── Board ── */}
         <section className="board-stage" aria-label="Chessboard">
-          <div className="board-wrap">
-            {engineEnabled && showWdl && (() => {
-              const evalSnap = evaluationsByFen.get(fen)
-              const evalLabel = evalSnap
-                ? formatWhitePovEvaluation(fen, evalSnap.cp, evalSnap.mate)
-                : null
-              return (
-                <>
-                  <WdlBar fen={fen} evaluation={evalSnap} orientation={orientation} />
-                  {evalLabel && <span className="eval-bar-label">{evalLabel}</span>}
-                </>
-              )
-            })()}
+          <div className="board-layout">
+            <div className="board-meta-strip" aria-label="Current game state">
+              <span className={`turn-pill ${game.turn() === 'w' ? 'white' : 'black'}`}>{turnLabel}</span>
+              <span>{moveNumberLabel}</span>
+              <span>{workspaceMode === 'analysis' ? status : gameModeLabel}</span>
+            </div>
             {opening && (
               <div className="board-opening-label fade-in-slide">
                 <div className="opening-pill">
@@ -2606,73 +2620,87 @@ function App() {
                 </div>
               </div>
             )}
-            <div className="board-area">
-              <Chessboard
-                options={{
-                  position: fen,
-                  boardOrientation: orientation,
-                  onPieceDrop: ({ sourceSquare, targetSquare, piece }) => {
-                    if (!targetSquare) return false
-                    setSelectedSquare(null)
-                    setLegalTargets([])
-                    return onPieceDrop(sourceSquare as Square, targetSquare as Square, piece.pieceType)
-                  },
-                  onSquareClick: ({ square }) => onSquareClick(square as Square),
-                  squareStyles: {
-                    ...(selectedSquare ? { [selectedSquare]: { backgroundColor: 'rgba(255,215,0,0.55)', boxShadow: 'inset 0 0 0 3px rgba(255,200,0,0.9)' } } : {}),
-                    ...Object.fromEntries(legalTargets.map(sq => [sq, {
-                      background: game.get(sq)
-                        ? 'radial-gradient(circle, rgba(255,100,0,0.5) 60%, transparent 60%)'
-                        : 'radial-gradient(circle, rgba(0,0,0,0.25) 28%, transparent 28%)',
-                      borderRadius: '50%',
-                    }])),
-                  },
-                  arrows,
-                  allowDrawingArrows: false,
-                  allowDragging: !isAiThinking && !(gameMode === 'human-vs-ai' && !paused && game.turn() !== playerColor[0]),
-                  darkSquareStyle: { backgroundColor: '#b58863' },
-                  lightSquareStyle: { backgroundColor: '#f0d9b5' },
-                  boardStyle: {
-                    width: `${Math.max(260, boardWidth)}px`,
-                    maxWidth: '100%',
-                    borderRadius: 12,
-                    boxShadow: '0 8px 40px rgba(0, 0, 0, 0.60), 0 2px 8px rgba(0, 0, 0, 0.40)',
-                  },
-                }}
-              />
-              {pendingPromotion && (
-                <div className="promotion-overlay" role="dialog" aria-modal="true" aria-label="Choose promotion piece">
-                  <div className="promotion-chooser">
-                    {PROMOTION_OPTIONS.map(option => (
-                      <button
-                        key={option.piece}
-                        type="button"
-                        className="promotion-choice"
-                        onClick={() => completePromotion(option.piece)}
-                        aria-label={`Promote to ${option.label}`}
-                      >
-                        <span className="promotion-glyph" aria-hidden="true">
-                          {PROMOTION_GLYPHS[promotionColor][option.piece]}
-                        </span>
-                        <span>{option.label}</span>
+            <div className="board-wrap">
+              {engineEnabled && showWdl && (() => {
+                const evalSnap = evaluationsByFen.get(fen)
+                const evalLabel = evalSnap
+                  ? formatWhitePovEvaluation(fen, evalSnap.cp, evalSnap.mate)
+                  : null
+                return (
+                  <>
+                    <WdlBar fen={fen} evaluation={evalSnap} orientation={orientation} />
+                    {evalLabel && <span className="eval-bar-label">{evalLabel}</span>}
+                  </>
+                )
+              })()}
+              <div className="board-area">
+                <Chessboard
+                  options={{
+                    position: fen,
+                    boardOrientation: orientation,
+                    onPieceDrop: ({ sourceSquare, targetSquare, piece }) => {
+                      if (!targetSquare) return false
+                      setSelectedSquare(null)
+                      setLegalTargets([])
+                      return onPieceDrop(sourceSquare as Square, targetSquare as Square, piece.pieceType)
+                    },
+                    onSquareClick: ({ square }) => onSquareClick(square as Square),
+                    squareStyles: {
+                      ...(selectedSquare ? { [selectedSquare]: { backgroundColor: 'rgba(255,215,0,0.55)', boxShadow: 'inset 0 0 0 3px rgba(255,200,0,0.9)' } } : {}),
+                      ...Object.fromEntries(legalTargets.map(sq => [sq, {
+                        background: game.get(sq)
+                          ? 'radial-gradient(circle, rgba(255,100,0,0.5) 60%, transparent 60%)'
+                          : 'radial-gradient(circle, rgba(0,0,0,0.25) 28%, transparent 28%)',
+                        borderRadius: '50%',
+                      }])),
+                    },
+                    arrows,
+                    allowDrawingArrows: false,
+                    allowDragging: !isAiThinking && !(gameMode === 'human-vs-ai' && !paused && game.turn() !== playerColor[0]),
+                    darkSquareStyle: { backgroundColor: '#b58863' },
+                    lightSquareStyle: { backgroundColor: '#f0d9b5' },
+                    boardStyle: {
+                      width: `${Math.max(260, boardWidth)}px`,
+                      maxWidth: '100%',
+                      borderRadius: 12,
+                      boxShadow: '0 8px 40px rgba(0, 0, 0, 0.60), 0 2px 8px rgba(0, 0, 0, 0.40)',
+                    },
+                  }}
+                />
+                {pendingPromotion && (
+                  <div className="promotion-overlay" role="dialog" aria-modal="true" aria-label="Choose promotion piece">
+                    <div className="promotion-chooser">
+                      {PROMOTION_OPTIONS.map(option => (
+                        <button
+                          key={option.piece}
+                          type="button"
+                          className="promotion-choice"
+                          onClick={() => completePromotion(option.piece)}
+                          aria-label={`Promote to ${option.label}`}
+                        >
+                          <span className="promotion-glyph" aria-hidden="true">
+                            {PROMOTION_GLYPHS[promotionColor][option.piece]}
+                          </span>
+                          <span>{option.label}</span>
+                        </button>
+                      ))}
+                      <button type="button" className="promotion-cancel" onClick={cancelPromotion}>
+                        Cancel
                       </button>
-                    ))}
-                    <button type="button" className="promotion-cancel" onClick={cancelPromotion}>
-                      Cancel
-                    </button>
+                    </div>
                   </div>
-                </div>
-              )}
-              {/* AI thinking badge */}
-              {isAiThinking && (
-                <div className="ai-thinking-overlay">
-                  <div className="ai-thinking-badge">
-                    <IconBot style={{ marginRight: '4px', fontSize: '1.1em', transform: 'translateY(1px)' }} />
-                    AI thinking
-                    <div className="thinking-dots"><span /><span /><span /></div>
+                )}
+                {/* AI thinking badge */}
+                {isAiThinking && (
+                  <div className="ai-thinking-overlay">
+                    <div className="ai-thinking-badge">
+                      <IconBot style={{ marginRight: '4px', fontSize: '1.1em', transform: 'translateY(1px)' }} />
+                      AI thinking
+                      <div className="thinking-dots"><span /><span /><span /></div>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </section>
@@ -2723,6 +2751,13 @@ function App() {
                       {tab.label}
                     </button>
                   ))}
+                </div>
+              )}
+              {workspaceMode === 'analysis' && (
+                <div className="analysis-context-row">
+                  <span>{engineName}</span>
+                  <strong className={`status ${status}`}>{status}</strong>
+                  <span>{analysisExperience === 'beginner' ? 'Coach view' : 'Pro view'}</span>
                 </div>
               )}
             </header>

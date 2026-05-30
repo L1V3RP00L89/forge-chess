@@ -56,9 +56,9 @@
     position: fixed;
     inset: 0;
     z-index: 3000;
-    background: rgba(0, 0, 0, 0.72);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.66);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -82,10 +82,15 @@
     max-width: 460px;
     background: var(--bg-surface, #161b22);
     border: 1px solid var(--border-default, rgba(240, 246, 252, 0.10));
-    border-radius: 18px;
+    border-radius: var(--radius-lg, 12px);
     box-shadow: 0 32px 80px rgba(0, 0, 0, 0.60), 0 0 0 1px var(--border-subtle, rgba(240, 246, 252, 0.06));
     overflow: hidden;
     animation: panel-in 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dialog-body {
+    max-height: min(74vh, 720px);
+    overflow-y: auto;
 }
 
 @keyframes panel-in {
@@ -151,7 +156,8 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.7rem 0.5rem;
-    border-radius: 11px;
+    min-width: 0;
+    border-radius: var(--radius-md, 8px);
     border: 1.5px solid var(--border-subtle, rgba(240, 246, 252, 0.06));
     background: var(--bg-elevated, #1c2128);
     cursor: pointer;
@@ -168,8 +174,8 @@
 
 .mode-card.selected {
     border-color: var(--accent, #3fb950);
-    background: rgba(63, 185, 80, 0.12);
-    box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.14);
+    background: var(--accent-subtle, rgba(63, 185, 80, 0.12));
+    box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.12);
 }
 
 .mode-icon {
@@ -203,7 +209,7 @@
     justify-content: center;
     gap: 0.4rem;
     padding: 0.55rem 1rem;
-    border-radius: 10px;
+    border-radius: var(--radius-md, 8px);
     border: 1.5px solid var(--border-subtle, rgba(240, 246, 252, 0.06));
     background: var(--bg-elevated, #1c2128);
     font-family: inherit;
@@ -222,8 +228,8 @@
 
 .color-btn.selected {
     border-color: var(--accent, #3fb950);
-    background: rgba(63, 185, 80, 0.12);
-    box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.14);
+    background: var(--accent-subtle, rgba(63, 185, 80, 0.12));
+    box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.12);
 }
 
 .color-piece {
@@ -312,22 +318,22 @@
 .btn-start {
     padding: 0.55rem 1.3rem;
     border-radius: 9px;
-    border: 1px solid var(--accent-muted, #196c2e);
-    background: var(--accent-muted, #196c2e);
-    color: var(--accent, #3fb950);
+    border: 1px solid rgba(125, 239, 222, 0.58);
+    background: linear-gradient(180deg, #38dcc8, #16b6a8);
+    color: #041310;
     font-family: inherit;
     font-size: 0.82rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 150ms cubic-bezier(0.22, 1, 0.36, 1);
-    box-shadow: 0 0 12px var(--accent-glow, rgba(63, 185, 80, 0.20));
+    box-shadow: 0 10px 24px rgba(45, 212, 191, 0.16);
 }
 
 .btn-start:hover {
-    background: rgba(63, 185, 80, 0.22);
-    border-color: var(--accent, #3fb950);
-    color: #7ee787;
-    box-shadow: 0 0 20px var(--accent-glow, rgba(63, 185, 80, 0.30));
+    background: linear-gradient(180deg, #5eead4, #20c7b6);
+    border-color: rgba(167, 243, 232, 0.76);
+    color: #02110f;
+    box-shadow: 0 12px 30px rgba(45, 212, 191, 0.24);
     transform: translateY(-1px);
 }
 
@@ -360,6 +366,49 @@
     gap: 0.45rem;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(12px);
+}
+
+@media (max-width: 560px) {
+    .dialog-backdrop {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .dialog-panel {
+        max-width: none;
+        width: 100%;
+        border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
+        border-left: 0;
+        border-right: 0;
+        border-bottom: 0;
+    }
+
+    .dialog-body {
+        max-height: 78vh;
+    }
+
+    .dialog-header,
+    .dialog-section {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .mode-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pgn-dialog .mode-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .mode-card {
+        min-height: 48px;
+    }
+
+    .dialog-actions {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
 }
 
 .thinking-dots {
