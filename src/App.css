@@ -1825,11 +1825,6 @@ body.resizing * {
 }
 
 .moves-list li {
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
-  gap: 0.32rem;
-  align-items: center;
-  padding: 0.32rem 0.48rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   border-left: 3px solid transparent;
@@ -1838,6 +1833,35 @@ body.resizing * {
     background 120ms ease,
     border-color 120ms ease;
   animation: move-fade-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.review-move-list li {
+  padding: 0;
+  overflow: hidden;
+}
+
+.review-move-row {
+  width: 100%;
+  display: grid !important;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
+  gap: 0.32rem;
+  align-items: center;
+  padding: 0.32rem 0.48rem;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  text-align: left;
+  box-shadow: none !important;
+}
+
+.review-move-row.active {
+  background: rgba(63, 185, 80, 0.09) !important;
+}
+
+.review-move-row:disabled {
+  cursor: default;
+  opacity: 0.65;
 }
 
 @keyframes move-fade-in {

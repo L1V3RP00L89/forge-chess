@@ -2847,18 +2847,36 @@ function App() {
                     </div>
                     {reviewRows.length > 0 && (
                       <ol className="moves-list review-move-list">
-                        {reviewRows.map(row => (
-                          <li key={`${row.ply}-${row.uci}`} className={`quality-${row.quality}`}>
-                            <span className="move-index">{row.sideToMove === 'w' ? `${row.moveNumber}.` : `${row.moveNumber}...`}</span>
-                            <strong>{row.san}</strong>
-                            <span className="move-uci">{row.uci}</span>
-                            <span className="move-impact">{reviewImpactLabel(row.deltaCp)}</span>
-                            <span className={`move-confidence confidence-${row.confidence}`}>
-                              {reviewConfidenceLabel(row.confidence, row.evalDepth)}
-                            </span>
-                            <span className="move-quality">{REVIEW_LABELS[row.quality]}</span>
-                          </li>
-                        ))}
+                        {reviewRows.map(row => {
+                          const node = mainLineNodes[row.ply]
+                          const movePrefix = row.sideToMove === 'w' ? `${row.moveNumber}.` : `${row.moveNumber}...`
+                          const isCurrentReviewMove = node?.id === gameTree.current.id
+
+                          return (
+                            <li key={`${row.ply}-${row.uci}`} className={`quality-${row.quality}`}>
+                              <button
+                                type="button"
+                                className={`review-move-row ${isCurrentReviewMove ? 'active' : ''}`}
+                                disabled={!node}
+                                aria-current={isCurrentReviewMove ? 'true' : undefined}
+                                aria-label={`Go to ${movePrefix} ${row.san}`}
+                                onClick={() => {
+                                  if (!node) return
+                                  navigateAndPonder(gameTree.navigateTo(node.id))
+                                }}
+                              >
+                                <span className="move-index">{movePrefix}</span>
+                                <strong>{row.san}</strong>
+                                <span className="move-uci">{row.uci}</span>
+                                <span className="move-impact">{reviewImpactLabel(row.deltaCp)}</span>
+                                <span className={`move-confidence confidence-${row.confidence}`}>
+                                  {reviewConfidenceLabel(row.confidence, row.evalDepth)}
+                                </span>
+                                <span className="move-quality">{REVIEW_LABELS[row.quality]}</span>
+                              </button>
+                            </li>
+                          )
+                        })}
                       </ol>
                     )}
                   </div>
