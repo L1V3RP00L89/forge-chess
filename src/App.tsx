@@ -634,7 +634,7 @@ function App() {
     newGame,
     stop,
     setOption,
-  } = useStockfishEngine(engineProfile)
+  } = useStockfishEngine(engineProfile, engineEnabled)
 
   const aiEnabled = workspaceMode === 'play' && (gameMode === 'human-vs-ai' || gameMode === 'ai-vs-ai')
   const aiPlayer = useAiPlayer(aiEnabled)

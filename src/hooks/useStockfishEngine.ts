@@ -64,6 +64,7 @@ type QueuedCommand = {
 }
 
 const RAW_LINE_LIMIT = 800
+const ENGINE_STATE_FLUSH_INTERVAL_MS = 100
 const NO_REPLY_COMMANDS = new Set(['ucinewgame', 'position', 'setoption', 'stop', 'ponderhit', 'quit'])
 
 function firstWord(input: string): string {
@@ -220,7 +221,7 @@ function withUciValue(value: string | number | boolean): string {
   return String(value)
 }
 
-export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto') {
+export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', enabled = true) {
   const workerRef = useRef<Worker | null>(null)
   const isReadyRef = useRef(false)
   const pendingAnalyzeRef = useRef<AnalyzeRequest | null>(null)
@@ -231,6 +232,10 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto') {
   const commandQueueRef = useRef<QueuedCommand[]>([])
   const nextCommandIdRef = useRef(0)
   const bootSessionRef = useRef(0)
+  const rawLinesRef = useRef<string[]>([])
+  const rawLinesFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const liveLinesMapRef = useRef<Map<number, EngineLine>>(new Map())
+  const linesMapFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const capabilities = useMemo<EngineCapabilities>(() => detectEngineCapabilities(), [])
   const [fallbackOverride, setFallbackOverride] = useState<{
     selected: EngineProfileId
@@ -262,13 +267,63 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto') {
     workerRef.current?.postMessage(command)
   }, [])
 
-  const appendRawLine = useCallback((line: string) => {
-    setRawLines(previous => {
-      const next = [...previous, line]
-      if (next.length > RAW_LINE_LIMIT) return next.slice(next.length - RAW_LINE_LIMIT)
-      return next
-    })
+  const clearRawLinesFlushTimer = useCallback(() => {
+    if (!rawLinesFlushTimerRef.current) return
+    clearTimeout(rawLinesFlushTimerRef.current)
+    rawLinesFlushTimerRef.current = null
   }, [])
+
+  const flushRawLines = useCallback(() => {
+    clearRawLinesFlushTimer()
+    setRawLines([...rawLinesRef.current])
+  }, [clearRawLinesFlushTimer])
+
+  const scheduleRawLinesFlush = useCallback(() => {
+    if (rawLinesFlushTimerRef.current) return
+    rawLinesFlushTimerRef.current = setTimeout(() => {
+      rawLinesFlushTimerRef.current = null
+      setRawLines([...rawLinesRef.current])
+    }, ENGINE_STATE_FLUSH_INTERVAL_MS)
+  }, [])
+
+  const appendRawLine = useCallback((line: string) => {
+    rawLinesRef.current.push(line)
+    if (rawLinesRef.current.length > RAW_LINE_LIMIT) {
+      rawLinesRef.current.splice(0, rawLinesRef.current.length - RAW_LINE_LIMIT)
+    }
+    scheduleRawLinesFlush()
+  }, [scheduleRawLinesFlush])
+
+  const resetRawLines = useCallback(() => {
+    clearRawLinesFlushTimer()
+    rawLinesRef.current = []
+    setRawLines([])
+  }, [clearRawLinesFlushTimer])
+
+  const clearLinesMapFlushTimer = useCallback(() => {
+    if (!linesMapFlushTimerRef.current) return
+    clearTimeout(linesMapFlushTimerRef.current)
+    linesMapFlushTimerRef.current = null
+  }, [])
+
+  const flushLinesMap = useCallback(() => {
+    clearLinesMapFlushTimer()
+    setLinesMap(new Map(liveLinesMapRef.current))
+  }, [clearLinesMapFlushTimer])
+
+  const scheduleLinesMapFlush = useCallback(() => {
+    if (linesMapFlushTimerRef.current) return
+    linesMapFlushTimerRef.current = setTimeout(() => {
+      linesMapFlushTimerRef.current = null
+      setLinesMap(new Map(liveLinesMapRef.current))
+    }, ENGINE_STATE_FLUSH_INTERVAL_MS)
+  }, [])
+
+  const resetLinesMap = useCallback(() => {
+    clearLinesMapFlushTimer()
+    liveLinesMapRef.current = new Map()
+    setLinesMap(new Map())
+  }, [clearLinesMapFlushTimer])
 
   const rejectQueuedCommands = useCallback((message: string) => {
     const queue = commandQueueRef.current
@@ -383,7 +438,7 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto') {
       currentSearchIdRef.current = searchId
 
       setStatus('analyzing')
-      setLinesMap(new Map())
+      resetLinesMap()
       setLastBestMove(null)
       setLastPonderMove(null)
       currentAnalysisFenRef.current = request.fen
@@ -397,7 +452,7 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto') {
       isSearchingRef.current = true
       stopRequestedRef.current = false
     },
-    [send, setOption],
+    [resetLinesMap, send, setOption],
   )
 
   const flushPendingAnalyze = useCallback(() => {
@@ -419,10 +474,11 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto') {
 
   const analyze = useCallback(
     (request: AnalyzeRequest) => {
+      if (!enabled) return
       pendingAnalyzeRef.current = request
       flushPendingAnalyze()
     },
-    [flushPendingAnalyze],
+    [enabled, flushPendingAnalyze],
   )
 
   const analyzePosition = useCallback(
@@ -441,19 +497,23 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto') {
 
   const stop = useCallback(() => {
     pendingAnalyzeRef.current = null
+    if (!enabled) {
+      setStatus('disabled')
+      return
+    }
     if (isSearchingRef.current && !stopRequestedRef.current) {
       send('stop')
       stopRequestedRef.current = true
     }
     setStatus((value) => (value === 'error' ? value : 'ready'))
-  }, [send])
+  }, [enabled, send])
 
   const newGame = useCallback(() => {
     sendRaw('ucinewgame')
-    setLinesMap(new Map())
+    resetLinesMap()
     setLastBestMove(null)
     setLastPonderMove(null)
-  }, [sendRaw])
+  }, [resetLinesMap, sendRaw])
 
   const ponderHit = useCallback(() => {
     sendRaw('ponderhit')
@@ -465,6 +525,25 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto') {
     const profile = resolvedProfile
     let worker: Worker | null = null
     let workerBlobUrl: string | undefined
+
+    if (!enabled) {
+      workerRef.current = null
+      isReadyRef.current = false
+      isSearchingRef.current = false
+      stopRequestedRef.current = false
+      pendingAnalyzeRef.current = null
+      commandQueueRef.current = []
+      queueMicrotask(() => {
+        if (currentSession !== bootSessionRef.current) return
+        setStatus('disabled')
+        resetLinesMap()
+        setLastBestMove(null)
+        setLastPonderMove(null)
+        setActiveGoCommand('')
+        setQueueLength(0)
+      })
+      return
+    }
 
     const applyFallback = (reason: string) => {
       if (profile.id !== 'lite-single-local') {
@@ -513,12 +592,12 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto') {
     queueMicrotask(() => {
       if (currentSession !== bootSessionRef.current) return
       setStatus('loading')
-      setLinesMap(new Map())
+      resetLinesMap()
       setOptions([])
       setEngineName('Stockfish')
       setLastBestMove(null)
       setLastPonderMove(null)
-      setRawLines([])
+      resetRawLines()
       setActiveGoCommand('')
       setQueueLength(0)
       setActiveProfile(profile)
@@ -573,18 +652,17 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto') {
           const parsed = parseInfoLine(line)
           if (!parsed) continue
 
-          setLinesMap((previous) => {
-            const next = new Map(previous)
-            next.set(parsed.multipv, {
-              ...parsed,
-              fen: currentAnalysisFenRef.current,
-              searchId: currentSearchIdRef.current,
-            })
-            return next
+          liveLinesMapRef.current.set(parsed.multipv, {
+            ...parsed,
+            fen: currentAnalysisFenRef.current,
+            searchId: currentSearchIdRef.current,
           })
+          scheduleLinesMapFlush()
         }
 
         if (line.startsWith('bestmove ')) {
+          flushLinesMap()
+          flushRawLines()
           const parsed = parseBestMoveLine(line)
           setLastBestMove(parsed?.bestMove ?? null)
           setLastPonderMove(parsed?.ponderMove ?? null)
@@ -632,10 +710,29 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto') {
       isSearchingRef.current = false
       stopRequestedRef.current = false
       pendingAnalyzeRef.current = null
+      clearLinesMapFlushTimer()
+      clearRawLinesFlushTimer()
       rejectQueuedCommands('Engine worker terminated.')
       if (workerBlobUrl) URL.revokeObjectURL(workerBlobUrl)
     }
-  }, [appendRawLine, capabilities, dispatchQueuedLine, flushPendingAnalyze, rejectQueuedCommands, resolvedProfile, selectedProfile, send])
+  }, [
+    appendRawLine,
+    capabilities,
+    clearLinesMapFlushTimer,
+    clearRawLinesFlushTimer,
+    dispatchQueuedLine,
+    enabled,
+    flushLinesMap,
+    flushPendingAnalyze,
+    flushRawLines,
+    rejectQueuedCommands,
+    resetLinesMap,
+    resetRawLines,
+    resolvedProfile,
+    scheduleLinesMapFlush,
+    selectedProfile,
+    send,
+  ])
 
   const lines = useMemo(
     () =>
