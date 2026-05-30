@@ -1278,6 +1278,14 @@ function App() {
     [currentRootFen, evaluationsByFen, mainLineMoves],
   )
   const reviewSummary = useMemo(() => summarizeReview(reviewRows), [reviewRows])
+  const criticalReviewRows = useMemo(
+    () => reviewRows
+      .filter(row => row.quality === 'inaccuracy' || row.quality === 'mistake' || row.quality === 'blunder')
+      .filter(row => typeof row.deltaCp === 'number')
+      .sort((a, b) => (a.deltaCp ?? 0) - (b.deltaCp ?? 0))
+      .slice(0, 5),
+    [reviewRows],
+  )
 
   useEffect(() => {
     if (workspaceMode !== 'analysis') return
@@ -2745,6 +2753,41 @@ function App() {
                           </li>
                         ))}
                       </ol>
+                    )}
+                  </div>
+                  <div className="critical-moments-card">
+                    <h3><span className="section-icon"><IconAlert /></span> Critical Moments</h3>
+                    {criticalReviewRows.length > 0 ? (
+                      <div className="critical-moment-list">
+                        {criticalReviewRows.map(row => {
+                          const node = mainLineNodes[row.ply]
+                          const movePrefix = row.sideToMove === 'w' ? `${row.moveNumber}.` : `${row.moveNumber}...`
+                          return (
+                            <button
+                              key={`${row.ply}-${row.uci}`}
+                              type="button"
+                              className={`critical-moment-row quality-${row.quality}`}
+                              disabled={!node}
+                              onClick={() => {
+                                if (!node) return
+                                navigateAndPonder(gameTree.navigateTo(node.id))
+                              }}
+                            >
+                              <span className="critical-moment-move">
+                                <strong>{movePrefix} {row.san}</strong>
+                                <span>{REVIEW_LABELS[row.quality]}</span>
+                              </span>
+                              <span className="critical-moment-impact">
+                                {reviewImpactLabel(row.deltaCp)}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <p className="panel-copy small">
+                        Run Review Game after a line is analyzed to surface the biggest turning points.
+                      </p>
                     )}
                   </div>
                   <div className="opening-intel-card review-book-card">

@@ -1565,12 +1565,82 @@
   margin-top: var(--space-md);
 }
 
+.critical-moments-card {
+  margin-top: var(--space-md);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgba(13, 17, 23, 0.34);
+  padding: 0.55rem;
+}
+
+.critical-moments-card h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.critical-moment-list {
+  display: grid;
+  gap: 0.34rem;
+}
+
+.critical-moment-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.42rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid transparent;
+  background: var(--bg-card);
+  text-align: left;
+}
+
+.critical-moment-row:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.critical-moment-move {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.critical-moment-move strong {
+  color: var(--text-primary);
+  font-size: 0.76rem;
+}
+
+.critical-moment-move span,
+.critical-moment-impact {
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+}
+
+.critical-moment-impact {
+  font-family: "JetBrains Mono", "SF Mono", monospace;
+  white-space: nowrap;
+}
+
 .review-book-list {
   display: grid;
   gap: 0.28rem;
   /* Allocate space for 14 rows mapping so the UI below doesn't jump */
   min-height: 400px;
   align-content: start;
+}
+
+.review-book-list:empty {
+  min-height: 0;
 }
 
 .review-book-row {
