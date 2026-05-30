@@ -187,26 +187,18 @@ export function useGameTree(startFen?: string) {
 
     /**
      * Navigate to an arbitrary node (by id).
-     * Rebuilds the chess game state from the path so callers can extract `game`.
+     * Returns a Chess instance from the node's stored FEN.
      * Returns a new Chess() instance positioned at that node.
      */
     const navigateTo = useCallback((id: string): Chess => {
         const tree = treeRef.current
         const rootNode = tree.nodes.get(tree.rootId)
-        if (!tree.nodes.has(id)) return new Chess(rootNode?.fen ?? INITIAL_FEN)
+        const targetNode = tree.nodes.get(id)
+        if (!targetNode) return new Chess(rootNode?.fen ?? INITIAL_FEN)
 
         publishTree({ ...tree, currentId: id })
-
-        // Reconstruct chess state by replaying moves from root
-        const path = pathToNode(id)
-        const chess = new Chess(rootNode?.fen ?? INITIAL_FEN)
-        for (const node of path) {
-            if (node.move) {
-                chess.move({ from: node.move.from, to: node.move.to, promotion: node.move.promotion })
-            }
-        }
-        return chess
-    }, [pathToNode, publishTree])
+        return new Chess(targetNode.fen)
+    }, [publishTree])
 
     /** Step back one node along the active path */
     const goBack = useCallback((): Chess => {

@@ -38,13 +38,27 @@ export function MoveListTree({ tree, onNavigate }: Props) {
     // Build rows: pairs of (white move, black move) from the main line.
     // Beneath each pair, show any variation branches.
     const rows: React.ReactElement[] = []
-    // line[0] is root (no move) — skip
+    const rootState = moveStateFromFen(line[0]?.fen)
+    let moveNum = rootState.moveNumber
+    let sideToMove = rootState.sideToMove
+
+    // line[0] is root (no move) - skip
     let i = 1
     while (i < line.length) {
-        const whiteNode = line[i]
-        const blackNode = line[i + 1] ?? null
-        const moveNum = Math.ceil(i / 2)
-        const isWhiteTurn = i % 2 === 1
+        let whiteNode: GameNode | null = null
+        let blackNode: GameNode | null = null
+        const rowStartsWithBlack = sideToMove === 'b'
+
+        if (sideToMove === 'w') {
+            whiteNode = line[i] ?? null
+            if (whiteNode) i += 1
+
+            blackNode = line[i] ?? null
+            if (blackNode) i += 1
+        } else {
+            blackNode = line[i] ?? null
+            if (blackNode) i += 1
+        }
 
         const whiteEl = whiteNode ? (
             <MoveChip
@@ -66,7 +80,7 @@ export function MoveListTree({ tree, onNavigate }: Props) {
 
         rows.push(
             <div key={`row-${moveNum}`} className="mtree-row">
-                <span className="mtree-num">{isWhiteTurn ? moveNum : ''}</span>
+                <span className="mtree-num">{rowStartsWithBlack ? `${moveNum}...` : moveNum}</span>
                 {whiteEl}
                 {blackEl}
             </div>
@@ -98,7 +112,12 @@ export function MoveListTree({ tree, onNavigate }: Props) {
             }
         }
 
-        i += 2
+        if (blackNode) {
+            moveNum += 1
+            sideToMove = 'w'
+        } else {
+            sideToMove = 'b'
+        }
     }
 
     return (
@@ -109,6 +128,17 @@ export function MoveListTree({ tree, onNavigate }: Props) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+function moveStateFromFen(fen?: string): { sideToMove: 'w' | 'b'; moveNumber: number } {
+    const parts = fen?.split(/\s+/) ?? []
+    const sideToMove = parts[1] === 'b' ? 'b' : 'w'
+    const moveNumber = Number(parts[5])
+
+    return {
+        sideToMove,
+        moveNumber: Number.isInteger(moveNumber) && moveNumber > 0 ? moveNumber : 1,
+    }
+}
 
 type ChipProps = {
     node: GameNode
