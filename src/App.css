@@ -1571,6 +1571,31 @@ body.resizing * {
   cursor: default;
 }
 
+.pv-list article,
+.cloud-line-row,
+.moves-list li,
+.mtree-row,
+.mtree-variation,
+.sample-game-row {
+  contain: layout paint style;
+  content-visibility: auto;
+}
+
+.pv-list article,
+.cloud-line-row {
+  contain-intrinsic-size: auto 92px;
+}
+
+.moves-list li,
+.mtree-row,
+.mtree-variation {
+  contain-intrinsic-size: auto 36px;
+}
+
+.sample-game-row {
+  contain-intrinsic-size: auto 128px;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .pv-list article:hover {
     border-color: var(--border-default);
