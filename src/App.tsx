@@ -16,12 +16,8 @@ import {
 } from './engine/analysis'
 import { historicalSampleGames, type HistoricalSampleGame, type HistoricalSampleFormat } from './assets/historicalSamples'
 import {
-  cloudEvalRequestKey,
   cloudEvalToSnapshot,
   cloudLineToSideToMoveScore,
-  fetchCloudEvaluation,
-  getCachedCloudEvaluation,
-  type CloudEvalResult,
 } from './engine/cloudEval'
 import {
   getCachedOpeningExplorer,
@@ -37,6 +33,7 @@ import { useStockfishEngine } from './hooks/useStockfishEngine'
 import { useAiPlayer, type AiDifficulty } from './hooks/useAiPlayer'
 import { useGameTree } from './hooks/useGameTree'
 import { useOpening } from './hooks/useOpening'
+import { useCloudEvaluation } from './hooks/useCloudEvaluation'
 import { useOpeningExplorer } from './hooks/useOpeningExplorer'
 import { NewGameDialog, type GameMode, type PlayerColor } from './components/NewGameDialog'
 import { PgnDialog } from './components/PgnDialog'
@@ -56,7 +53,6 @@ type OpeningRatingPresetId = 'all' | 'club' | 'advanced'
 type SampleLibraryFilter = 'all' | HistoricalSampleFormat
 type PromotionPiece = 'q' | 'r' | 'b' | 'n'
 type PendingPromotion = { from: Square; to: Square }
-type CloudEvalStatus = 'idle' | 'loading' | 'hit' | 'missing' | 'error'
 
 const ANALYSIS_SETTINGS_STORAGE_KEY = 'webchess:analysis-settings:v1'
 const ANALYZE_MODE_IDS: AnalyzeMode[] = ['quick', 'deep', 'infinite', 'mate', 'review']
@@ -85,7 +81,6 @@ const MOVE_PONDER_MIN_DEPTH = 20
 const IMPORT_SWEEP_MOVETIME_MS = 70
 const IMPORT_SWEEP_MULTIPV = 1
 const AUTO_ANALYZE_DEBOUNCE_MS = 140
-const CLOUD_EVAL_DEBOUNCE_MS = 320
 
 const analyzePresets: Array<{ id: AnalyzePresetId; label: string; summary: string }> = [
   { id: 'blunder-check', label: 'Fast Blunder Check', summary: 'Quick scan after each move.' },
@@ -489,9 +484,6 @@ function App() {
 
   // ── Evaluations ──────────────────────────────────────
   const [evaluationsByFen, setEvaluationsByFen] = useState<Map<string, EvalSnapshot>>(new Map())
-  const [cloudEvaluations, setCloudEvaluations] = useState<Map<string, CloudEvalResult>>(new Map())
-  const [cloudEvalStatus, setCloudEvalStatus] = useState<CloudEvalStatus>('idle')
-  const [cloudEvalError, setCloudEvalError] = useState<string | null>(null)
 
   // ── Game mode ────────────────────────────────────────
   const [showNewGameDialog, setShowNewGameDialog] = useState(false)
@@ -618,12 +610,6 @@ function App() {
   const opening = useOpening(openingFenPath, workspaceMode === 'analysis' && currentPathNodes.length > 1)
   const canGoBack = currentPathNodes.length > 1
   const canGoForward = gameTree.current.children.length > 0
-  const cloudEvalMultiPv = Math.max(1, Math.min(5, multiPv))
-  const currentCloudEvalKey = useMemo(
-    () => cloudEvalRequestKey({ fen, multiPv: cloudEvalMultiPv }),
-    [cloudEvalMultiPv, fen],
-  )
-  const currentCloudEval = cloudEvaluations.get(currentCloudEvalKey) ?? null
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -696,6 +682,16 @@ function App() {
   const [batchReviewProgress, setBatchReviewProgress] = useState({ done: 0, total: 0 })
   const batchReviewQueueRef = useRef<BatchReviewTarget[]>([])
   const activeBatchReviewRef = useRef<BatchReviewTarget | null>(null)
+  const {
+    error: cloudEvalError,
+    multiPv: cloudEvalMultiPv,
+    result: currentCloudEval,
+    status: cloudEvalStatus,
+  } = useCloudEvaluation({
+    fen,
+    multiPv,
+    enabled: engineEnabled && !isImportingGame && !isBatchReviewing,
+  })
 
   const stopBatchReview = useCallback(() => {
     batchReviewQueueRef.current = []
@@ -855,70 +851,6 @@ function App() {
     primaryLine?.searchId,
     primaryLine?.time,
     primaryLine?.wdl,
-  ])
-
-  useEffect(() => {
-    if (!engineEnabled) {
-      setCloudEvalStatus('idle')
-      setCloudEvalError(null)
-      return
-    }
-    if (isImportingGame || isBatchReviewing) return
-
-    const request = { fen, multiPv: cloudEvalMultiPv }
-    const cached = getCachedCloudEvaluation(request)
-    if (cached) {
-      setCloudEvaluations(previous => {
-        if (previous.get(currentCloudEvalKey) === cached) return previous
-        const next = new Map(previous)
-        next.set(currentCloudEvalKey, cached)
-        return next
-      })
-      setCloudEvalStatus('hit')
-      setCloudEvalError(null)
-      return
-    }
-
-    const controller = new AbortController()
-    setCloudEvalStatus('idle')
-    setCloudEvalError(null)
-    const timer = window.setTimeout(() => {
-      setCloudEvalStatus('loading')
-      setCloudEvalError(null)
-
-      fetchCloudEvaluation(request, controller.signal)
-        .then(result => {
-          if (controller.signal.aborted) return
-          if (!result) {
-            setCloudEvalStatus('missing')
-            return
-          }
-
-          setCloudEvaluations(previous => {
-            const next = new Map(previous)
-            next.set(currentCloudEvalKey, result)
-            return next
-          })
-          setCloudEvalStatus('hit')
-        })
-        .catch(error => {
-          if (controller.signal.aborted) return
-          setCloudEvalStatus('error')
-          setCloudEvalError(error instanceof Error ? error.message : String(error))
-        })
-    }, CLOUD_EVAL_DEBOUNCE_MS)
-
-    return () => {
-      window.clearTimeout(timer)
-      controller.abort()
-    }
-  }, [
-    cloudEvalMultiPv,
-    currentCloudEvalKey,
-    engineEnabled,
-    fen,
-    isBatchReviewing,
-    isImportingGame,
   ])
 
   useEffect(() => {
