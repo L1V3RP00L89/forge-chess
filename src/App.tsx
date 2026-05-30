@@ -334,6 +334,26 @@ function formatCloudNodes(knodes: number): string {
   return `${knodes.toLocaleString()}k nodes`
 }
 
+function formatCompactNumber(value: number): string {
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
+  if (value >= 1_000) return `${Math.round(value / 1_000)}k`
+  return String(value)
+}
+
+function engineTelemetryLabel(line: { depth?: number; nodes?: number; nps?: number; time?: number } | null | undefined): string | null {
+  if (!line) return null
+
+  const parts = [
+    typeof line.depth === 'number' && line.depth > 0 ? `D${line.depth}` : null,
+    typeof line.nodes === 'number' && line.nodes > 0 ? `${formatCompactNumber(line.nodes)} nodes` : null,
+    typeof line.nps === 'number' && line.nps > 0 ? `${formatCompactNumber(line.nps)} nps` : null,
+    typeof line.time === 'number' && line.time > 0 ? `${line.time} ms` : null,
+  ].filter(Boolean)
+
+  return parts.length ? parts.join(' · ') : null
+}
+
 function formatTablebaseDistance(label: string, value: number | null | undefined): string | null {
   return typeof value === 'number' && value !== 0 ? `${label} ${Math.abs(value)}` : null
 }
@@ -357,6 +377,25 @@ function tablebaseMoveSummary(move: TablebaseMove): string {
 function bestMoveLabel(fen: string, uci: string | null | undefined): string {
   if (!uci) return '...'
   return uciToSan(fen, uci) ?? uci
+}
+
+function ponderMoveLabel(fen: string, bestMove: string | null | undefined, ponderMove: string | null | undefined): string {
+  if (!ponderMove) return '...'
+  if (!bestMove) return bestMoveLabel(fen, ponderMove)
+
+  const replay = new Chess(fen)
+  try {
+    const move = replay.move({
+      from: bestMove.slice(0, 2),
+      to: bestMove.slice(2, 4),
+      promotion: bestMove[4],
+    })
+    if (!move) return ponderMove
+  } catch {
+    return ponderMove
+  }
+
+  return uciToSan(replay.fen(), ponderMove) ?? ponderMove
 }
 
 function resultLabel(result: HistoricalSampleGame['result']): string {
@@ -1128,6 +1167,7 @@ function App() {
   const coachBestMove = coachLine?.pv[0] ?? currentCloudEval?.pvs[0]?.moves[0] ?? lastBestMove ?? null
   const coachBestMoveText = bestMoveLabel(fen, coachBestMove)
   const coachDepth = coachLine?.depth ?? currentCloudEval?.depth
+  const engineTelemetry = engineTelemetryLabel(coachLine)
   const coachLineSan = coachLine
     ? pvToSan(coachLine.fen ?? fen, coachLine, 6)
     : currentCloudEval?.pvs[0]
@@ -3001,7 +3041,11 @@ function App() {
                         Best move: {bestMoveLabel(fen, lastBestMove)}
                       </p>
                     )}
-                    {lastPonderMove && <p className="best-move">Ponder: {lastPonderMove}</p>}
+                    {lastPonderMove && (
+                      <p className="best-move" title={lastPonderMove}>
+                        Ponder: {ponderMoveLabel(fen, lastBestMove, lastPonderMove)}
+                      </p>
+                    )}
                   </div>
                 </>
               )}
@@ -3293,6 +3337,9 @@ function App() {
               </span>
               {activeGoCommand && (
                 <span className="engine-command-inline">{activeGoCommand}</span>
+              )}
+              {engineTelemetry && (
+                <span className="engine-telemetry-inline">{engineTelemetry}</span>
               )}
 
               {/* Game-over badges */}

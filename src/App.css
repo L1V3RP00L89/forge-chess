@@ -1565,6 +1565,17 @@ body.resizing * {
   max-width: 42%;
 }
 
+.engine-telemetry-inline {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(13, 17, 23, 0.35);
+  padding: 0.16rem 0.35rem;
+  white-space: nowrap;
+}
+
 .engine-lab-card {
   margin-bottom: var(--space-md);
   border: 1px solid var(--border-subtle);
