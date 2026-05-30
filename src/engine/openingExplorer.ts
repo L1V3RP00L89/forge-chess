@@ -48,6 +48,8 @@ export type OpeningExplorerResponse = {
 
 const EXPLORER_BASE_URL = 'https://explorer.lichess.ovh'
 const CACHE_TTL_MS = 5 * 60 * 1000
+const AUTH_REQUIRED_MESSAGE = 'Opening Explorer requires a Lichess API token.'
+const AUTH_REJECTED_MESSAGE = 'Opening Explorer rejected the Lichess API token.'
 
 type CacheEntry = {
   expiresAt: number
@@ -228,8 +230,21 @@ export async function fetchOpeningExplorer(
   const cached = readCached(request)
   if (cached) return cached
 
-  const response = await fetch(buildUrl(request), { signal })
+  if (!normalizeAuthToken(request.authToken)) {
+    throw new Error(AUTH_REQUIRED_MESSAGE)
+  }
+
+  const response = await fetch(buildUrl(request), {
+    signal,
+    headers: authHeaders(request.authToken),
+  })
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(AUTH_REJECTED_MESSAGE)
+    }
+    if (response.status === 429) {
+      throw new Error('Opening Explorer rate limit reached; try again in a minute.')
+    }
     throw new Error(`Opening Explorer request failed (${response.status}).`)
   }
 
@@ -241,10 +256,10 @@ export async function fetchOpeningExplorer(
 
 export async function prefetchOpeningExplorer(request: OpeningExplorerRequest): Promise<void> {
   if (readCached(request)) return
+  if (!normalizeAuthToken(request.authToken)) return
   try {
     await fetchOpeningExplorer(request)
   } catch {
     // Ignore prefetch errors; live views will show fetch status as needed.
   }
 }
-

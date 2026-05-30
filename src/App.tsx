@@ -374,6 +374,7 @@ function App() {
   const [openingSource, setOpeningSource] = useState<OpeningDatabaseSource>(persistedSettings.openingSource)
   const [openingSpeeds, setOpeningSpeeds] = useState<OpeningSpeed[]>(persistedSettings.openingSpeeds)
   const [openingRatingPreset, setOpeningRatingPreset] = useState<OpeningRatingPresetId>(persistedSettings.openingRatingPreset)
+  const [openingAuthToken, setOpeningAuthToken] = useState('')
   const [showBoardArrows, setShowBoardArrows] = useState<boolean>(persistedSettings.showBoardArrows)
   const [showTopMoveArrows, setShowTopMoveArrows] = useState<boolean>(persistedSettings.showTopMoveArrows)
   const [topMoveArrowCount, setTopMoveArrowCount] = useState<number>(persistedSettings.topMoveArrowCount)
@@ -494,6 +495,9 @@ function App() {
     moves: currentPathMoves,
     speeds: openingRequestSpeeds,
     ratings: openingRequestRatings,
+    authToken: openingAuthToken,
+    enabled: workspaceMode === 'analysis'
+      && (analysisTab === 'book' || (analysisTab === 'engine-lab' && Boolean(openingAuthToken.trim()))),
   })
   const filteredSampleGames = useMemo(
     () => historicalSampleGames.filter(sample => sampleFilter === 'all' || sample.format === sampleFilter),
@@ -815,6 +819,7 @@ function App() {
     setOpeningSource(DEFAULT_PERSISTED_SETTINGS.openingSource)
     setOpeningSpeeds(DEFAULT_PERSISTED_SETTINGS.openingSpeeds)
     setOpeningRatingPreset(DEFAULT_PERSISTED_SETTINGS.openingRatingPreset)
+    setOpeningAuthToken('')
     setShowBoardArrows(DEFAULT_PERSISTED_SETTINGS.showBoardArrows)
     setShowTopMoveArrows(DEFAULT_PERSISTED_SETTINGS.showTopMoveArrows)
     setTopMoveArrowCount(DEFAULT_PERSISTED_SETTINGS.topMoveArrowCount)
@@ -2193,6 +2198,18 @@ function App() {
                         ))}
                       </div>
                     </div>
+                    <label className="engine-option-row">
+                      <span>Lichess token</span>
+                      <input
+                        className="opening-token-input"
+                        type="password"
+                        value={openingAuthToken}
+                        onChange={event => setOpeningAuthToken(event.target.value)}
+                        autoComplete="off"
+                        spellCheck={false}
+                        placeholder="Session-only API token"
+                      />
+                    </label>
                     {openingSource === 'lichess' && (
                       <>
                         <div className="opening-speed-toggle">
