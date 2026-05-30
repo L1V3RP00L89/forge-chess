@@ -270,25 +270,6 @@ function uniqueSquares(squares: Square[]): Square[] {
   return Array.from(new Set(squares))
 }
 
-function gameModeLabel(mode: GameMode): string {
-  if (mode === 'human-vs-ai') return 'Human vs AI'
-  if (mode === 'ai-vs-ai') return 'AI vs AI'
-  return 'Human vs Human'
-}
-
-function turnLabel(fen: string): string {
-  return fen.split(' ')[1] === 'b' ? 'Black to move' : 'White to move'
-}
-
-function engineStatusLabel(enabled: boolean, status: string): string {
-  if (!enabled) return 'Engine idle'
-  if (status === 'loading') return 'Warming engine'
-  if (status === 'ready') return 'Engine ready'
-  if (status === 'analyzing') return 'Analyzing'
-  if (status === 'error') return 'Engine error'
-  return 'Engine idle'
-}
-
 function loadPersistedSettings(): PersistedAppSettings {
   if (typeof window === 'undefined') return DEFAULT_PERSISTED_SETTINGS
 
@@ -542,7 +523,7 @@ function App() {
     ratings: openingRequestRatings,
     authToken: openingAuthToken,
     enabled: workspaceMode === 'analysis'
-      && (analysisTab === 'book' || (analysisTab === 'engine-lab' && Boolean(openingAuthToken.trim()))),
+      && (analysisTab === 'analyze' || (analysisTab === 'engine-lab' && Boolean(openingAuthToken.trim()))),
   })
   const filteredSampleGames = useMemo(
     () => historicalSampleGames.filter(sample => sampleFilter === 'all' || sample.format === sampleFilter),

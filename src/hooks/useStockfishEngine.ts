@@ -8,7 +8,7 @@ import {
 } from '../engine/profiles'
 import { buildAnalyzeCommand, parseBestMoveLine, type AnalyzeRequest } from '../engine/uci'
 
-type EngineStatus = 'loading' | 'ready' | 'analyzing' | 'error'
+type EngineStatus = 'loading' | 'ready' | 'analyzing' | 'error' | 'disabled'
 
 type EngineLine = {
   fen?: string

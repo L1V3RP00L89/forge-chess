@@ -12,6 +12,7 @@ export type UseOpeningExplorerArgs = {
   moves: string[]
   speeds?: OpeningSpeed[]
   ratings?: number[]
+  authToken?: string
   enabled?: boolean
   debounceMs?: number
 }
@@ -29,6 +30,7 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
   const movesKey = args.moves.map(move => move.trim().toLowerCase()).filter(Boolean).join(',')
   const speedsKey = (args.speeds ?? []).slice().sort().join(',')
   const ratingsKey = (args.ratings ?? []).slice().sort((a, b) => a - b).join(',')
+  const authKey = args.authToken?.trim() ? 'auth' : 'anon'
   const normalizedMoves = useMemo(() => (movesKey ? movesKey.split(',') : []), [movesKey])
   const normalizedSpeeds = useMemo(
     () => (speedsKey ? speedsKey.split(',') : []) as OpeningSpeed[],
@@ -38,7 +40,7 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
     () => (ratingsKey ? ratingsKey.split(',').map(value => Number(value)).filter(Number.isFinite) : []),
     [ratingsKey],
   )
-  const requestKey = [args.source, movesKey, speedsKey, ratingsKey].join('|')
+  const requestKey = [args.source, movesKey, speedsKey, ratingsKey, authKey].join('|')
 
   const [dataByKey, setDataByKey] = useState<Record<string, OpeningExplorerResponse>>({})
   const [errorByKey, setErrorByKey] = useState<Record<string, string>>({})
@@ -73,6 +75,7 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
           moves: normalizedMoves,
           speeds: normalizedSpeeds,
           ratings: normalizedRatings,
+          authToken: args.authToken,
         },
         controller.signal,
       )
@@ -101,6 +104,8 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
     }
   }, [
     args.source,
+    args.authToken,
+    authKey,
     debounceMs,
     enabled,
     hasLocalData,

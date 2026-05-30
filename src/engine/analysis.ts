@@ -89,11 +89,16 @@ function toUci(move: Move): string {
   return `${move.from}${move.to}${move.promotion ?? ''}`
 }
 
-export function buildReviewRows(history: Move[], evaluationsByFen: Map<string, EvalSnapshot>): ReviewRow[] {
-  const replay = new Chess()
+export function buildReviewRows(
+  history: Move[],
+  evaluationsByFen: Map<string, EvalSnapshot>,
+  rootFen = new Chess().fen(),
+): ReviewRow[] {
+  const replay = new Chess(rootFen)
 
   return history.map((move, index) => {
     const beforeFen = replay.fen()
+    const moveNumber = replay.moveNumber()
     replay.move({ from: move.from, to: move.to, promotion: move.promotion })
     const afterFen = replay.fen()
 
@@ -102,7 +107,7 @@ export function buildReviewRows(history: Move[], evaluationsByFen: Map<string, E
     if (typeof before !== 'number' || typeof after !== 'number') {
       return {
         ply: index + 1,
-        moveNumber: Math.floor(index / 2) + 1,
+        moveNumber,
         san: move.san,
         uci: toUci(move),
         quality: 'pending',
@@ -114,7 +119,7 @@ export function buildReviewRows(history: Move[], evaluationsByFen: Map<string, E
 
     return {
       ply: index + 1,
-      moveNumber: Math.floor(index / 2) + 1,
+      moveNumber,
       san: move.san,
       uci: toUci(move),
       deltaCp,

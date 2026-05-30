@@ -40,9 +40,9 @@ export const DIFFICULTY_LABELS: Record<AiDifficulty, string> = {
     8: 'Maximum',
 }
 
-type AiStatus = 'loading' | 'ready' | 'thinking' | 'error'
+type AiStatus = 'loading' | 'ready' | 'thinking' | 'error' | 'disabled'
 
-export function useAiPlayer() {
+export function useAiPlayer(enabled = true) {
     const workerRef = useRef<Worker | null>(null)
     const isReadyRef = useRef(false)
     const resolveRef = useRef<((move: string | null) => void) | null>(null)
@@ -62,6 +62,15 @@ export function useAiPlayer() {
 
     // Boot a fresh lite-single worker for the AI player
     useEffect(() => {
+        if (!enabled) {
+            workerRef.current = null
+            isReadyRef.current = false
+            resolveRef.current?.(null)
+            resolveRef.current = null
+            queueMicrotask(() => setStatus('disabled'))
+            return
+        }
+
         const capabilities = {
             sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
             crossOriginIsolated: Boolean(globalThis.crossOriginIsolated),
@@ -69,7 +78,7 @@ export function useAiPlayer() {
             isMobile: /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent),
         }
 
-        const profile = resolveProfile('auto', capabilities)
+        const profile = resolveProfile('lite-single-local', capabilities)
         let worker: Worker
 
         try {
@@ -122,7 +131,7 @@ export function useAiPlayer() {
             resolveRef.current?.(null)
             resolveRef.current = null
         }
-    }, [applyDifficulty])
+    }, [applyDifficulty, enabled])
 
     const setDifficulty = useCallback((difficulty: AiDifficulty) => {
         difficultyRef.current = difficulty
@@ -136,6 +145,7 @@ export function useAiPlayer() {
     const requestMove = useCallback(
         (fen: string, difficulty: AiDifficulty): Promise<string | null> => {
             const worker = workerRef.current
+            if (!enabled) return Promise.resolve(null)
             if (!worker || !isReadyRef.current || resolveRef.current) return Promise.resolve(null)
 
             return new Promise((resolve) => {
@@ -148,7 +158,7 @@ export function useAiPlayer() {
                 worker.postMessage(`go movetime ${movetime}`)
             })
         },
-        [],
+        [enabled],
     )
 
     return { status, requestMove, setDifficulty }

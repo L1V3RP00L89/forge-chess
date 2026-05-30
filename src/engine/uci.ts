@@ -16,6 +16,7 @@ export type UciGoLimits = {
 
 export type AnalyzeRequest = {
   fen: string
+  rootFen?: string
   mode?: AnalyzeMode
   limits?: UciGoLimits
   hashMb?: number
@@ -61,10 +62,12 @@ export function normalizeUciMoves(moves: string[] | undefined): string[] {
   return moves.map(move => move.trim().toLowerCase()).filter(isUciMove)
 }
 
-export function buildPositionCommand(fen: string, historyMoves?: string[]): string {
+export function buildPositionCommand(fen: string, historyMoves?: string[], rootFen?: string): string {
   const normalizedMoves = normalizeUciMoves(historyMoves)
   if (!normalizedMoves.length) return `position fen ${fen}`
-  return `position fen ${fen} moves ${normalizedMoves.join(' ')}`
+
+  const rootPosition = rootFen ? `fen ${rootFen}` : `fen ${fen}`
+  return `position ${rootPosition} moves ${normalizedMoves.join(' ')}`
 }
 
 function modeDefaults(mode: AnalyzeMode | undefined): UciGoLimits {
@@ -149,7 +152,7 @@ export function buildAnalyzeCommand(request: AnalyzeRequest): BuiltAnalyzeComman
 
   return {
     setOptions,
-    position: buildPositionCommand(request.fen, request.historyMoves),
+    position: buildPositionCommand(request.fen, request.historyMoves, request.rootFen),
     go: buildGoCommand(request.mode, request.limits, request.searchMoves),
   }
 }

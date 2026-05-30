@@ -6,6 +6,7 @@ export type OpeningExplorerRequest = {
   moves: string[]
   speeds?: OpeningSpeed[]
   ratings?: number[]
+  authToken?: string
 }
 
 export type OpeningExplorerMove = {
@@ -87,6 +88,16 @@ function normalizeMoves(moves: string[]): string[] {
   return moves
     .map(move => move.trim().toLowerCase())
     .filter(Boolean)
+}
+
+function normalizeAuthToken(authToken: string | undefined): string {
+  const trimmed = authToken?.trim() ?? ''
+  return trimmed.replace(/^Bearer\s+/i, '').trim()
+}
+
+function authHeaders(authToken: string | undefined): HeadersInit {
+  const token = normalizeAuthToken(authToken)
+  return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
 function requestCacheKey(request: OpeningExplorerRequest): string {
