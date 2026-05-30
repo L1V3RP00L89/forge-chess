@@ -22,7 +22,7 @@ export const MoveListTree = memo(function MoveListTree({ tree, onNavigate }: Pro
 
     // Auto-scroll current node into view
     useEffect(() => {
-        const el = document.querySelector(`[data-node-id="${current.id}"]`) as HTMLElement | null
+        const el = scrollRef.current?.querySelector(`[data-node-id="${current.id}"]`) as HTMLElement | null
         el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
     }, [current.id])
 

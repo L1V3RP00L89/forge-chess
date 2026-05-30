@@ -228,6 +228,24 @@ export function useGameTree(startFen?: string) {
         publishTree({ ...tree, nodes: nextNodes })
     }, [publishTree])
 
+    /** Attach quality labels to many nodes in one tree publish. */
+    const setNodeQualities = useCallback((updates: Array<{ id: string; quality: ReviewLabel }>) => {
+        if (!updates.length) return
+
+        const tree = treeRef.current
+        let changed = false
+        const nextNodes = new Map(tree.nodes)
+
+        for (const update of updates) {
+            const node = nextNodes.get(update.id)
+            if (!node || node.quality === update.quality) continue
+            nextNodes.set(update.id, { ...node, quality: update.quality })
+            changed = true
+        }
+
+        if (changed) publishTree({ ...tree, nodes: nextNodes })
+    }, [publishTree])
+
     /** Reset tree to a fresh starting position */
     const reset = useCallback((fen?: string) => {
         publishTree(makeTree(fen))
@@ -254,6 +272,7 @@ export function useGameTree(startFen?: string) {
         goBack,
         goForward,
         setNodeQuality,
+        setNodeQualities,
         reset,
     }), [
         addMove,
@@ -270,6 +289,7 @@ export function useGameTree(startFen?: string) {
         reset,
         root,
         setNodeQuality,
+        setNodeQualities,
         tick,
     ])
 }

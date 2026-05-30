@@ -1487,12 +1487,12 @@ function App() {
 
   // ── Move quality → annotate tree nodes ───────────────
   useEffect(() => {
-    reviewRows.forEach((row, idx) => {
+    const qualityUpdates = reviewRows.flatMap((row, idx) => {
       const node = mainLineNodes[idx + 1]
-      if (node && row.quality && row.quality !== 'pending') {
-        gameTree.setNodeQuality(node.id, row.quality)
-      }
+      if (!node || row.quality === 'pending') return []
+      return [{ id: node.id, quality: row.quality }]
     })
+    gameTree.setNodeQualities(qualityUpdates)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviewRows])
 
