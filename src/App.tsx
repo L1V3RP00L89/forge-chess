@@ -74,6 +74,7 @@ const IMPORT_SHALLOW_MULTIPV = 1
 const MOVE_PONDER_MIN_DEPTH = 20
 const IMPORT_SWEEP_MOVETIME_MS = 70
 const IMPORT_SWEEP_MULTIPV = 1
+const AUTO_ANALYZE_DEBOUNCE_MS = 140
 
 const analyzePresets: Array<{ id: AnalyzePresetId; label: string; summary: string }> = [
   { id: 'blunder-check', label: 'Fast Blunder Check', summary: 'Quick scan after each move.' },
@@ -86,6 +87,12 @@ type ImportSweepTarget = {
   fen: string
   rootFen: string
   historyMoves: string[]
+}
+
+type AnalysisTarget = {
+  fen: string
+  rootFen: string
+  pathMovesKey: string
 }
 
 function buildImportSweepTargets(
@@ -525,6 +532,11 @@ function App() {
   )
   const currentPathMovesKey = currentPathMoves.join(' ')
   const currentRootFen = gameTree.root.fen
+  const [settledAnalysisTarget, setSettledAnalysisTarget] = useState<AnalysisTarget>(() => ({
+    fen: game.fen(),
+    rootFen: currentRootFen,
+    pathMovesKey: '',
+  }))
   const openingRatings = useMemo(
     () => OPENING_RATING_PRESETS.find(preset => preset.id === openingRatingPreset)?.ratings ?? [],
     [openingRatingPreset],
@@ -548,6 +560,18 @@ function App() {
   const opening = useOpening(currentPathNodes.map(n => n.fen))
   const canGoBack = currentPathNodes.length > 1
   const canGoForward = gameTree.current.children.length > 0
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSettledAnalysisTarget({
+        fen,
+        rootFen: currentRootFen,
+        pathMovesKey: currentPathMovesKey,
+      })
+    }, AUTO_ANALYZE_DEBOUNCE_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [currentPathMovesKey, currentRootFen, fen])
 
   const goFirst = useCallback(() => {
     const root = gameTree.root
@@ -717,17 +741,20 @@ function App() {
     }
 
     if (!autoAnalyze) return
-    if (skipFullAnalyzeFenRef.current === fen) return
+    if (settledAnalysisTarget.fen !== fen) return
+    if (settledAnalysisTarget.rootFen !== currentRootFen) return
+    if (settledAnalysisTarget.pathMovesKey !== currentPathMovesKey) return
+    if (skipFullAnalyzeFenRef.current === settledAnalysisTarget.fen) return
 
     analyze({
-      fen,
+      fen: settledAnalysisTarget.fen,
       mode: 'custom',
       limits: { depth: searchDepth },
       multiPv,
       hashMb,
       showWdl,
-      rootFen: currentRootFen,
-      historyMoves: currentPathMovesKey ? currentPathMovesKey.split(' ') : [],
+      rootFen: settledAnalysisTarget.rootFen,
+      historyMoves: settledAnalysisTarget.pathMovesKey ? settledAnalysisTarget.pathMovesKey.split(' ') : [],
     })
   }, [
     analyze,
@@ -742,6 +769,7 @@ function App() {
     pendingPonderFen,
     pendingShallowAnalyzeFen,
     searchDepth,
+    settledAnalysisTarget,
     showWdl,
   ])
 

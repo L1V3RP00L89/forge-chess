@@ -67,6 +67,15 @@ const RAW_LINE_LIMIT = 800
 const ENGINE_STATE_FLUSH_INTERVAL_MS = 100
 const NO_REPLY_COMMANDS = new Set(['ucinewgame', 'position', 'setoption', 'stop', 'ponderhit', 'quit'])
 
+function recommendedThreadCount(profile: EngineProfile, capabilities: EngineCapabilities): number {
+  if (!profile.requiresIsolation) return 1
+  if (!capabilities.sharedArrayBuffer || !capabilities.crossOriginIsolated) return 1
+  if (capabilities.isMobile) return 1
+
+  const usableCores = Math.max(1, capabilities.hardwareConcurrency || 1)
+  return Math.max(1, Math.min(4, Math.floor(usableCores / 2)))
+}
+
 function firstWord(input: string): string {
   const trimmed = input.trim()
   const index = trimmed.indexOf(' ')
@@ -641,6 +650,10 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
 
         if (line === 'readyok') {
           isReadyRef.current = true
+          const threads = recommendedThreadCount(profile, capabilities)
+          if (threads > 1) {
+            send(`setoption name Threads value ${threads}`)
+          }
           setStatus((value) => (value === 'error' ? value : 'ready'))
           flushPendingAnalyze()
         }
