@@ -785,6 +785,8 @@ function App() {
     newGame,
     stop,
     setOption,
+    lastBestMoveFen,
+    lastPonderMoveFen,
   } = useStockfishEngine(engineProfile, engineEnabled)
 
   // ── Batch Review ─────────────────────────────────────
@@ -896,6 +898,8 @@ function App() {
   }, [clearImportSweep, stop, workspaceMode])
 
   const primaryLine = lines.find(l => l.multipv === 1) ?? lines[0]
+  const currentLastBestMove = lastBestMoveFen === fen ? lastBestMove : null
+  const currentLastPonderMove = lastPonderMoveFen === fen ? lastPonderMove : null
 
   // ── Capture evaluations ──────────────────────────────
   useEffect(() => {
@@ -1164,7 +1168,7 @@ function App() {
       : evaluationsByFen.get(fen)
         ? formatWhitePovEvaluation(fen, evaluationsByFen.get(fen)?.cp, evaluationsByFen.get(fen)?.mate)
         : '...'
-  const coachBestMove = coachLine?.pv[0] ?? currentCloudEval?.pvs[0]?.moves[0] ?? lastBestMove ?? null
+  const coachBestMove = coachLine?.pv[0] ?? currentCloudEval?.pvs[0]?.moves[0] ?? currentLastBestMove ?? null
   const coachBestMoveText = bestMoveLabel(fen, coachBestMove)
   const coachDepth = coachLine?.depth ?? currentCloudEval?.depth
   const engineTelemetry = engineTelemetryLabel(coachLine)
@@ -3046,7 +3050,7 @@ function App() {
                   )}
                   <div className="pv-list">
                     <h3><span className="section-icon"><IconSearch /></span> Lines</h3>
-                    {lines.length === 0 && !activeGoCommand && !lastBestMove && (
+                    {lines.length === 0 && !activeGoCommand && !currentLastBestMove && (
                       <div className="empty-state">
                         <span className="empty-state-icon"><IconSearch /></span>
                         <p>Start analysis to see principal variation lines here.</p>
@@ -3071,14 +3075,14 @@ function App() {
                           )}
                         </article>
                       ))}
-                    {lastBestMove && (
-                      <p className="best-move" title={lastBestMove}>
-                        Best move: {bestMoveLabel(fen, lastBestMove)}
+                    {currentLastBestMove && (
+                      <p className="best-move" title={currentLastBestMove}>
+                        Best move: {bestMoveLabel(fen, currentLastBestMove)}
                       </p>
                     )}
-                    {lastPonderMove && (
-                      <p className="best-move" title={lastPonderMove}>
-                        Ponder: {ponderMoveLabel(fen, lastBestMove, lastPonderMove)}
+                    {currentLastPonderMove && (
+                      <p className="best-move" title={currentLastPonderMove}>
+                        Ponder: {ponderMoveLabel(fen, currentLastBestMove, currentLastPonderMove)}
                       </p>
                     )}
                   </div>
@@ -3385,8 +3389,8 @@ function App() {
                 <span className="game-over-badge check"><IconAlert style={{ marginRight: '3px' }} />Check!</span>
               )}
 
-              {lastBestMove && !game.isGameOver() && (
-                <p className="best-move" title={lastBestMove}>Best: {bestMoveLabel(fen, lastBestMove)}</p>
+              {currentLastBestMove && !game.isGameOver() && (
+                <p className="best-move" title={currentLastBestMove}>Best: {bestMoveLabel(fen, currentLastBestMove)}</p>
               )}
             </div>
           </div>

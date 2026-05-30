@@ -278,7 +278,9 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
   const [status, setStatus] = useState<EngineStatus>('loading')
   const [engineName, setEngineName] = useState('Stockfish')
   const [lastBestMove, setLastBestMove] = useState<string | null>(null)
+  const [lastBestMoveFen, setLastBestMoveFen] = useState<string | null>(null)
   const [lastPonderMove, setLastPonderMove] = useState<string | null>(null)
+  const [lastPonderMoveFen, setLastPonderMoveFen] = useState<string | null>(null)
   const [activeGoCommand, setActiveGoCommand] = useState<string>('')
   const [queueLength, setQueueLength] = useState(0)
   const [rawLines, setRawLines] = useState<string[]>([])
@@ -479,7 +481,9 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
       setStatus('analyzing')
       resetLinesMap()
       setLastBestMove(null)
+      setLastBestMoveFen(null)
       setLastPonderMove(null)
+      setLastPonderMoveFen(null)
       currentAnalysisFenRef.current = request.fen
       currentAnalysisPurposeRef.current = request.purpose
       currentAnalysisModeRef.current = request.mode
@@ -560,7 +564,9 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
     sendRaw('ucinewgame')
     resetLinesMap()
     setLastBestMove(null)
+    setLastBestMoveFen(null)
     setLastPonderMove(null)
+    setLastPonderMoveFen(null)
   }, [resetLinesMap, sendRaw])
 
   const ponderHit = useCallback(() => {
@@ -586,7 +592,9 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
         setStatus('disabled')
         resetLinesMap()
         setLastBestMove(null)
+        setLastBestMoveFen(null)
         setLastPonderMove(null)
+        setLastPonderMoveFen(null)
         setActiveGoCommand('')
         setQueueLength(0)
       })
@@ -645,7 +653,9 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
       setOptions([])
       setEngineName('Stockfish')
       setLastBestMove(null)
+      setLastBestMoveFen(null)
       setLastPonderMove(null)
+      setLastPonderMoveFen(null)
       resetRawLines()
       setActiveGoCommand('')
       setQueueLength(0)
@@ -721,7 +731,9 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
           flushRawLines()
           const parsed = parseBestMoveLine(line)
           setLastBestMove(parsed?.bestMove ?? null)
+          setLastBestMoveFen(parsed?.bestMove ? currentAnalysisFenRef.current : null)
           setLastPonderMove(parsed?.ponderMove ?? null)
+          setLastPonderMoveFen(parsed?.ponderMove ? currentAnalysisFenRef.current : null)
           isSearchingRef.current = false
           stopRequestedRef.current = false
 
@@ -808,7 +820,9 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
     options,
     lines,
     lastBestMove,
+    lastBestMoveFen,
     lastPonderMove,
+    lastPonderMoveFen,
     activeGoCommand,
     queueLength,
     rawLines,
