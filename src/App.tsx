@@ -45,6 +45,8 @@ type AnalysisTab = 'analyze' | 'review' | 'engine-lab'
 type AnalyzePresetId = 'blunder-check' | 'game-review' | 'deep-candidate' | 'mate-hunt'
 type OpeningRatingPresetId = 'all' | 'club' | 'advanced'
 type SampleLibraryFilter = 'all' | HistoricalSampleFormat
+type PromotionPiece = 'q' | 'r' | 'b' | 'n'
+type PendingPromotion = { from: Square; to: Square }
 
 const ANALYSIS_SETTINGS_STORAGE_KEY = 'webchess:analysis-settings:v1'
 const ANALYZE_MODE_IDS: AnalyzeMode[] = ['quick', 'deep', 'infinite', 'mate', 'review']
@@ -57,6 +59,16 @@ const OPENING_RATING_PRESETS: Array<{ id: OpeningRatingPresetId; label: string; 
   { id: 'club', label: '1600-2200', ratings: [1600, 1800, 2000, 2200] },
   { id: 'advanced', label: '2000+', ratings: [2000, 2200, 2500] },
 ]
+const PROMOTION_OPTIONS: Array<{ piece: PromotionPiece; label: string }> = [
+  { piece: 'q', label: 'Queen' },
+  { piece: 'r', label: 'Rook' },
+  { piece: 'b', label: 'Bishop' },
+  { piece: 'n', label: 'Knight' },
+]
+const PROMOTION_GLYPHS: Record<'w' | 'b', Record<PromotionPiece, string>> = {
+  w: { q: '♕', r: '♖', b: '♗', n: '♘' },
+  b: { q: '♛', r: '♜', b: '♝', n: '♞' },
+}
 const IMPORT_LOAD_MOVETIME_MS = 70
 const IMPORT_SHALLOW_MULTIPV = 1
 const MOVE_PONDER_MIN_DEPTH = 20
@@ -248,6 +260,35 @@ function topArrowColor(normalizedStrength: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
+function isPromotionMove(chess: Chess, from: Square, to: Square): boolean {
+  const piece = chess.get(from)
+  if (!piece || piece.type !== 'p') return false
+  return chess.moves({ square: from, verbose: true }).some(move => move.to === to && move.flags.includes('p'))
+}
+
+function uniqueSquares(squares: Square[]): Square[] {
+  return Array.from(new Set(squares))
+}
+
+function gameModeLabel(mode: GameMode): string {
+  if (mode === 'human-vs-ai') return 'Human vs AI'
+  if (mode === 'ai-vs-ai') return 'AI vs AI'
+  return 'Human vs Human'
+}
+
+function turnLabel(fen: string): string {
+  return fen.split(' ')[1] === 'b' ? 'Black to move' : 'White to move'
+}
+
+function engineStatusLabel(enabled: boolean, status: string): string {
+  if (!enabled) return 'Engine idle'
+  if (status === 'loading') return 'Warming engine'
+  if (status === 'ready') return 'Engine ready'
+  if (status === 'analyzing') return 'Analyzing'
+  if (status === 'error') return 'Engine error'
+  return 'Engine idle'
+}
+
 function loadPersistedSettings(): PersistedAppSettings {
   if (typeof window === 'undefined') return DEFAULT_PERSISTED_SETTINGS
 
@@ -407,6 +448,7 @@ function App() {
   // ── Click-to-move (tap support) ───────────────────────
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
   const [legalTargets, setLegalTargets] = useState<Square[]>([])
+  const [pendingPromotion, setPendingPromotion] = useState<PendingPromotion | null>(null)
 
   // ── AI speed (throttle delay between AI moves) ───────
   const [aiSpeed, setAiSpeed] = useState<AiSpeed>('normal')
@@ -454,6 +496,9 @@ function App() {
     game.load(chess.fen())
     setFen(chess.fen())
     aiMoveScheduledRef.current = false
+    setPendingPromotion(null)
+    setSelectedSquare(null)
+    setLegalTargets([])
   }, [game])
 
   // Navigate tree + stay paused so user can explore
@@ -826,6 +871,7 @@ function App() {
     setTopMoveArrowCount(DEFAULT_PERSISTED_SETTINGS.topMoveArrowCount)
     setOpeningPrefetchTick(0)
     setEngineLabError(null)
+    setPendingPromotion(null)
   }, [])
 
   const applyPreset = useCallback((presetId: AnalyzePresetId) => {
@@ -1310,24 +1356,50 @@ function App() {
   }, [fen, gameMode, playerColor, aiDifficulty, aiPlayer.status, game, paused])
 
   // ── Human move ────────────────────────────────────────
+  const clearBoardSelection = useCallback(() => {
+    setSelectedSquare(null)
+    setLegalTargets([])
+  }, [])
+
+  const applyHumanMove = useCallback(
+    (from: Square, to: Square, promotion?: PromotionPiece) => {
+      const move = game.move({ from, to, promotion })
+      if (!move) return false
+
+      clearImportSweep()
+      const newFen = game.fen()
+      setFen(newFen)
+      gameTree.addMove(move, newFen)
+      clearBoardSelection()
+      setPendingPromotion(null)
+      return true
+    },
+    [clearBoardSelection, clearImportSweep, game, gameTree],
+  )
+
+  const beginPromotion = useCallback(
+    (from: Square, to: Square) => {
+      setPendingPromotion({ from, to })
+      clearBoardSelection()
+    },
+    [clearBoardSelection],
+  )
+
   const onPieceDrop = (sourceSquare: Square, targetSquare: Square, pieceType: string) => {
+    if (pendingPromotion) return false
     if (gameMode === 'human-vs-ai' && isAiThinking) return false
     if (gameMode === 'human-vs-ai' && !paused && game.turn() !== playerColor[0]) return false
 
-    const promotion = pieceType.toLowerCase().endsWith('p') && ['1', '8'].includes(targetSquare[1]) ? 'q' : undefined
-    const move = game.move({ from: sourceSquare, to: targetSquare, promotion })
-    if (!move) return false
+    if (pieceType.toLowerCase().endsWith('p') && isPromotionMove(game, sourceSquare, targetSquare)) {
+      beginPromotion(sourceSquare, targetSquare)
+      return false
+    }
 
-    clearImportSweep()
-    const newFen = game.fen()
-    setFen(newFen)
-    gameTree.addMove(move, newFen)
-    setSelectedSquare(null)
-    setLegalTargets([])
-    return true
+    return applyHumanMove(sourceSquare, targetSquare)
   }
 
   const onSquareClick = useCallback((square: Square) => {
+    if (pendingPromotion) return
     if (gameMode === 'human-vs-ai' && isAiThinking) return
     if (gameMode === 'human-vs-ai' && !paused && game.turn() !== playerColor[0]) return
 
@@ -1335,8 +1407,7 @@ function App() {
     if (selectedSquare) {
       // Deselect if same square clicked
       if (square === selectedSquare) {
-        setSelectedSquare(null)
-        setLegalTargets([])
+        clearBoardSelection()
         return
       }
       // If clicking another own piece, re-select it
@@ -1344,21 +1415,16 @@ function App() {
       if (clickedPiece && clickedPiece.color === game.turn()) {
         const moves = game.moves({ square, verbose: true })
         setSelectedSquare(square)
-        setLegalTargets(moves.map(m => m.to as Square))
+        setLegalTargets(uniqueSquares(moves.map(m => m.to as Square)))
         return
       }
       // Attempt the move
-      const pieceType = game.get(selectedSquare)?.type ?? ''
-      const promotion = pieceType === 'p' && ['1', '8'].includes(square[1]) ? 'q' : undefined
-      const move = game.move({ from: selectedSquare, to: square, promotion })
-      if (move) {
-        clearImportSweep()
-        const newFen = game.fen()
-        setFen(newFen)
-        gameTree.addMove(move, newFen)
+      if (isPromotionMove(game, selectedSquare, square)) {
+        beginPromotion(selectedSquare, square)
+        return
       }
-      setSelectedSquare(null)
-      setLegalTargets([])
+      applyHumanMove(selectedSquare, square)
+      clearBoardSelection()
       return
     }
 
@@ -1367,8 +1433,37 @@ function App() {
     if (!piece || piece.color !== game.turn()) return
     const moves = game.moves({ square, verbose: true })
     setSelectedSquare(square)
-    setLegalTargets(moves.map(m => m.to as Square))
-  }, [clearImportSweep, game, gameMode, gameTree, isAiThinking, paused, playerColor, selectedSquare])
+    setLegalTargets(uniqueSquares(moves.map(m => m.to as Square)))
+  }, [
+    applyHumanMove,
+    beginPromotion,
+    clearBoardSelection,
+    game,
+    gameMode,
+    isAiThinking,
+    paused,
+    pendingPromotion,
+    playerColor,
+    selectedSquare,
+  ])
+
+  const promotionColor = pendingPromotion
+    ? game.get(pendingPromotion.from)?.color ?? game.turn()
+    : game.turn()
+
+  const completePromotion = useCallback(
+    (piece: PromotionPiece) => {
+      if (!pendingPromotion) return
+      if (!applyHumanMove(pendingPromotion.from, pendingPromotion.to, piece)) {
+        setPendingPromotion(null)
+      }
+    },
+    [applyHumanMove, pendingPromotion],
+  )
+
+  const cancelPromotion = useCallback(() => {
+    setPendingPromotion(null)
+  }, [])
 
   // ── New game ──────────────────────────────────────────
   const openNewGameDialog = () => setShowNewGameDialog(true)
@@ -1386,6 +1481,7 @@ function App() {
       setEvaluationsByFen(new Map())
       setPendingShallowAnalyzeFen(null)
       setSampleLoadError(null)
+      setPendingPromotion(null)
 
       const moves = loader.history({ verbose: true })
       const mainLineEntries: Array<{ move: (typeof moves)[number]; fen: string }> = []
@@ -1469,6 +1565,7 @@ function App() {
       clearImportSweep()
       setPendingShallowAnalyzeFen(null)
       setIsImportingGame(false)
+      setPendingPromotion(null)
       pausedRef.current = false
       setPaused(false)
       gameTree.reset()
@@ -2054,48 +2151,74 @@ function App() {
                 </div>
               </div>
             )}
-            <Chessboard
-              options={{
-                position: fen,
-                boardOrientation: orientation,
-                onPieceDrop: ({ sourceSquare, targetSquare, piece }) => {
-                  if (!targetSquare) return false
-                  setSelectedSquare(null)
-                  setLegalTargets([])
-                  return onPieceDrop(sourceSquare as Square, targetSquare as Square, piece.pieceType)
-                },
-                onSquareClick: ({ square }) => onSquareClick(square as Square),
-                squareStyles: {
-                  ...(selectedSquare ? { [selectedSquare]: { backgroundColor: 'rgba(255,215,0,0.55)', boxShadow: 'inset 0 0 0 3px rgba(255,200,0,0.9)' } } : {}),
-                  ...Object.fromEntries(legalTargets.map(sq => [sq, {
-                    background: game.get(sq)
-                      ? 'radial-gradient(circle, rgba(255,100,0,0.5) 60%, transparent 60%)'
-                      : 'radial-gradient(circle, rgba(0,0,0,0.25) 28%, transparent 28%)',
-                    borderRadius: '50%',
-                  }])),
-                },
-                arrows,
-                allowDragging: !isAiThinking && !(gameMode === 'human-vs-ai' && !paused && game.turn() !== playerColor[0]),
-                darkSquareStyle: { backgroundColor: '#b58863' },
-                lightSquareStyle: { backgroundColor: '#f0d9b5' },
-                boardStyle: {
-                  width: `${Math.max(260, boardWidth)}px`,
-                  maxWidth: '100%',
-                  borderRadius: 12,
-                  boxShadow: '0 8px 40px rgba(0, 0, 0, 0.60), 0 2px 8px rgba(0, 0, 0, 0.40)',
-                },
-              }}
-            />
-            {/* AI thinking badge */}
-            {isAiThinking && (
-              <div className="ai-thinking-overlay">
-                <div className="ai-thinking-badge">
-                  <IconBot style={{ marginRight: '4px', fontSize: '1.1em', transform: 'translateY(1px)' }} />
-                  AI thinking
-                  <div className="thinking-dots"><span /><span /><span /></div>
+            <div className="board-area">
+              <Chessboard
+                options={{
+                  position: fen,
+                  boardOrientation: orientation,
+                  onPieceDrop: ({ sourceSquare, targetSquare, piece }) => {
+                    if (!targetSquare) return false
+                    setSelectedSquare(null)
+                    setLegalTargets([])
+                    return onPieceDrop(sourceSquare as Square, targetSquare as Square, piece.pieceType)
+                  },
+                  onSquareClick: ({ square }) => onSquareClick(square as Square),
+                  squareStyles: {
+                    ...(selectedSquare ? { [selectedSquare]: { backgroundColor: 'rgba(255,215,0,0.55)', boxShadow: 'inset 0 0 0 3px rgba(255,200,0,0.9)' } } : {}),
+                    ...Object.fromEntries(legalTargets.map(sq => [sq, {
+                      background: game.get(sq)
+                        ? 'radial-gradient(circle, rgba(255,100,0,0.5) 60%, transparent 60%)'
+                        : 'radial-gradient(circle, rgba(0,0,0,0.25) 28%, transparent 28%)',
+                      borderRadius: '50%',
+                    }])),
+                  },
+                  arrows,
+                  allowDrawingArrows: false,
+                  allowDragging: !isAiThinking && !(gameMode === 'human-vs-ai' && !paused && game.turn() !== playerColor[0]),
+                  darkSquareStyle: { backgroundColor: '#b58863' },
+                  lightSquareStyle: { backgroundColor: '#f0d9b5' },
+                  boardStyle: {
+                    width: `${Math.max(260, boardWidth)}px`,
+                    maxWidth: '100%',
+                    borderRadius: 12,
+                    boxShadow: '0 8px 40px rgba(0, 0, 0, 0.60), 0 2px 8px rgba(0, 0, 0, 0.40)',
+                  },
+                }}
+              />
+              {pendingPromotion && (
+                <div className="promotion-overlay" role="dialog" aria-modal="true" aria-label="Choose promotion piece">
+                  <div className="promotion-chooser">
+                    {PROMOTION_OPTIONS.map(option => (
+                      <button
+                        key={option.piece}
+                        type="button"
+                        className="promotion-choice"
+                        onClick={() => completePromotion(option.piece)}
+                        aria-label={`Promote to ${option.label}`}
+                      >
+                        <span className="promotion-glyph" aria-hidden="true">
+                          {PROMOTION_GLYPHS[promotionColor][option.piece]}
+                        </span>
+                        <span>{option.label}</span>
+                      </button>
+                    ))}
+                    <button type="button" className="promotion-cancel" onClick={cancelPromotion}>
+                      Cancel
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+              {/* AI thinking badge */}
+              {isAiThinking && (
+                <div className="ai-thinking-overlay">
+                  <div className="ai-thinking-badge">
+                    <IconBot style={{ marginRight: '4px', fontSize: '1.1em', transform: 'translateY(1px)' }} />
+                    AI thinking
+                    <div className="thinking-dots"><span /><span /><span /></div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </section>
 

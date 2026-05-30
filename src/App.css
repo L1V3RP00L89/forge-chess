@@ -598,6 +598,68 @@
   align-items: center;
 }
 
+.promotion-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.34);
+}
+
+.promotion-chooser {
+  width: min(420px, 100%);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: rgba(22, 27, 34, 0.96);
+  box-shadow: var(--shadow-lg);
+}
+
+.promotion-choice {
+  min-width: 0;
+  min-height: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.promotion-choice span:last-child {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+}
+
+.promotion-glyph {
+  font-size: 2.35rem;
+  line-height: 1;
+}
+
+.promotion-cancel {
+  grid-column: 1 / -1;
+  min-height: 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-secondary);
+}
+
 .thinking-dots span {
   width: 4px;
   height: 4px;
