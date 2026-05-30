@@ -11,6 +11,48 @@
   <meta name="description"
     content="Web Chess — play, analyze and review your games with Stockfish right in the browser." />
   <title>Web Chess</title>
+  <script type="module">
+    const coiServiceWorker = {
+      url: new URL('%BASE_URL%coi-serviceworker.min.js', window.location.origin).toString(),
+      scope: '%BASE_URL%',
+      coepCredentialless: () => !(window.chrome || window.netscape),
+      shouldRegister: () => window.isSecureContext && window.crossOriginIsolated === false,
+      shouldDeregister: () => false,
+      doReload: () => window.location.reload(),
+    }
+    let coiReloadPending = false
+
+    const reloadForCrossOriginIsolation = () => {
+      if (coiReloadPending) return
+      coiReloadPending = true
+      coiServiceWorker.doReload()
+    }
+
+    if (navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'coepCredentialless',
+        value: coiServiceWorker.coepCredentialless(),
+      })
+
+      if (coiServiceWorker.shouldDeregister()) {
+        navigator.serviceWorker.controller.postMessage({ type: 'deregister' })
+      }
+    }
+
+    if ('serviceWorker' in navigator && window.crossOriginIsolated === false && coiServiceWorker.shouldRegister()) {
+      navigator.serviceWorker.addEventListener('controllerchange', reloadForCrossOriginIsolation)
+
+      navigator.serviceWorker.register(coiServiceWorker.url, { scope: coiServiceWorker.scope }).then(registration => {
+        registration.addEventListener('updatefound', reloadForCrossOriginIsolation)
+
+        if (registration.active && !navigator.serviceWorker.controller) {
+          reloadForCrossOriginIsolation()
+        }
+      }).catch(() => {
+        // Cross-origin isolation is a performance upgrade; keep the app usable if registration fails.
+      })
+    }
+  </script>
 </head>
 
 <body>
