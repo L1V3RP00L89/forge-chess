@@ -1,6 +1,6 @@
-# Web Chess
+# Web Chess 1.0
 
-A modern, highly polished chess application built with React, TypeScript, and Vite. It offers a stunning user interface, powerful AI capabilities driven by Stockfish, and advanced game analysis tools.
+A browser chess app for playing, importing, and reviewing games with Stockfish-powered analysis.
 
 ## Features
 
@@ -13,6 +13,7 @@ A modern, highly polished chess application built with React, TypeScript, and Vi
 - **Opening Explorer**: Automatic opening names lookup and identification.
 - **Premium UI/UX**: Keyboard navigation, clickable move transcript, high-quality SVG iconography, and a fast, responsive design.
 - **Batch Game Review**: Effortlessly load, review, and analyze multiple games seamlessly.
+- **Installable app metadata**: PWA manifest and app icon are configured for hosted releases.
 
 ## Technology Stack
 
@@ -21,6 +22,17 @@ A modern, highly polished chess application built with React, TypeScript, and Vi
 - **Chess Logic**: `chess.js`
 - **Chess Engine**: `stockfish.js`
 - **UI Components**: `react-chessboard` and `lucide-react`
+
+## Quality Gates
+
+Run the same checks used by CI:
+
+```bash
+npm audit
+npm run lint
+npm test -- --run
+npm run build
+```
 
 ## Stockfish Assets
 
@@ -32,11 +44,15 @@ npm run sync:stockfish
 
 The bundled Stockfish engine assets in `public/engine` are GPL-3.0 licensed. See `public/engine/Copying.txt`.
 
+## Opening Explorer
+
+The Lichess Opening Explorer endpoints require an API token. Paste a session-only token in the app when using Masters/Lichess book stats. Local ECO opening names continue to work offline from `src/assets/eco.json`.
+
 ## Getting Started
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/web-chess.git
+   git clone <repo-url>
    cd web-chess
    ```
 
@@ -52,7 +68,7 @@ The bundled Stockfish engine assets in `public/engine` are GPL-3.0 licensed. See
 
 ## Continuous Deployment
 
-This project includes a GitHub Actions workflow to automatically deploy the application to GitHub Pages whenever code is pushed to the `main` branch. 
+This project includes a GitHub Actions workflow that audits dependencies, lints, tests, builds, and then deploys to GitHub Pages whenever code is pushed to the `main` branch.
 
 ## License
 
