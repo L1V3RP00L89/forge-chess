@@ -55,15 +55,17 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
   const [errorByKey, setErrorByKey] = useState<Record<string, string>>({})
   const hasLocalData = Boolean(dataByKey[requestKey])
 
-  const cachedData = getCachedOpeningExplorer({
-    source: args.source,
-    fen: fenKey || undefined,
-    moves: normalizedMoves,
-    speeds: normalizedSpeeds,
-    ratings: normalizedRatings,
-  })
-  const data = dataByKey[requestKey] ?? cachedData ?? null
-  const error = errorByKey[requestKey] ?? null
+  const cachedData = enabled
+    ? getCachedOpeningExplorer({
+        source: args.source,
+        fen: fenKey || undefined,
+        moves: normalizedMoves,
+        speeds: normalizedSpeeds,
+        ratings: normalizedRatings,
+      })
+    : null
+  const data = enabled ? dataByKey[requestKey] ?? cachedData ?? null : null
+  const error = enabled ? errorByKey[requestKey] ?? null : null
 
   useEffect(() => {
     if (!enabled) return
