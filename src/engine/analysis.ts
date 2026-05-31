@@ -181,6 +181,14 @@ function terminalEvaluationSnapshot(position: Chess): EvalSnapshot | null {
   return null
 }
 
+export function isTerminalPositionFen(fen: string): boolean {
+  try {
+    return new Chess(fen).isGameOver()
+  } catch {
+    return false
+  }
+}
+
 export function buildReviewRows(
   history: Move[],
   evaluationsByFen: Map<string, EvalSnapshot>,

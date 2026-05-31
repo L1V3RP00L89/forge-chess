@@ -7,6 +7,7 @@ import {
   buildWinrateSeries,
   filterReviewRowsBySide,
   formatWhitePovEvaluation,
+  isTerminalPositionFen,
   isReviewEvaluationSufficient,
   scoreToCp,
   summarizeAccuracy,
@@ -114,6 +115,9 @@ describe('review analysis helpers', () => {
       confidence: 'deep',
       deltaCp: 0,
     })
+    expect(isTerminalPositionFen(game.fen())).toBe(true)
+    expect(isTerminalPositionFen(beforeMateFen)).toBe(false)
+    expect(isTerminalPositionFen('not a fen')).toBe(false)
   })
 
   it('includes finite mate evaluations in the winrate graph', () => {
