@@ -5,6 +5,7 @@ import {
   buildReviewRows,
   buildWdlSeries,
   buildWinrateSeries,
+  filterReviewRowsBySide,
   formatWhitePovEvaluation,
   scoreToCp,
   summarizeAccuracy,
@@ -100,6 +101,17 @@ describe('review analysis helpers', () => {
     expect(summary.averageCentipawnLoss).toBe(115)
     expect(summary.whiteAverageCentipawnLoss).toBe(10)
     expect(summary.blackAverageCentipawnLoss).toBe(220)
+  })
+
+  it('filters review rows by player side', () => {
+    const rows = [
+      { ply: 1, moveNumber: 1, sideToMove: 'w' as const, san: 'e4', uci: 'e2e4', quality: 'best' as const, confidence: 'standard' as const },
+      { ply: 2, moveNumber: 1, sideToMove: 'b' as const, san: 'e5', uci: 'e7e5', quality: 'good' as const, confidence: 'standard' as const },
+    ]
+
+    expect(filterReviewRowsBySide(rows, 'both')).toBe(rows)
+    expect(filterReviewRowsBySide(rows, 'white').map(row => row.uci)).toEqual(['e2e4'])
+    expect(filterReviewRowsBySide(rows, 'black').map(row => row.uci)).toEqual(['e7e5'])
   })
 
   it('keeps review move numbering from a black-to-move root', () => {

@@ -5,6 +5,7 @@ import {
   buildWdlSeries,
   buildWinrateSeries,
   buildReviewRows,
+  filterReviewRowsBySide,
   formatWhitePovEvaluation,
   pvToSan,
   scoreToCp,
@@ -14,6 +15,7 @@ import {
   type EvalSnapshot,
   type ReviewRow,
   type ReviewLabel,
+  type ReviewSideFilter,
   type WdlPoint,
   type WinratePoint,
 } from './engine/analysis'
@@ -112,6 +114,12 @@ const REVIEW_LABELS: Record<ReviewLabel, string> = {
   blunder: 'Blunder',
   pending: 'Pending',
 }
+
+const REVIEW_SIDE_FILTERS: Array<{ id: ReviewSideFilter; label: string }> = [
+  { id: 'both', label: 'Both' },
+  { id: 'white', label: 'White' },
+  { id: 'black', label: 'Black' },
+]
 
 const TABLEBASE_CATEGORY_LABELS: Record<TablebaseCategory, string> = {
   win: 'Win',
@@ -657,6 +665,7 @@ function App() {
   const [engineProfile, setEngineProfile] = useState<EngineProfileId>(persistedSettings.engineProfile)
   const [analysisTab, setAnalysisTab] = useState<AnalysisTab>(persistedSettings.analysisTab)
   const [analysisExperience, setAnalysisExperience] = useState<AnalysisExperience>(persistedSettings.analysisExperience)
+  const [reviewSideFilter, setReviewSideFilter] = useState<ReviewSideFilter>('both')
   const [activePreset, setActivePreset] = useState<AnalyzePresetId | null>(persistedSettings.activePreset)
   const [analyzeMode, setAnalyzeMode] = useState<AnalyzeMode>(persistedSettings.analyzeMode)
   const [showAdvancedAnalyze, setShowAdvancedAnalyze] = useState(persistedSettings.showAdvancedAnalyze)
@@ -1632,15 +1641,19 @@ function App() {
     () => buildReviewRows(mainLineMoves, evaluationsByFen, currentRootFen),
     [currentRootFen, evaluationsByFen, mainLineMoves],
   )
-  const reviewSummary = useMemo(() => summarizeReview(reviewRows), [reviewRows])
-  const reviewAccuracy = useMemo(() => summarizeAccuracy(reviewRows), [reviewRows])
+  const visibleReviewRows = useMemo(
+    () => filterReviewRowsBySide(reviewRows, reviewSideFilter),
+    [reviewRows, reviewSideFilter],
+  )
+  const reviewSummary = useMemo(() => summarizeReview(visibleReviewRows), [visibleReviewRows])
+  const reviewAccuracy = useMemo(() => summarizeAccuracy(visibleReviewRows), [visibleReviewRows])
   const criticalReviewRows = useMemo(
-    () => reviewRows
+    () => visibleReviewRows
       .filter(row => row.quality === 'inaccuracy' || row.quality === 'mistake' || row.quality === 'blunder')
       .filter(row => typeof row.deltaCp === 'number')
       .sort((a, b) => (a.deltaCp ?? 0) - (b.deltaCp ?? 0))
       .slice(0, 5),
-    [reviewRows],
+    [visibleReviewRows],
   )
 
   useEffect(() => {
@@ -3623,6 +3636,19 @@ function App() {
                   </div>
                   <div className="review-scaffold">
                     <h3><span className="section-icon"><IconBarChart /></span> Review</h3>
+                    <div className="review-filter-row" aria-label="Review side filter">
+                      {REVIEW_SIDE_FILTERS.map(filter => (
+                        <button
+                          key={filter.id}
+                          type="button"
+                          className={`mode-pill ${reviewSideFilter === filter.id ? 'active' : ''}`}
+                          aria-pressed={reviewSideFilter === filter.id}
+                          onClick={() => setReviewSideFilter(filter.id)}
+                        >
+                          {filter.label}
+                        </button>
+                      ))}
+                    </div>
                     <div className="accuracy-summary" aria-label="Accuracy summary">
                       <div>
                         <span>Overall</span>
@@ -3642,7 +3668,7 @@ function App() {
                       </div>
                       <div>
                         <span>Evaluated</span>
-                        <strong>{reviewAccuracy.evaluatedMoves}/{reviewRows.length}</strong>
+                        <strong>{reviewAccuracy.evaluatedMoves}/{visibleReviewRows.length}</strong>
                       </div>
                     </div>
                     {reviewAccuracy.pendingMoves > 0 && (
@@ -3658,9 +3684,9 @@ function App() {
                       <span className="chip-blunder">Blunder {reviewSummary.blunder}</span>
                       <span className="chip-pending">Pending {reviewSummary.pending}</span>
                     </div>
-                    {reviewRows.length > 0 && (
+                    {visibleReviewRows.length > 0 && (
                       <ReviewMoveList
-                        rows={reviewRows}
+                        rows={visibleReviewRows}
                         nodes={mainLineNodes}
                         currentNodeId={gameTree.current.id}
                         onSelectNode={navigateReviewNode}

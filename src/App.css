@@ -2186,6 +2186,13 @@ body.resizing * {
   opacity: 0.72;
 }
 
+.review-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.36rem;
+  margin: -0.12rem 0 0.52rem;
+}
+
 .accuracy-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(4.6rem, 1fr));

@@ -17,6 +17,7 @@ export type EvalSnapshot = {
 }
 
 export type ReviewLabel = 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder' | 'pending'
+export type ReviewSideFilter = 'both' | 'white' | 'black'
 
 export type ReviewRow = {
   ply: number
@@ -209,6 +210,12 @@ export function summarizeReview(rows: ReviewRow[]): Record<ReviewLabel, number> 
     },
     { best: 0, good: 0, inaccuracy: 0, mistake: 0, blunder: 0, pending: 0 },
   )
+}
+
+export function filterReviewRowsBySide(rows: ReviewRow[], filter: ReviewSideFilter): ReviewRow[] {
+  if (filter === 'both') return rows
+  const side = filter === 'white' ? 'w' : 'b'
+  return rows.filter(row => row.sideToMove === side)
 }
 
 export function accuracyFromCentipawnLoss(deltaCp: number): number {
