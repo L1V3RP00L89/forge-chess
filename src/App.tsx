@@ -1,5 +1,5 @@
 import { Chess, type Square } from 'chess.js'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Chessboard } from 'react-chessboard'
 import {
   buildWdlSeries,
@@ -32,6 +32,7 @@ import type { AnalyzeMode, UciGoLimits } from './engine/uci'
 import { rootFenFromPgnHeaders } from './engine/pgn'
 import { engineProfiles, type EngineProfileId } from './engine/profiles'
 import type { TablebaseCategory, TablebaseMove, TablebaseResult } from './engine/tablebase'
+import { BOARD_SQUARES, describeBoardSquare, isBoardSquare } from './engine/boardAccessibility'
 import { useStockfishEngine } from './hooks/useStockfishEngine'
 import { DIFFICULTY_LABELS, useAiPlayer, type AiDifficulty } from './hooks/useAiPlayer'
 import { useGameTree, type GameNode } from './hooks/useGameTree'
@@ -837,6 +838,7 @@ function App() {
   // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return
       const target = e.target as HTMLElement | null
       const tag = target?.tagName
       if (target?.isContentEditable || tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
@@ -1975,6 +1977,56 @@ function App() {
     selectedSquare,
   ])
 
+  useEffect(() => {
+    const legalTargetSet = new Set(legalTargets)
+
+    for (const square of BOARD_SQUARES) {
+      const squareEl = document.getElementById(`chessboard-square-${square}`)
+      if (!squareEl) continue
+
+      const label = describeBoardSquare(game, square, { selectedSquare, legalTargets })
+      squareEl.setAttribute('aria-label', label)
+      squareEl.setAttribute('title', label)
+
+      const interactiveEl = squareEl.querySelector<HTMLElement>('button, [role="button"]')
+      if (interactiveEl) {
+        interactiveEl.setAttribute('aria-label', label)
+        interactiveEl.setAttribute('title', label)
+      }
+
+      const shouldExposeEmptyTarget = !interactiveEl && Boolean(selectedSquare) && legalTargetSet.has(square)
+      if (shouldExposeEmptyTarget) {
+        squareEl.setAttribute('role', 'button')
+        squareEl.setAttribute('tabindex', '0')
+        squareEl.setAttribute('data-webchess-a11y-target', 'true')
+      } else if (squareEl.getAttribute('data-webchess-a11y-target') === 'true') {
+        squareEl.removeAttribute('role')
+        squareEl.removeAttribute('tabindex')
+        squareEl.removeAttribute('data-webchess-a11y-target')
+      }
+    }
+  }, [fen, game, legalTargets, selectedSquare])
+
+  const handleBoardKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return
+
+      const target = event.target as HTMLElement | null
+      const squareEl = target?.closest<HTMLElement>('[id^="chessboard-square-"]')
+      if (!squareEl) return
+
+      const square = squareEl.id.replace('chessboard-square-', '')
+      if (!isBoardSquare(square)) return
+
+      const isEmptyTarget = squareEl.getAttribute('data-webchess-a11y-target') === 'true'
+      if (event.key === ' ' && !isEmptyTarget) return
+
+      event.preventDefault()
+      onSquareClick(square)
+    },
+    [onSquareClick],
+  )
+
   const promotionColor = pendingPromotion
     ? game.get(pendingPromotion.from)?.color ?? game.turn()
     : game.turn()
@@ -2798,7 +2850,7 @@ function App() {
                   </>
                 )
               })()}
-              <div className="board-area">
+              <div className="board-area" onKeyDown={handleBoardKeyDown}>
                 <Chessboard
                   options={{
                     position: fen,
