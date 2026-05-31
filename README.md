@@ -73,4 +73,4 @@ This project includes a GitHub Actions workflow that audits dependencies, lints,
 
 ## License
 
-Application code is distributed under the MIT License where applicable. Bundled Stockfish engine assets are distributed under GPL-3.0.
+Application code is distributed under the MIT License; see [LICENSE](LICENSE). Bundled Stockfish engine assets are distributed under GPL-3.0; see `public/engine/Copying.txt`.
