@@ -978,6 +978,18 @@ function App() {
 
   const aiEnabled = workspaceMode === 'play' && (gameMode === 'human-vs-ai' || gameMode === 'ai-vs-ai')
   const aiPlayer = useAiPlayer(aiEnabled)
+  const aiPlayerStatus = aiPlayer.status
+  const cancelAiRequest = aiPlayer.cancelRequest
+  const requestAiMove = aiPlayer.requestMove
+  const aiPlayerStatusRef = useRef(aiPlayerStatus)
+  const [aiReadyTick, setAiReadyTick] = useState(0)
+
+  useEffect(() => {
+    aiPlayerStatusRef.current = aiPlayerStatus
+    if (aiPlayerStatus === 'ready') {
+      setAiReadyTick(tick => tick + 1)
+    }
+  }, [aiPlayerStatus])
 
   useEffect(() => {
     if (workspaceMode !== 'play') return
@@ -1814,7 +1826,8 @@ function App() {
   // ── AI move loop (with speed throttle) ───────────────
   useEffect(() => {
     if (game.isGameOver()) return
-    if (aiPlayer.status !== 'ready') return
+    void aiReadyTick
+    if (aiPlayerStatusRef.current !== 'ready') return
     if (aiMoveScheduledRef.current) return
     if (pausedRef.current) return
 
@@ -1836,8 +1849,17 @@ function App() {
     const delayMs = AI_SPEED_MS[aiSpeedRef.current]
     const requestFen = fen
 
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const finishAiMove = () => {
+      aiMoveScheduledRef.current = false
+      setIsAiThinking(false)
+    }
+
     const doMove = () => {
-      aiPlayer.requestMove(fen, aiDifficulty).then(uciMove => {
+      requestAiMove(requestFen, aiDifficulty).then(uciMove => {
+        if (cancelled) return
         aiMoveScheduledRef.current = false
         setIsAiThinking(false)
 
@@ -1869,20 +1891,18 @@ function App() {
     }
 
     if (delayMs > 0) {
-      const t = setTimeout(doMove, delayMs)
-      return () => {
-        clearTimeout(t)
-        // Reset so the next effect run can schedule a new move
-        aiMoveScheduledRef.current = false
-        setIsAiThinking(false)
-      }
+      timer = setTimeout(doMove, delayMs)
     } else {
       doMove()
     }
-    // NOTE: gameTree intentionally omitted — accessed via gameTreeRef to keep
-    // this ref stable. aiPlayer (object) omitted too; only aiPlayer.status matters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fen, gameMode, playerColor, aiDifficulty, aiPlayer.status, game, paused])
+
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+      cancelAiRequest()
+      finishAiMove()
+    }
+  }, [aiDifficulty, aiReadyTick, cancelAiRequest, fen, game, gameMode, paused, playerColor, requestAiMove])
 
   // ── Human move ────────────────────────────────────────
   const clearBoardSelection = useCallback(() => {

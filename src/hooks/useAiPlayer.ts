@@ -179,6 +179,16 @@ export function useAiPlayer(enabled = true) {
         }
     }, [applyDifficulty])
 
+    const cancelRequest = useCallback(() => {
+        const worker = workerRef.current
+        clearRequestTimeout()
+        if (resolveRef.current) {
+            try { worker?.postMessage('stop') } catch { /* worker may already be gone */ }
+            settleRequest(null)
+        }
+        if (enabled && worker && isReadyRef.current) setStatus('ready')
+    }, [clearRequestTimeout, enabled, settleRequest])
+
     /** Request the engine to pick a move for the given position.
      *  Returns a promise resolving to a UCI move string (e.g. "e2e4") or null. */
     const requestMove = useCallback(
@@ -209,5 +219,5 @@ export function useAiPlayer(enabled = true) {
         [applyDifficulty, enabled, finishRequest],
     )
 
-    return { status, requestMove, setDifficulty, profileName }
+    return { status, requestMove, setDifficulty, cancelRequest, profileName }
 }
