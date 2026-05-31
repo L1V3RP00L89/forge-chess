@@ -493,6 +493,43 @@ body.resizing * {
   text-overflow: ellipsis;
 }
 
+.board-quality-pill {
+  flex: 0 0 auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-pill);
+  padding: 0.12rem 0.44rem;
+  background: rgba(24, 27, 35, 0.72);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  text-transform: uppercase;
+}
+
+.board-quality-pill.quality-best {
+  border-color: rgba(16, 185, 129, 0.42);
+  color: var(--quality-best);
+}
+
+.board-quality-pill.quality-good {
+  border-color: rgba(52, 211, 153, 0.42);
+  color: var(--quality-good);
+}
+
+.board-quality-pill.quality-inaccuracy {
+  border-color: rgba(251, 191, 36, 0.44);
+  color: var(--quality-inaccuracy);
+}
+
+.board-quality-pill.quality-mistake {
+  border-color: rgba(249, 115, 22, 0.44);
+  color: var(--quality-mistake);
+}
+
+.board-quality-pill.quality-blunder {
+  border-color: rgba(239, 68, 68, 0.44);
+  color: var(--quality-blunder);
+}
+
 .turn-pill {
   display: inline-flex;
   align-items: center;

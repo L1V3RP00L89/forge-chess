@@ -2458,6 +2458,7 @@ function App() {
     )
   const turnLabel = game.turn() === 'w' ? 'White to move' : 'Black to move'
   const moveNumberLabel = `Move ${fen.split(/\s+/)[5] ?? '1'}`
+  const currentMoveQuality = gameTree.current.quality
   const gameModeLabel = gameMode === 'human-vs-human'
     ? 'Human vs Human'
     : gameMode === 'human-vs-ai'
@@ -3026,6 +3027,11 @@ function App() {
               <span className={`turn-pill ${game.turn() === 'w' ? 'white' : 'black'}`}>{turnLabel}</span>
               <span>{moveNumberLabel}</span>
               <span>{workspaceMode === 'analysis' ? status : gameModeLabel}</span>
+              {currentMoveQuality && (
+                <span className={`board-quality-pill quality-${currentMoveQuality}`}>
+                  {REVIEW_LABELS[currentMoveQuality]}
+                </span>
+              )}
             </div>
             {opening && (
               <div className="board-opening-label fade-in-slide">
