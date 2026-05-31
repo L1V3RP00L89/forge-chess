@@ -209,4 +209,37 @@ describe('cloud eval parsing', () => {
     })
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
+
+  it('evicts the oldest in-memory cloud eval entries', async () => {
+    const localStorageMock = {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+    }
+    const fetchMock = vi.fn(async (url: string) => {
+      const fen = new URL(url).searchParams.get('fen') ?? ''
+      return {
+        ok: true,
+        json: async () => ({
+          fen,
+          knodes: 1,
+          depth: 1,
+          pvs: [{ moves: 'e2e3', cp: 0 }],
+        }),
+      }
+    })
+    const requestFor = (index: number) => ({
+      fen: `8/8/8/8/8/8/4K3/6k1 w K${index} - 0 1`,
+      multiPv: 1,
+    })
+
+    vi.stubGlobal('window', { localStorage: localStorageMock })
+    vi.stubGlobal('fetch', fetchMock)
+
+    for (let index = 0; index < 121; index += 1) {
+      await fetchCloudEvaluation(requestFor(index))
+    }
+    await fetchCloudEvaluation(requestFor(0))
+
+    expect(fetchMock).toHaveBeenCalledTimes(122)
+  })
 })

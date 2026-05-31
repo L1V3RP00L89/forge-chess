@@ -1,4 +1,5 @@
 import type { EvalSnapshot } from './analysis'
+import { withBoundedMapEntry } from '../hooks/cacheLimit'
 
 export type CloudEvalRequest = {
   fen: string
@@ -22,7 +23,7 @@ export type CloudEvalResult = {
 const CLOUD_EVAL_URL = 'https://lichess.org/api/cloud-eval'
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000
 const CACHE_STORAGE_KEY = 'webchess:cloud-eval-cache:v1'
-const CACHE_STORAGE_LIMIT = 120
+const CACHE_ENTRY_LIMIT = 120
 const UCI_MOVE_REGEX = /^[a-h][1-8][a-h][1-8][qrbn]?$/i
 
 type CacheEntry = {
@@ -30,7 +31,7 @@ type CacheEntry = {
   payload: CloudEvalResult
 }
 
-const responseCache = new Map<string, CacheEntry>()
+let responseCache = new Map<string, CacheEntry>()
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
@@ -89,7 +90,7 @@ function writeStorageCacheEntry(key: string, entry: CacheEntry) {
       .map(([entryKey, value]) => [entryKey, parseCacheEntry(value)] as const)
       .filter((entry): entry is readonly [string, CacheEntry] => entry[1] !== null && entry[1].expiresAt > now)
       .sort(([, a], [, b]) => b.expiresAt - a.expiresAt)
-      .slice(0, CACHE_STORAGE_LIMIT),
+      .slice(0, CACHE_ENTRY_LIMIT),
   )
   writeStorageCache(pruned)
 }
@@ -148,7 +149,7 @@ function readCached(request: CloudEvalRequest): CloudEvalResult | null {
   if (!stored) return null
   if (stored.expiresAt <= now) return null
 
-  responseCache.set(key, stored)
+  responseCache = withBoundedMapEntry(responseCache, key, stored, CACHE_ENTRY_LIMIT)
   return stored.payload
 }
 
@@ -158,7 +159,7 @@ function writeCached(request: CloudEvalRequest, payload: CloudEvalResult) {
     expiresAt: Date.now() + CACHE_TTL_MS,
     payload,
   }
-  responseCache.set(key, entry)
+  responseCache = withBoundedMapEntry(responseCache, key, entry, CACHE_ENTRY_LIMIT)
   writeStorageCacheEntry(key, entry)
 }
 

@@ -1,3 +1,5 @@
+import { withBoundedMapEntry } from '../hooks/cacheLimit'
+
 export type TablebaseCategory =
   | 'win'
   | 'unknown'
@@ -40,7 +42,7 @@ export type TablebaseResult = {
 const TABLEBASE_URL = 'https://tablebase.lichess.org/standard'
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000
 const CACHE_STORAGE_KEY = 'webchess:tablebase-cache:v1'
-const CACHE_STORAGE_LIMIT = 80
+const CACHE_ENTRY_LIMIT = 80
 const CATEGORY_VALUES = new Set<TablebaseCategory>([
   'win',
   'unknown',
@@ -60,7 +62,7 @@ type CacheEntry = {
   payload: TablebaseResult
 }
 
-const responseCache = new Map<string, CacheEntry>()
+let responseCache = new Map<string, CacheEntry>()
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
@@ -133,7 +135,7 @@ function writeStorageCacheEntry(key: string, entry: CacheEntry) {
       .map(([entryKey, value]) => [entryKey, parseCacheEntry(value)] as const)
       .filter((entry): entry is readonly [string, CacheEntry] => entry[1] !== null && entry[1].expiresAt > now)
       .sort(([, a], [, b]) => b.expiresAt - a.expiresAt)
-      .slice(0, CACHE_STORAGE_LIMIT),
+      .slice(0, CACHE_ENTRY_LIMIT),
   )
   writeStorageCache(pruned)
 }
@@ -182,7 +184,7 @@ function readCached(fen: string): TablebaseResult | null {
   const stored = parseCacheEntry(readStorageCache()[key])
   if (!stored) return null
   if (stored.expiresAt <= now) return null
-  responseCache.set(key, stored)
+  responseCache = withBoundedMapEntry(responseCache, key, stored, CACHE_ENTRY_LIMIT)
   return stored.payload
 }
 
@@ -192,7 +194,7 @@ function writeCached(fen: string, payload: TablebaseResult) {
     expiresAt: Date.now() + CACHE_TTL_MS,
     payload,
   }
-  responseCache.set(key, entry)
+  responseCache = withBoundedMapEntry(responseCache, key, entry, CACHE_ENTRY_LIMIT)
   writeStorageCacheEntry(key, entry)
 }
 
