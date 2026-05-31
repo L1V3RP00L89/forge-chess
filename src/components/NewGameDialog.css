@@ -42,6 +42,18 @@
     line-height: 1.4;
 }
 
+.dialog-quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin: 0 0 0.65rem;
+}
+
+.dialog-quick-actions .btn-cancel {
+    padding: 0.42rem 0.7rem;
+    font-size: 0.74rem;
+}
+
 .pgn-dialog .btn-start:disabled {
     opacity: 0.5;
     cursor: not-allowed;

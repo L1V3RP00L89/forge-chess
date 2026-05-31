@@ -2959,6 +2959,7 @@ function App() {
           onClose={() => setShowPgnDialog(false)}
           onImport={handlePgnImport}
           onLoadFen={handleFenLoad}
+          currentFen={fen}
           mainLineNodes={mainLineNodes}
           evaluations={evaluationsByFen}
         />

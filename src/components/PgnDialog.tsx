@@ -12,6 +12,7 @@ type PgnDialogProps = {
     onClose: () => void
     onImport: (pgn: string) => ImportResult
     onLoadFen: (fen: string) => ImportResult
+    currentFen: string
     mainLineNodes: GameNode[]
     evaluations: Map<string, EvalSnapshot>
 }
@@ -21,7 +22,7 @@ type ImportResult = {
     error?: string
 }
 
-export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, evaluations }: PgnDialogProps) {
+export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, mainLineNodes, evaluations }: PgnDialogProps) {
     const [tab, setTab] = useState<'import' | 'fen' | 'export'>('import')
     const [importText, setImportText] = useState('')
     const [fenText, setFenText] = useState('')
@@ -68,6 +69,21 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, e
     const handleCopy = async () => {
         try {
             await navigator.clipboard.writeText(exportText)
+            setCopyStatus('copied')
+        } catch {
+            setCopyStatus('failed')
+        }
+    }
+
+    const handleUseCurrentFen = () => {
+        resetFeedback()
+        setFenText(currentFen)
+    }
+
+    const handleCopyCurrentFen = async () => {
+        setFenText(currentFen)
+        try {
+            await navigator.clipboard.writeText(currentFen)
             setCopyStatus('copied')
         } catch {
             setCopyStatus('failed')
@@ -219,6 +235,14 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, e
                     {tab === 'fen' && (
                         <div className="dialog-section">
                             <label className="dialog-label" htmlFor={fenTextId}>Paste Forsyth-Edwards Notation</label>
+                            <div className="dialog-quick-actions">
+                                <button type="button" className="btn-cancel" onClick={handleUseCurrentFen}>
+                                    Use Current Position
+                                </button>
+                                <button type="button" className="btn-cancel" onClick={handleCopyCurrentFen}>
+                                    {copyStatus === 'copied' ? 'Copied FEN' : 'Copy Current FEN'}
+                                </button>
+                            </div>
                             <textarea
                                 id={fenTextId}
                                 className="input-textarea"
@@ -231,6 +255,9 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, e
                                 aria-invalid={Boolean(error)}
                             />
                             {error && <p className="dialog-error" role="alert">{error}</p>}
+                            {copyStatus === 'failed' && (
+                                <p className="dialog-error" role="alert">Clipboard access failed. The current FEN is in the text box.</p>
+                            )}
                             <div className="dialog-actions">
                                 <button type="button" className="btn-cancel" onClick={closeDialog}>Cancel</button>
                                 <button type="button" className="btn-start" onClick={handleLoadFen} disabled={!fenText.trim()}>
