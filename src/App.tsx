@@ -346,6 +346,10 @@ function formatAccuracyValue(value: number | null): string {
   return typeof value === 'number' ? value.toFixed(1) : '--'
 }
 
+function formatCentipawnLossValue(value: number | null): string {
+  return typeof value === 'number' ? value.toFixed(0) : '--'
+}
+
 function formatCloudNodes(knodes: number): string {
   if (knodes >= 1000) return `${(knodes / 1000).toFixed(1)}M nodes`
   return `${knodes.toLocaleString()}k nodes`
@@ -3588,6 +3592,10 @@ function App() {
                       <div>
                         <span>Black</span>
                         <strong>{formatAccuracyValue(reviewAccuracy.black)}</strong>
+                      </div>
+                      <div>
+                        <span>ACPL</span>
+                        <strong>{formatCentipawnLossValue(reviewAccuracy.averageCentipawnLoss)}</strong>
                       </div>
                       <div>
                         <span>Evaluated</span>

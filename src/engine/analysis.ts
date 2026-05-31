@@ -34,6 +34,9 @@ export type AccuracySummary = {
   overall: number | null
   white: number | null
   black: number | null
+  averageCentipawnLoss: number | null
+  whiteAverageCentipawnLoss: number | null
+  blackAverageCentipawnLoss: number | null
   evaluatedMoves: number
   pendingMoves: number
 }
@@ -223,6 +226,8 @@ function average(values: number[]): number | null {
 export function summarizeAccuracy(rows: ReviewRow[]): AccuracySummary {
   const white: number[] = []
   const black: number[] = []
+  const whiteLosses: number[] = []
+  const blackLosses: number[] = []
   let pendingMoves = 0
 
   for (const row of rows) {
@@ -231,17 +236,27 @@ export function summarizeAccuracy(rows: ReviewRow[]): AccuracySummary {
       continue
     }
 
+    const loss = Math.max(0, -row.deltaCp)
     const accuracy = accuracyFromCentipawnLoss(row.deltaCp)
-    if (row.sideToMove === 'w') white.push(accuracy)
-    else black.push(accuracy)
+    if (row.sideToMove === 'w') {
+      white.push(accuracy)
+      whiteLosses.push(loss)
+    } else {
+      black.push(accuracy)
+      blackLosses.push(loss)
+    }
   }
 
   const values = [...white, ...black]
+  const losses = [...whiteLosses, ...blackLosses]
 
   return {
     overall: average(values),
     white: average(white),
     black: average(black),
+    averageCentipawnLoss: average(losses),
+    whiteAverageCentipawnLoss: average(whiteLosses),
+    blackAverageCentipawnLoss: average(blackLosses),
     evaluatedMoves: values.length,
     pendingMoves,
   }

@@ -97,6 +97,9 @@ describe('review analysis helpers', () => {
     expect(summary.overall).toBeCloseTo(72.4, 1)
     expect(summary.white).toBeCloseTo(96.7, 1)
     expect(summary.black).toBeCloseTo(48.0, 1)
+    expect(summary.averageCentipawnLoss).toBe(115)
+    expect(summary.whiteAverageCentipawnLoss).toBe(10)
+    expect(summary.blackAverageCentipawnLoss).toBe(220)
   })
 
   it('keeps review move numbering from a black-to-move root', () => {
