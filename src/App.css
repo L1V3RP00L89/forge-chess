@@ -2356,6 +2356,48 @@ body.resizing * {
   white-space: nowrap;
 }
 
+@media (max-width: 520px) {
+  .review-move-row {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "index san uci quality"
+      "index best best quality"
+      "index impact confidence quality";
+    row-gap: 0.16rem;
+  }
+
+  .review-move-row .move-index {
+    grid-area: index;
+    align-self: start;
+  }
+
+  .review-move-row strong {
+    grid-area: san;
+  }
+
+  .review-move-row .move-uci {
+    grid-area: uci;
+  }
+
+  .review-move-row .move-best {
+    grid-area: best;
+    min-width: 0;
+  }
+
+  .review-move-row .move-impact {
+    grid-area: impact;
+  }
+
+  .review-move-row .move-confidence {
+    grid-area: confidence;
+  }
+
+  .review-move-row .move-quality {
+    grid-area: quality;
+    align-self: center;
+  }
+}
+
 @keyframes move-fade-in {
   from {
     opacity: 0;
