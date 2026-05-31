@@ -1614,6 +1614,11 @@ body.resizing * {
 }
 
 .mode-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  box-sizing: border-box;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.035);
@@ -1621,6 +1626,7 @@ body.resizing * {
   font-size: 0.68rem;
   font-weight: 600;
   padding: 0.2rem 0.55rem;
+  cursor: pointer;
 }
 
 .mode-pill.active {
