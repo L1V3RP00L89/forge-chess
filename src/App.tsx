@@ -1737,6 +1737,7 @@ function App() {
     if (workspaceMode !== 'analysis') return
     if (analysisTab !== 'review') return
     if (!mainLineUciMoves.length) return
+    if (!openingAuthToken.trim()) return
 
     let cancelled = false
     const controller = new AbortController()
