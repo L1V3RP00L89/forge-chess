@@ -3370,6 +3370,7 @@ function App() {
           onLoadFen={handleFenLoad}
           currentFen={fen}
           mainLineNodes={mainLineNodes}
+          gameNodes={gameTree.nodesSnapshot}
           evaluations={evaluationsByFen}
         />
 

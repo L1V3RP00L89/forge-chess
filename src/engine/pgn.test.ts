@@ -3,6 +3,26 @@ import type { GameNode } from '../hooks/useGameTree'
 import { Chess } from 'chess.js'
 import { exportAnnotatedPgn, rootFenFromPgnHeaders } from './pgn'
 
+function makeNode(
+  id: string,
+  fen: string,
+  move: GameNode['move'],
+  parent: string | null,
+  children: string[] = [],
+  quality?: GameNode['quality'],
+): GameNode {
+  return {
+    id,
+    fen,
+    move,
+    san: move?.san ?? '',
+    uci: move ? `${move.from}${move.to}${move.promotion ?? ''}` : '',
+    parent,
+    children,
+    quality,
+  } as GameNode
+}
+
 describe('PGN export helpers', () => {
   it('exports FEN roots with setup headers and black-to-move numbering', () => {
     const game = new Chess()
@@ -223,5 +243,57 @@ describe('PGN export helpers', () => {
     expect(pgn).not.toContain('Bad]Tag')
     expect(loader.getHeaders().Event).toBe('Queen \'Sacrifice\' \\ Study Final')
     expect(loader.getHeaders().Result).toBe('*')
+  })
+
+  it('exports analysis tree variations from the game tree snapshot', () => {
+    const rootFen = new Chess().fen()
+
+    const e4Game = new Chess(rootFen)
+    const e4Move = e4Game.move('e4')!
+    const e4Fen = e4Game.fen()
+
+    const e5Game = new Chess(e4Fen)
+    const e5Move = e5Game.move('e5')!
+    const e5Fen = e5Game.fen()
+
+    const nf3Game = new Chess(e5Fen)
+    const nf3Move = nf3Game.move('Nf3')!
+    const nf3Fen = nf3Game.fen()
+
+    const d4Game = new Chess(rootFen)
+    const d4Move = d4Game.move('d4')!
+    const d4Fen = d4Game.fen()
+
+    const c5Game = new Chess(e4Fen)
+    const c5Move = c5Game.move('c5')!
+    const c5Fen = c5Game.fen()
+
+    const root = makeNode('root', rootFen, null, null, ['e4', 'd4'])
+    const e4 = makeNode('e4', e4Fen, e4Move, 'root', ['e5', 'c5'])
+    const e5 = makeNode('e5', e5Fen, e5Move, 'e4', ['nf3'])
+    const nf3 = makeNode('nf3', nf3Fen, nf3Move, 'e5')
+    const d4 = makeNode('d4', d4Fen, d4Move, 'root', [], 'mistake')
+    const c5 = makeNode('c5', c5Fen, c5Move, 'e4')
+    const nodes = new Map([
+      [root.id, root],
+      [e4.id, e4],
+      [e5.id, e5],
+      [nf3.id, nf3],
+      [d4.id, d4],
+      [c5.id, c5],
+    ])
+
+    const pgn = exportAnnotatedPgn(
+      [root, e4, e5, nf3],
+      new Map([[d4Fen, { cp: 24 }]]),
+      { Result: '*' },
+      nodes,
+    )
+    const loader = new Chess()
+    loader.loadPgn(pgn)
+
+    expect(pgn).toContain('1. e4 (1. d4 { [%eval -0.24]; Mistake }) 1... e5')
+    expect(pgn).toContain('(1... c5)')
+    expect(loader.history()).toEqual(['e4', 'e5', 'Nf3'])
   })
 })

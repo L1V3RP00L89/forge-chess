@@ -15,6 +15,7 @@ type PgnDialogProps = {
     onLoadFen: (fen: string) => ImportResult
     currentFen: string
     mainLineNodes: GameNode[]
+    gameNodes: Map<string, GameNode>
     evaluations: Map<string, EvalSnapshot>
 }
 
@@ -25,7 +26,7 @@ type ImportResult = {
 
 type CopyStatus = 'idle' | 'fen-copied' | 'link-copied' | 'pgn-copied' | 'failed'
 
-export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, mainLineNodes, evaluations }: PgnDialogProps) {
+export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, mainLineNodes, gameNodes, evaluations }: PgnDialogProps) {
     const [tab, setTab] = useState<'import' | 'fen' | 'export'>('import')
     const [importText, setImportText] = useState('')
     const [fenText, setFenText] = useState('')
@@ -67,7 +68,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
         setError(result.error ?? 'Could not load that FEN.')
     }
 
-    const exportText = tab === 'export' ? exportAnnotatedPgn(mainLineNodes, evaluations) : ''
+    const exportText = tab === 'export' ? exportAnnotatedPgn(mainLineNodes, evaluations, {}, gameNodes) : ''
 
     const handleCopy = async () => {
         try {

@@ -46,6 +46,76 @@ function bestMoveSanFromFen(fen: string, bestMove: string): string {
     }
 }
 
+function movePrefixFromFen(fen: string): string {
+    const position = new Chess(fen)
+    const moveNumber = position.moveNumber()
+    return position.turn() === 'w' ? `${moveNumber}.` : `${moveNumber}...`
+}
+
+function commentForNode(
+    node: GameNode,
+    parentFen: string,
+    evaluationsByFen: Map<string, EvalSnapshot>,
+): string | null {
+    const commentParts: string[] = []
+    const evaluation = evaluationsByFen.get(node.fen)
+
+    if (evaluation) {
+        const turn = node.fen.split(' ')[1]
+        const cpPov = isFiniteNumber(evaluation.cp)
+            ? turn === 'w' ? evaluation.cp : -evaluation.cp
+            : undefined
+
+        let evalStr: string | null = null
+        if (isFiniteNumber(evaluation.mate)) {
+            const matePov = turn === 'w' ? evaluation.mate : -evaluation.mate
+            evalStr = `#${matePov}`
+        } else if (typeof cpPov === 'number' && Math.abs(cpPov) >= 10000) {
+            evalStr = cpPov > 0 ? '#1' : '#-1'
+        } else if (typeof cpPov === 'number') {
+            const cpVal = cpPov / 100
+            evalStr = cpVal.toFixed(2)
+        }
+
+        if (evalStr) commentParts.push(`[%eval ${evalStr}]`)
+    }
+
+    const beforeEvaluation = evaluationsByFen.get(parentFen)
+    if (beforeEvaluation?.bestMove && beforeEvaluation.bestMove !== node.uci) {
+        commentParts.push(`Best ${bestMoveSanFromFen(parentFen, beforeEvaluation.bestMove)}`)
+    }
+
+    if (node.quality && node.quality !== 'pending') {
+        commentParts.push(QUALITY_EXPORT_LABELS[node.quality])
+    }
+
+    return commentParts.length ? `{ ${commentParts.join('; ')} }` : null
+}
+
+function wrapMovetext(tokens: string[], result: string): string {
+    const outputTokens = [...tokens, result]
+    const lines: string[] = []
+    let currentLine = ''
+
+    for (const token of outputTokens) {
+        if (!currentLine) {
+            currentLine = token
+            continue
+        }
+
+        if (currentLine.length + token.length + 1 > 70) {
+            lines.push(currentLine)
+            currentLine = token
+            continue
+        }
+
+        currentLine += ` ${token}`
+    }
+
+    if (currentLine) lines.push(currentLine)
+    return lines.join('\n')
+}
+
 export function rootFenFromPgnHeaders(headers: Record<string, string>): string {
     const fenHeader = headers.FEN?.trim()
     if (!fenHeader) return INITIAL_FEN
@@ -58,11 +128,11 @@ export function rootFenFromPgnHeaders(headers: Record<string, string>): string {
 export function exportAnnotatedPgn(
     mainLine: GameNode[],
     evaluationsByFen: Map<string, EvalSnapshot>,
-    header: Record<string, string> = {}
+    header: Record<string, string> = {},
+    allNodes?: Map<string, GameNode>
 ): string {
     let pgn = ''
     const rootFen = mainLine[0]?.fen ? new Chess(mainLine[0].fen).fen() : INITIAL_FEN
-    const rootPosition = new Chess(rootFen)
 
     // Set headers (Event, Site, Date, Round, White, Black, Result)
     const defaultHeaders: Record<string, string> = {
@@ -90,76 +160,45 @@ export function exportAnnotatedPgn(
     }
     pgn += '\n'
 
-    let moveNumber = rootPosition.moveNumber()
-    let sideToMove = rootPosition.turn()
-    let currentLine = ''
+    const nodeLookup = allNodes ?? new Map(mainLine.map(node => [node.id, node]))
+    const tokens: string[] = []
+    const visited = new Set<string>()
 
-    // mainLine[0] is root. mainLine[1] is the first move.
-    for (let i = 1; i < mainLine.length; i++) {
-        const node = mainLine[i]
-        if (!node || !node.move) continue
-        const parentFen = mainLine[i - 1]?.fen ?? rootFen
+    const renderLine = (startId: string): string[] => {
+        const lineTokens: string[] = []
+        let node = nodeLookup.get(startId)
 
-        if (sideToMove === 'w') {
-            currentLine += `${moveNumber}. ${node.san} `
-        } else {
-            currentLine += `${moveNumber}... ${node.san} `
-        }
+        while (node?.move && !visited.has(node.id)) {
+            visited.add(node.id)
+            const parent = node.parent ? nodeLookup.get(node.parent) : undefined
+            const parentFen = parent?.fen ?? rootFen
+            lineTokens.push(`${movePrefixFromFen(parentFen)} ${node.san}`)
 
-        const commentParts: string[] = []
+            const comment = commentForNode(node, parentFen, evaluationsByFen)
+            if (comment) lineTokens.push(comment)
 
-        // Lookup evaluation
-        const evaluation = evaluationsByFen.get(node.fen)
-        if (evaluation) {
-            // Normalize to White's perspective since Stockfish outputs from side-to-move's perspective
-            const turn = node.fen.split(' ')[1]
-            const cpPov = isFiniteNumber(evaluation.cp)
-                ? turn === 'w' ? evaluation.cp : -evaluation.cp
-                : undefined
-
-            let evalStr: string | null = null
-            if (isFiniteNumber(evaluation.mate)) {
-                const matePov = turn === 'w' ? evaluation.mate : -evaluation.mate
-                evalStr = `#${matePov}`
-            } else if (typeof cpPov === 'number' && Math.abs(cpPov) >= 10000) {
-                evalStr = cpPov > 0 ? '#1' : '#-1'
-            } else if (typeof cpPov === 'number') {
-                const cpVal = cpPov / 100
-                evalStr = cpVal.toFixed(2)
+            if (parent?.children[0] === node.id) {
+                for (const variationId of parent.children.slice(1)) {
+                    const variationTokens = renderLine(variationId)
+                    if (variationTokens.length) {
+                        lineTokens.push(`(${variationTokens.join(' ')})`)
+                    }
+                }
             }
 
-            if (evalStr) commentParts.push(`[%eval ${evalStr}]`)
+            const nextId = node.children[0]
+            node = nextId ? nodeLookup.get(nextId) : undefined
         }
 
-        const beforeEvaluation = evaluationsByFen.get(parentFen)
-        if (beforeEvaluation?.bestMove && beforeEvaluation.bestMove !== node.uci) {
-            commentParts.push(`Best ${bestMoveSanFromFen(parentFen, beforeEvaluation.bestMove)}`)
-        }
-
-        if (node.quality && node.quality !== 'pending') {
-            commentParts.push(QUALITY_EXPORT_LABELS[node.quality])
-        }
-
-        if (commentParts.length) {
-            currentLine += `{ ${commentParts.join('; ')} } `
-        }
-
-        // Wrap to ~80 chars
-        if (currentLine.length > 70) {
-            pgn += currentLine.trim() + '\n'
-            currentLine = ''
-        }
-
-        if (sideToMove === 'b') moveNumber += 1
-        sideToMove = sideToMove === 'w' ? 'b' : 'w'
+        return lineTokens
     }
 
-    if (currentLine.trim()) {
-        pgn += currentLine.trim()
+    const firstMove = mainLine[1]
+    if (firstMove?.id) {
+        tokens.push(...renderLine(firstMove.id))
     }
 
-    // Append result at the very end
-    pgn += ` ${result}`
+    pgn += wrapMovetext(tokens, result)
 
     return pgn.trim() + '\n'
 }
