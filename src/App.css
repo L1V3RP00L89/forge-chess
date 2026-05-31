@@ -1630,6 +1630,30 @@ body.resizing * {
   margin-bottom: 0.45rem;
 }
 
+.opening-token-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: -0.18rem 0 0.5rem;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.opening-token-meta a {
+  color: var(--info);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .opening-token-meta a:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+  }
+}
+
 .opening-move-list {
   display: grid;
   gap: 0.3rem;

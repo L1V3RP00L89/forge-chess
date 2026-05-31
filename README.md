@@ -47,7 +47,7 @@ The bundled Stockfish engine assets in `public/engine` are GPL-3.0 licensed. See
 
 ## Opening Explorer
 
-The Lichess Opening Explorer endpoints require an API token. Paste a session-only token in the app when using Masters/Lichess book stats. Local ECO opening names continue to work offline from `src/assets/eco.json`.
+The Lichess Opening Explorer endpoints require API authentication. Create a personal token at <https://lichess.org/account/oauth/token> with no scopes, then paste it into the app's session-only token field when using Masters/Lichess book stats. Local ECO opening names continue to work offline from `src/assets/eco.json`.
 
 ## Getting Started
 

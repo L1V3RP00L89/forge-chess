@@ -63,6 +63,7 @@ type PromotionPiece = 'q' | 'r' | 'b' | 'n'
 type PendingPromotion = { from: Square; to: Square }
 
 const ANALYSIS_SETTINGS_STORAGE_KEY = 'webchess:analysis-settings:v1'
+const LICHESS_TOKEN_PAGE_URL = 'https://lichess.org/account/oauth/token'
 const SAMPLE_PGN_CACHE_LIMIT = 12
 const ANALYZE_MODE_IDS: AnalyzeMode[] = ['quick', 'deep', 'infinite', 'mate', 'review']
 const ANALYSIS_TAB_IDS: AnalysisTab[] = ['analyze', 'review', 'engine-lab']
@@ -3392,6 +3393,12 @@ function App() {
                         placeholder="Session-only API token"
                       />
                     </label>
+                    <div className="opening-token-meta">
+                      <span>Session only; never saved.</span>
+                      <a href={LICHESS_TOKEN_PAGE_URL} target="_blank" rel="noreferrer">
+                        Open token page
+                      </a>
+                    </div>
                     {openingSource === 'lichess' && (
                       <>
                         <div className="opening-speed-toggle" aria-label="Lichess time controls">
@@ -3427,7 +3434,7 @@ function App() {
                     )}
                     {openingExplorer.authRequired && !openingExplorer.data && (
                       <p className="panel-copy small warning-copy">
-                        Add a session-only Lichess token to load Masters or Lichess book stats. Local ECO names stay available offline.
+                        Opening Explorer requires a Lichess token. Create a personal token with no scopes; local ECO names stay available offline.
                       </p>
                     )}
                     {openingExplorer.error && (
