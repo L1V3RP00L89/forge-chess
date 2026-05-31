@@ -30,6 +30,22 @@ function isFiniteNumber(value: unknown): value is number {
     return typeof value === 'number' && Number.isFinite(value)
 }
 
+function bestMoveSanFromFen(fen: string, bestMove: string): string {
+    if (bestMove.length < 4) return bestMove
+
+    try {
+        const replay = new Chess(fen)
+        const move = replay.move({
+            from: bestMove.slice(0, 2),
+            to: bestMove.slice(2, 4),
+            promotion: bestMove[4],
+        })
+        return move?.san ?? bestMove
+    } catch {
+        return bestMove
+    }
+}
+
 export function rootFenFromPgnHeaders(headers: Record<string, string>): string {
     const fenHeader = headers.FEN?.trim()
     if (!fenHeader) return INITIAL_FEN
@@ -82,6 +98,7 @@ export function exportAnnotatedPgn(
     for (let i = 1; i < mainLine.length; i++) {
         const node = mainLine[i]
         if (!node || !node.move) continue
+        const parentFen = mainLine[i - 1]?.fen ?? rootFen
 
         if (sideToMove === 'w') {
             currentLine += `${moveNumber}. ${node.san} `
@@ -112,6 +129,11 @@ export function exportAnnotatedPgn(
             }
 
             if (evalStr) commentParts.push(`[%eval ${evalStr}]`)
+        }
+
+        const beforeEvaluation = evaluationsByFen.get(parentFen)
+        if (beforeEvaluation?.bestMove && beforeEvaluation.bestMove !== node.uci) {
+            commentParts.push(`Best ${bestMoveSanFromFen(parentFen, beforeEvaluation.bestMove)}`)
         }
 
         if (node.quality && node.quality !== 'pending') {

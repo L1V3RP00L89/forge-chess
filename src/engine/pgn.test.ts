@@ -154,6 +154,48 @@ describe('PGN export helpers', () => {
     expect(loader.history()).toEqual(['e4'])
   })
 
+  it('exports best-move alternatives in review comments', () => {
+    const game = new Chess()
+    const rootFen = game.fen()
+    const move = game.move('d4')!
+    const fenAfterMove = game.fen()
+    const mainLine = [
+      {
+        id: 'root',
+        fen: rootFen,
+        move: null,
+        san: '',
+        uci: '',
+        parent: null,
+        children: ['n1'],
+      },
+      {
+        id: 'n1',
+        fen: fenAfterMove,
+        move,
+        san: move.san,
+        uci: 'd2d4',
+        parent: 'root',
+        children: [],
+        quality: 'inaccuracy',
+      },
+    ] as unknown as GameNode[]
+
+    const pgn = exportAnnotatedPgn(
+      mainLine,
+      new Map([
+        [rootFen, { cp: 0, bestMove: 'e2e4' }],
+        [fenAfterMove, { cp: 100 }],
+      ]),
+      { Result: '*' },
+    )
+    const loader = new Chess()
+    loader.loadPgn(pgn)
+
+    expect(pgn).toContain('{ [%eval -1.00]; Best e4; Inaccuracy }')
+    expect(loader.history()).toEqual(['d4'])
+  })
+
   it('sanitizes tag values and ignores invalid tag names when exporting', () => {
     const mainLine = [
       {
