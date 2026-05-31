@@ -26,14 +26,16 @@ export function isHeavyEngineLabCommand(command: string): boolean {
   if (verb === 'perft') return true
 
   if (verb !== 'go') return false
-  if (parts.includes('infinite') || parts.includes('ponder')) return true
-  const hasClockTime = parts.some((part, index) => {
-    return (part === 'wtime' || part === 'btime') && hasPositiveNumericValue(parts, index)
+  const searchMovesIndex = parts.indexOf('searchmoves')
+  const limitParts = searchMovesIndex >= 0 ? parts.slice(0, searchMovesIndex) : parts
+  if (limitParts.includes('infinite') || limitParts.includes('ponder')) return true
+  const hasClockTime = limitParts.some((part, index) => {
+    return (part === 'wtime' || part === 'btime') && hasPositiveNumericValue(limitParts, index)
   })
 
-  return !parts.some((part, index) => {
-    if (DIRECT_GO_LIMITS.has(part)) return hasPositiveNumericValue(parts, index)
+  return !limitParts.some((part, index) => {
+    if (DIRECT_GO_LIMITS.has(part)) return hasPositiveNumericValue(limitParts, index)
     if (!INCREMENT_LIMITS.has(part)) return false
-    return hasPositiveNumericValue(parts, index) && hasClockTime
+    return hasPositiveNumericValue(limitParts, index) && hasClockTime
   })
 }
