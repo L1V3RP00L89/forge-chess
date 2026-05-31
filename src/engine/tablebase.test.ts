@@ -22,7 +22,7 @@ describe('tablebase client', () => {
     vi.useFakeTimers()
     vi.setSystemTime(1_700_000_000_000)
 
-    const fen = '8/8/8/8/8/8/4K3/6k1 w - - 0 1'
+    const fen = '8/8/8/8/8/8/4K3/7k w - - 0 1'
     const parsed = parseTablebaseResponse(fen, {
       category: 'win',
       dtz: 1,
@@ -85,5 +85,49 @@ describe('tablebase client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [url] = fetchMock.mock.calls[0] as [string]
     expect(new URL(url).searchParams.get('fen')).toBe(normalizeTablebaseFen('8/8/8/8/8/8/4K3/6k1 w - - 0 1'))
+  })
+
+  it('does not cache a response aborted during parsing', async () => {
+    let resolveJson: (payload: unknown) => void = () => {}
+    let resolveJsonStarted: () => void = () => {}
+    const jsonStarted = new Promise<void>(resolve => {
+      resolveJsonStarted = resolve
+    })
+    const abortedPayload = {
+      category: 'win',
+      dtz: 1,
+      moves: [],
+    }
+    const freshPayload = {
+      category: 'draw',
+      moves: [],
+    }
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => {
+          resolveJsonStarted()
+          return new Promise(resolve => {
+            resolveJson = resolve
+          })
+        },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => freshPayload,
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const fen = '8/8/8/8/8/8/4K3/5k2 w - - 0 1'
+    const controller = new AbortController()
+    const pending = fetchTablebase(fen, controller.signal)
+    await jsonStarted
+
+    controller.abort()
+    resolveJson(abortedPayload)
+
+    await expect(pending).rejects.toThrow()
+    await expect(fetchTablebase(fen)).resolves.toMatchObject({ category: 'draw' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

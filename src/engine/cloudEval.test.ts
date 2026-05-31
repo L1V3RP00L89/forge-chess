@@ -1,13 +1,18 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   cloudEvalRequestKey,
   cloudEvalToSnapshot,
   cloudLineToSideToMoveScore,
+  fetchCloudEvaluation,
   normalizeCloudEvalFen,
   parseCloudEvalResponse,
 } from './cloudEval'
 
 describe('cloud eval parsing', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('normalizes cache keys to the position fields that affect engine eval', () => {
     const fenA = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
     const fenB = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 7 42'
@@ -62,5 +67,56 @@ describe('cloud eval parsing', () => {
       mode: 'custom',
       purpose: 'cloud-eval',
     })
+  })
+
+  it('does not cache a response aborted during parsing', async () => {
+    let resolveJson: (payload: unknown) => void = () => {}
+    let resolveJsonStarted: () => void = () => {}
+    const jsonStarted = new Promise<void>(resolve => {
+      resolveJsonStarted = resolve
+    })
+    const abortedPayload = {
+      fen: '8/8/8/8/8/8/4K3/6k1 w - -',
+      knodes: 99,
+      depth: 99,
+      pvs: [{ moves: 'e2e3', cp: 99 }],
+    }
+    const freshPayload = {
+      fen: '8/8/8/8/8/8/4K3/6k1 w - -',
+      knodes: 2,
+      depth: 2,
+      pvs: [{ moves: 'e2e3', cp: 0 }],
+    }
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => {
+          resolveJsonStarted()
+          return new Promise(resolve => {
+            resolveJson = resolve
+          })
+        },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => freshPayload,
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const request = { fen: '8/8/8/8/8/8/4K3/6k1 w - - 0 1', multiPv: 1 }
+    const controller = new AbortController()
+    const pending = fetchCloudEvaluation(request, controller.signal)
+    await jsonStarted
+
+    controller.abort()
+    resolveJson(abortedPayload)
+
+    await expect(pending).rejects.toThrow()
+    await expect(fetchCloudEvaluation(request)).resolves.toMatchObject({
+      depth: 2,
+      knodes: 2,
+      pvs: [{ moves: ['e2e3'], cp: 0 }],
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

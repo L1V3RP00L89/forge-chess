@@ -159,6 +159,12 @@ function writeCached(fen: string, payload: TablebaseResult) {
   writeStorageCacheEntry(key, entry)
 }
 
+function throwIfAborted(signal: AbortSignal | undefined) {
+  if (!signal?.aborted) return
+  const reason = signal.reason
+  throw reason instanceof Error ? reason : new Error('Lichess tablebase request aborted.')
+}
+
 function parseMove(raw: unknown): TablebaseMove | null {
   if (!raw || typeof raw !== 'object') return null
   const row = raw as Record<string, unknown>
@@ -224,6 +230,7 @@ export async function fetchTablebase(fen: string, signal?: AbortSignal): Promise
     signal,
     headers: { Accept: 'application/json' },
   })
+  throwIfAborted(signal)
 
   if (response.status === 404) return null
   if (response.status === 429) {
@@ -233,7 +240,10 @@ export async function fetchTablebase(fen: string, signal?: AbortSignal): Promise
     throw new Error(`Lichess tablebase request failed (${response.status}).`)
   }
 
-  const parsed = parseTablebaseResponse(fen, await response.json())
+  const raw = await response.json()
+  throwIfAborted(signal)
+
+  const parsed = parseTablebaseResponse(fen, raw)
   if (parsed) writeCached(fen, parsed)
   return parsed
 }

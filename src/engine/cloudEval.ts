@@ -120,6 +120,12 @@ function writeCached(request: CloudEvalRequest, payload: CloudEvalResult) {
   writeStorageCacheEntry(key, entry)
 }
 
+function throwIfAborted(signal: AbortSignal | undefined) {
+  if (!signal?.aborted) return
+  const reason = signal.reason
+  throw reason instanceof Error ? reason : new Error('Lichess cloud eval request aborted.')
+}
+
 function buildUrl(request: CloudEvalRequest): string {
   const url = new URL(CLOUD_EVAL_URL)
   url.searchParams.set('fen', normalizeCloudEvalFen(request.fen))
@@ -179,6 +185,7 @@ export async function fetchCloudEvaluation(
     signal,
     headers: { Accept: 'application/json' },
   })
+  throwIfAborted(signal)
 
   if (response.status === 404) return null
   if (response.status === 429) {
@@ -188,7 +195,10 @@ export async function fetchCloudEvaluation(
     throw new Error(`Lichess cloud eval request failed (${response.status}).`)
   }
 
-  const parsed = parseCloudEvalResponse(await response.json())
+  const raw = await response.json()
+  throwIfAborted(signal)
+
+  const parsed = parseCloudEvalResponse(raw)
   if (parsed) writeCached(request, parsed)
   return parsed
 }
