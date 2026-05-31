@@ -1,4 +1,4 @@
-import { Chess, type Square } from 'chess.js'
+import { Chess, type Move, type Square } from 'chess.js'
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { Chessboard } from 'react-chessboard'
 import {
@@ -1893,7 +1893,12 @@ function App() {
 
   const applyHumanMove = useCallback(
     (from: Square, to: Square, promotion?: PromotionPiece) => {
-      const move = game.move({ from, to, promotion })
+      let move: Move | null
+      try {
+        move = game.move({ from, to, promotion })
+      } catch {
+        return false
+      }
       if (!move) return false
 
       clearImportSweep()
@@ -1917,6 +1922,7 @@ function App() {
 
   const onPieceDrop = (sourceSquare: Square, targetSquare: Square, pieceType: string) => {
     if (pendingPromotion) return false
+    if (sourceSquare === targetSquare) return false
     if (gameMode === 'human-vs-ai' && isAiThinking) return false
     if (gameMode === 'human-vs-ai' && !paused && game.turn() !== playerColor[0]) return false
 
