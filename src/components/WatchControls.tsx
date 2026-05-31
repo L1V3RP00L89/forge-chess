@@ -95,6 +95,7 @@ export function WatchControls({
                             key={id}
                             type="button"
                             className={`wc-speed-pill ${aiSpeed === id ? 'wc-speed-active' : ''}`}
+                            aria-pressed={aiSpeed === id}
                             onClick={() => onSpeedChange(id)}
                         >
                             {label}

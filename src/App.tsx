@@ -2357,6 +2357,7 @@ function App() {
                     key={id}
                     type="button"
                     className={`gc-pill ${workspaceMode === id ? 'gc-pill-active' : ''}`}
+                    aria-pressed={workspaceMode === id}
                     onClick={() => handleWorkspaceModeChange(id)}
                   >
                     <span className="gc-pill-icon">{icon}</span>
@@ -2377,6 +2378,7 @@ function App() {
                     key={id}
                     type="button"
                     className={`gc-pill ${gameMode === id ? 'gc-pill-active' : ''}`}
+                    aria-pressed={gameMode === id}
                     onClick={() => id !== gameMode && handleModeChange(id)}
                   >
                     <span className="gc-pill-icon">{icon}</span>
@@ -2969,6 +2971,7 @@ function App() {
                       key={tab.id}
                       type="button"
                       className={`analysis-tab-btn ${analysisTab === tab.id ? 'active' : ''}`}
+                      aria-pressed={analysisTab === tab.id}
                       onClick={() => handleAnalysisTabChange(tab.id)}
                     >
                       {tab.label}
@@ -3019,10 +3022,10 @@ function App() {
               {workspaceMode === 'analysis' && analysisTab === 'analyze' && (
                 <>
                   <div className="inline-actions">
-                    <button type="button" className="btn-primary" onClick={runAnalyze}>
+                    <button type="button" className="btn-primary" aria-label="Run analysis" onClick={runAnalyze}>
                       <IconPlay /> Analyze
                     </button>
-                    <button type="button" onClick={stop}>
+                    <button type="button" aria-label="Stop analysis" onClick={stop}>
                       <IconStop /> Stop
                     </button>
                   </div>
@@ -3035,6 +3038,7 @@ function App() {
                         key={option.id}
                         type="button"
                         className={`mode-pill ${analysisExperience === option.id ? 'active' : ''}`}
+                        aria-pressed={analysisExperience === option.id}
                         onClick={() => setAnalysisExperience(option.id)}
                       >
                         {option.label}
