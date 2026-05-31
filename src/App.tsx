@@ -1562,8 +1562,10 @@ function App() {
     setTopMoveArrowCount(DEFAULT_PERSISTED_SETTINGS.topMoveArrowCount)
     setOpeningPrefetchTick(0)
     setEngineLabError(null)
+    setEngineLabCommand('')
     setEngineLabOutputLines([])
     setEngineLabCopyStatus('idle')
+    setLastLabRun(null)
     setPendingPromotion(null)
   }, [])
 
