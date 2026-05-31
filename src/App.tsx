@@ -33,7 +33,7 @@ import { rootFenFromPgnHeaders } from './engine/pgn'
 import { engineProfiles, type EngineProfileId } from './engine/profiles'
 import type { TablebaseCategory, TablebaseMove, TablebaseResult } from './engine/tablebase'
 import { useStockfishEngine } from './hooks/useStockfishEngine'
-import { useAiPlayer, type AiDifficulty } from './hooks/useAiPlayer'
+import { DIFFICULTY_LABELS, useAiPlayer, type AiDifficulty } from './hooks/useAiPlayer'
 import { useGameTree, type GameNode } from './hooks/useGameTree'
 import { useOpening } from './hooks/useOpening'
 import { useCloudEvaluation } from './hooks/useCloudEvaluation'
@@ -2228,14 +2228,28 @@ function App() {
     : gameMode === 'human-vs-ai'
       ? 'Human vs AI'
       : 'AI vs AI'
+  const playEngineActive = workspaceMode === 'play' && gameMode !== 'human-vs-human'
+  const playEngineStatus = isAiThinking ? 'thinking' : aiPlayer.status
   const bottomStatusTitle = engineEnabled
     ? profileMessage
-    : 'Engine is on standby in Play mode. Switch to Analysis mode for Stockfish analysis.'
+    : playEngineActive
+      ? `${aiPlayer.profileName} play engine · ${DIFFICULTY_LABELS[aiDifficulty]} difficulty`
+      : 'Engine is on standby in Play mode. Switch to Analysis mode for Stockfish analysis.'
   const bottomStatusPrefix = engineEnabled
     ? `${engineName} · ${activeProfile.name} ·`
-    : `${gameModeLabel} ·`
-  const bottomStatusText = engineEnabled ? status : 'Engine standby'
-  const bottomStatusClass = engineEnabled ? status : 'standby'
+    : playEngineActive
+      ? `${gameModeLabel} · AI`
+      : `${gameModeLabel} · Engine`
+  const bottomStatusText = engineEnabled
+    ? status
+    : playEngineActive && playEngineStatus !== 'disabled'
+      ? playEngineStatus
+      : 'standby'
+  const bottomStatusClass = engineEnabled
+    ? status
+    : playEngineActive
+      ? (playEngineStatus === 'thinking' ? 'analyzing' : playEngineStatus)
+      : 'standby'
 
   // ─────────────────────────────────────────────────────
   return (
@@ -2905,7 +2919,9 @@ function App() {
                   <div className="engine-lab-card">
                     <h3><span className="section-icon"><IconSwords /></span> Play Focus</h3>
                     <p className="panel-copy small">
-                      Engine is off in Play mode. Use this view for clean gameplay and move navigation.
+                      {playEngineActive
+                        ? `${aiPlayer.profileName} play engine is ${playEngineStatus}.`
+                        : 'Analysis engine is on standby. Use this view for clean gameplay and move navigation.'}
                     </p>
                     <label className="switch-control">
                       <input

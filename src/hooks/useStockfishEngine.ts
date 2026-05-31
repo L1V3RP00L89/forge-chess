@@ -7,6 +7,7 @@ import {
   type EngineProfile,
   type EngineProfileId,
 } from '../engine/profiles'
+import { createStockfishWorker } from '../engine/stockfishWorker'
 import { buildAnalyzeCommand, parseBestMoveLine, type AnalyzeMode, type AnalyzePurpose, type AnalyzeRequest, type UciGoLimits } from '../engine/uci'
 
 type EngineStatus = 'loading' | 'ready' | 'analyzing' | 'error' | 'disabled'
@@ -123,44 +124,6 @@ function normalizeWorkerLines(data: string): string[] {
     .split(/\r?\n/g)
     .map(line => line.trim())
     .filter(Boolean)
-}
-
-function isRemoteWorkerPath(path: string): boolean {
-  return /^https?:\/\//i.test(path)
-}
-
-function deriveWasmPath(workerPath: string): string {
-  return workerPath.replace(/\.js($|\?)/, '.wasm$1')
-}
-
-function createEngineWorker(profile: EngineProfile): { worker: Worker; blobUrl?: string } {
-  if (!isRemoteWorkerPath(profile.workerPath)) {
-    return { worker: new Worker(profile.workerPath) }
-  }
-
-  // Browser Worker constructor requires same-origin script URLs.
-  // For remote profiles, bootstrap a same-origin blob worker and import remote Stockfish from inside it.
-  const wasmPath = deriveWasmPath(profile.workerPath)
-  const bootstrap = `
-self.window = self;
-self.addEventListener('error', function (event) {
-  try {
-    self.postMessage('__BOOT_ERROR__:' + (event && event.message ? event.message : 'Unknown worker bootstrap error'));
-  } catch (_) {}
-  event.preventDefault();
-});
-try {
-  importScripts(${JSON.stringify(profile.workerPath)});
-} catch (error) {
-  self.postMessage('__BOOT_ERROR__:' + (error && error.message ? error.message : String(error)));
-}
-`
-  const blobUrl = URL.createObjectURL(new Blob([bootstrap], { type: 'application/javascript' }))
-
-  return {
-    worker: new Worker(`${blobUrl}#${encodeURIComponent(wasmPath)},worker`),
-    blobUrl,
-  }
 }
 
 function profileRuntimeMessage(
@@ -616,7 +579,7 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
     }
 
     try {
-      const created = createEngineWorker(profile)
+      const created = createStockfishWorker(profile)
       worker = created.worker
       workerBlobUrl = created.blobUrl
     } catch (error) {
@@ -749,10 +712,11 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
       }
     }
 
-    worker.onerror = () => {
+    worker.onerror = (event) => {
       if (currentSession !== bootSessionRef.current) return
+      const message = event.message || 'Unknown worker error.'
       setStatus('error')
-      rejectQueuedCommands(`Engine worker error while running ${profile.name}.`)
+      rejectQueuedCommands(`Engine worker error while running ${profile.name}: ${message}`)
 
       if (profile.id !== 'lite-single-local') {
         const fallback = resolveProfile('lite-single-local', capabilities)
@@ -761,9 +725,9 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
           profile: 'lite-single-local',
         })
         setActiveProfile(fallback)
-        setProfileMessage(`Failed to load ${profile.name}; fell back to ${fallback.name}.`)
+        setProfileMessage(`Failed to load ${profile.name}: ${message} Fell back to ${fallback.name}.`)
       } else {
-        setProfileMessage(`Failed to load ${profile.name}.`)
+        setProfileMessage(`Failed to load ${profile.name}: ${message}`)
       }
     }
 

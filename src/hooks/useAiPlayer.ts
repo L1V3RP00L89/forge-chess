@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { resolveProfile } from '../engine/profiles'
+import { detectEngineCapabilities, resolveProfile } from '../engine/profiles'
+import { createStockfishWorker } from '../engine/stockfishWorker'
 
 export type AiDifficulty = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
 
@@ -47,6 +48,7 @@ export function useAiPlayer(enabled = true) {
     const isReadyRef = useRef(false)
     const resolveRef = useRef<((move: string | null) => void) | null>(null)
     const [status, setStatus] = useState<AiStatus>('loading')
+    const [profileName, setProfileName] = useState('Stockfish')
     const difficultyRef = useRef<AiDifficulty>(4)
 
     const applyDifficulty = useCallback((worker: Worker, difficulty: AiDifficulty) => {
@@ -60,61 +62,85 @@ export function useAiPlayer(enabled = true) {
         worker.postMessage(`setoption name Skill Level value ${skillLevel}`)
     }, [])
 
-    // Boot a fresh lite-single worker for the AI player
+    // Boot a fresh Stockfish worker for the AI player.
     useEffect(() => {
+        let active = true
+        let worker: Worker | null = null
+        let workerBlobUrl: string | undefined
+
         if (!enabled) {
             workerRef.current = null
             isReadyRef.current = false
             resolveRef.current?.(null)
             resolveRef.current = null
-            queueMicrotask(() => setStatus('disabled'))
-            return
+            queueMicrotask(() => {
+                if (active) setStatus('disabled')
+            })
+            return () => {
+                active = false
+            }
         }
 
-        const capabilities = {
-            sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
-            crossOriginIsolated: Boolean(globalThis.crossOriginIsolated),
-            hardwareConcurrency: navigator.hardwareConcurrency || 1,
-            isMobile: /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent),
-        }
-
-        const profile = resolveProfile('lite-single-local', capabilities)
-        let worker: Worker
+        const profile = resolveProfile('auto', detectEngineCapabilities())
 
         try {
-            worker = new Worker(profile.workerPath)
+            const created = createStockfishWorker(profile)
+            worker = created.worker
+            workerBlobUrl = created.blobUrl
         } catch {
-            queueMicrotask(() => setStatus('error'))
-            return
+            queueMicrotask(() => {
+                if (active) setStatus('error')
+            })
+            return () => {
+                active = false
+                if (workerBlobUrl) URL.revokeObjectURL(workerBlobUrl)
+            }
         }
 
         workerRef.current = worker
         isReadyRef.current = false
+        queueMicrotask(() => {
+            if (active) setProfileName(profile.name)
+        })
 
         worker.onmessage = (event: MessageEvent<unknown>) => {
+            if (!active) return
             if (typeof event.data !== 'string') return
-            const line = event.data
+            const lines = event.data.split(/\r?\n/g).map(line => line.trim()).filter(Boolean)
 
-            if (line === 'uciok') {
-                worker.postMessage('isready')
-            }
+            for (const line of lines) {
+                if (line.startsWith('__BOOT_ERROR__:')) {
+                    setStatus('error')
+                    isReadyRef.current = false
+                    resolveRef.current?.(null)
+                    resolveRef.current = null
+                    worker?.terminate()
+                    workerRef.current = null
+                    return
+                }
 
-            if (line === 'readyok') {
-                isReadyRef.current = true
-                applyDifficulty(worker, difficultyRef.current)
-                setStatus('ready')
-            }
+                if (line === 'uciok') {
+                    worker?.postMessage('isready')
+                }
 
-            if (line.startsWith('bestmove ')) {
-                const parts = line.split(' ')
-                const move = parts[1] ?? null
-                setStatus('ready')
-                resolveRef.current?.(move === '(none)' ? null : move)
-                resolveRef.current = null
+                if (line === 'readyok' && worker) {
+                    isReadyRef.current = true
+                    applyDifficulty(worker, difficultyRef.current)
+                    setStatus('ready')
+                }
+
+                if (line.startsWith('bestmove ')) {
+                    const parts = line.split(' ')
+                    const move = parts[1] ?? null
+                    setStatus('ready')
+                    resolveRef.current?.(move === '(none)' ? null : move)
+                    resolveRef.current = null
+                }
             }
         }
 
         worker.onerror = () => {
+            if (!active) return
             setStatus('error')
             isReadyRef.current = false
             resolveRef.current?.(null)
@@ -124,12 +150,14 @@ export function useAiPlayer(enabled = true) {
         worker.postMessage('uci')
 
         return () => {
-            try { worker.postMessage('quit') } catch { /* already gone */ }
-            worker.terminate()
+            active = false
+            try { worker?.postMessage('quit') } catch { /* already gone */ }
+            worker?.terminate()
             workerRef.current = null
             isReadyRef.current = false
             resolveRef.current?.(null)
             resolveRef.current = null
+            if (workerBlobUrl) URL.revokeObjectURL(workerBlobUrl)
         }
     }, [applyDifficulty, enabled])
 
@@ -161,5 +189,5 @@ export function useAiPlayer(enabled = true) {
         [enabled],
     )
 
-    return { status, requestMove, setDifficulty }
+    return { status, requestMove, setDifficulty, profileName }
 }

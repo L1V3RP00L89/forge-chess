@@ -91,6 +91,24 @@ export function fallbackProfileFor(profile: EngineProfile): EngineProfile {
   return profile
 }
 
+export function deriveWasmPath(workerPath: string): string {
+  return workerPath.replace(/\.js($|\?)/, '.wasm$1')
+}
+
+function defaultUrlBase(): string {
+  return typeof globalThis.location === 'object' ? globalThis.location.href : 'http://localhost/'
+}
+
+export function toAbsoluteAssetUrl(path: string, base = defaultUrlBase()): string {
+  return new URL(path, base).toString()
+}
+
+export function workerMainUrlWithWasmHash(workerPath: string, base?: string): string {
+  const scriptUrl = toAbsoluteAssetUrl(workerPath, base)
+  const wasmUrl = toAbsoluteAssetUrl(deriveWasmPath(workerPath), scriptUrl)
+  return `${scriptUrl}#${encodeURIComponent(wasmUrl)}`
+}
+
 export function profileById(id: Exclude<EngineProfileId, 'auto'>): EngineProfile {
   const profile = engineProfiles.find(item => item.id === id)
   if (!profile) throw new Error(`Unknown engine profile: ${id}`)
