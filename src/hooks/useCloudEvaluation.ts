@@ -26,6 +26,7 @@ export function useCloudEvaluation({ fen, multiPv, enabled }: UseCloudEvaluation
     [fen, normalizedMultiPv],
   )
   const [evaluations, setEvaluations] = useState<Map<string, CloudEvalResult>>(new Map())
+  const [missingKeys, setMissingKeys] = useState<Map<string, true>>(new Map())
   const [requestState, setRequestState] = useState<{
     error: string | null
     key: string
@@ -33,17 +34,20 @@ export function useCloudEvaluation({ fen, multiPv, enabled }: UseCloudEvaluation
   }>({ error: null, key: '', status: 'idle' })
   const cached = enabled ? getCachedCloudEvaluation({ fen, multiPv: normalizedMultiPv }) : null
   const result = evaluations.get(currentKey) ?? cached
+  const missing = enabled && missingKeys.has(currentKey)
   const status: CloudEvalStatus = !enabled
     ? 'idle'
     : result
       ? 'hit'
+      : missing
+        ? 'missing'
       : requestState.key === currentKey
         ? requestState.status
         : 'idle'
   const error = status === 'error' && requestState.key === currentKey ? requestState.error : null
 
   useEffect(() => {
-    if (!enabled || cached) return
+    if (!enabled || cached || missing) return
 
     const request = { fen, multiPv: normalizedMultiPv }
     const controller = new AbortController()
@@ -54,12 +58,19 @@ export function useCloudEvaluation({ fen, multiPv, enabled }: UseCloudEvaluation
         .then(nextResult => {
           if (controller.signal.aborted) return
           if (!nextResult) {
+            setMissingKeys(previous => withBoundedMapEntry(previous, currentKey, true, LOCAL_CLOUD_EVAL_LIMIT))
             setRequestState({ error: null, key: currentKey, status: 'missing' })
             return
           }
 
           setEvaluations(previous => {
             return withBoundedMapEntry(previous, currentKey, nextResult, LOCAL_CLOUD_EVAL_LIMIT)
+          })
+          setMissingKeys(previous => {
+            if (!previous.has(currentKey)) return previous
+            const next = new Map(previous)
+            next.delete(currentKey)
+            return next
           })
           setRequestState({ error: null, key: currentKey, status: 'hit' })
         })
@@ -77,7 +88,7 @@ export function useCloudEvaluation({ fen, multiPv, enabled }: UseCloudEvaluation
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [cached, currentKey, enabled, fen, normalizedMultiPv])
+  }, [cached, currentKey, enabled, fen, missing, normalizedMultiPv])
 
   return {
     error,

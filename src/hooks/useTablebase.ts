@@ -6,7 +6,7 @@ import {
   tablebasePieceCount,
   type TablebaseResult,
 } from '../engine/tablebase'
-import { withBoundedRecordEntry } from './cacheLimit'
+import { withBoundedRecordEntry, withoutRecordEntry } from './cacheLimit'
 
 export type TablebaseStatus = 'idle' | 'ineligible' | 'loading' | 'hit' | 'missing' | 'error'
 const LOCAL_TABLEBASE_LIMIT = 80
@@ -22,6 +22,7 @@ export function useTablebase({ fen, enabled, debounceMs = 280 }: UseTablebaseArg
   const eligible = enabled && isTablebaseEligible(fen)
   const cached = eligible ? getCachedTablebase(fen) : null
   const [resultByFen, setResultByFen] = useState<Record<string, TablebaseResult>>({})
+  const [missingByFen, setMissingByFen] = useState<Record<string, true>>({})
   const [requestState, setRequestState] = useState<{
     error: string | null
     fen: string
@@ -29,19 +30,22 @@ export function useTablebase({ fen, enabled, debounceMs = 280 }: UseTablebaseArg
   }>({ error: null, fen: '', status: 'idle' })
 
   const result = resultByFen[fen] ?? cached ?? null
+  const missing = eligible && Boolean(missingByFen[fen])
   const status: TablebaseStatus = !enabled
     ? 'idle'
     : !eligible
       ? 'ineligible'
       : result
         ? 'hit'
+        : missing
+          ? 'missing'
         : requestState.fen === fen
           ? requestState.status
           : 'idle'
   const error = status === 'error' && requestState.fen === fen ? requestState.error : null
 
   useEffect(() => {
-    if (!eligible || cached) return
+    if (!eligible || cached || missing) return
 
     const controller = new AbortController()
     const timer = window.setTimeout(() => {
@@ -51,11 +55,13 @@ export function useTablebase({ fen, enabled, debounceMs = 280 }: UseTablebaseArg
         .then(nextResult => {
           if (controller.signal.aborted) return
           if (!nextResult) {
+            setMissingByFen(previous => withBoundedRecordEntry(previous, fen, true, LOCAL_TABLEBASE_LIMIT))
             setRequestState({ error: null, fen, status: 'missing' })
             return
           }
 
           setResultByFen(previous => withBoundedRecordEntry(previous, fen, nextResult, LOCAL_TABLEBASE_LIMIT))
+          setMissingByFen(previous => withoutRecordEntry(previous, fen))
           setRequestState({ error: null, fen, status: 'hit' })
         })
         .catch(nextError => {
@@ -72,7 +78,7 @@ export function useTablebase({ fen, enabled, debounceMs = 280 }: UseTablebaseArg
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [cached, debounceMs, eligible, fen])
+  }, [cached, debounceMs, eligible, fen, missing])
 
   return {
     eligible,
