@@ -1,6 +1,6 @@
 import { Chess } from 'chess.js'
 import { describe, expect, it } from 'vitest'
-import { buildReviewRows, buildWinrateSeries, formatWhitePovEvaluation, summarizeReview, uciToSan } from './analysis'
+import { buildReviewRows, buildWdlSeries, buildWinrateSeries, formatWhitePovEvaluation, scoreToCp, summarizeReview, uciToSan } from './analysis'
 
 describe('review analysis helpers', () => {
   it('labels reviewed moves from side-to-move centipawn deltas', () => {
@@ -91,6 +91,30 @@ describe('review analysis helpers', () => {
     expect(formatWhitePovEvaluation(blackToMove, -10000, -3)).toBe('#3')
     expect(formatWhitePovEvaluation(blackToMove, 10000, 2)).toBe('#-2')
     expect(formatWhitePovEvaluation(whiteToMove, 42)).toBe('+0.42')
+  })
+
+  it('treats non-finite evaluation values as missing', () => {
+    const game = new Chess()
+    const rootFen = game.fen()
+    const move = game.move('e4')
+    const afterFen = game.fen()
+
+    expect(scoreToCp(Number.NaN)).toBeUndefined()
+    expect(scoreToCp(undefined, Number.POSITIVE_INFINITY)).toBeUndefined()
+    expect(formatWhitePovEvaluation(rootFen, Number.NaN)).toBe('...')
+
+    const rows = buildReviewRows(
+      [move],
+      new Map([
+        [rootFen, { cp: Number.NaN, depth: Number.POSITIVE_INFINITY }],
+        [afterFen, { cp: -20 }],
+      ]),
+      rootFen,
+    )
+    expect(rows[0]).toMatchObject({ quality: 'pending', confidence: 'pending' })
+
+    expect(buildWinrateSeries([move], new Map([[rootFen, { cp: Number.NaN }], [afterFen, { cp: Number.POSITIVE_INFINITY }]]), rootFen)).toEqual([])
+    expect(buildWdlSeries([move], new Map([[rootFen, { cp: 0, wdl: { w: 1, d: Number.NaN, l: 1 } }]]), rootFen)).toEqual([])
   })
 
   it('formats a single UCI move as SAN for the current position', () => {
