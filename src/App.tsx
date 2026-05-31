@@ -2724,7 +2724,9 @@ function App() {
                     className={`gc-pill ${gameMode === id ? 'gc-pill-active' : ''}`}
                     aria-pressed={gameMode === id}
                     title={title}
-                    onClick={() => id !== gameMode && handleModeChange(id)}
+                    onClick={() => {
+                      if (id !== gameMode || workspaceMode !== 'play') handleModeChange(id)
+                    }}
                   >
                     <span className="gc-pill-icon">{icon}</span>
                     {label}
