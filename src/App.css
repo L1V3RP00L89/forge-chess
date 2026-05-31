@@ -2799,7 +2799,7 @@ body.resizing * {
   }
 
   .eval-bar-label {
-    left: -12px;
+    left: 0;
   }
 
   .board-stage {

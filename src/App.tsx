@@ -2212,13 +2212,14 @@ function App() {
   }
 
   const isMobile = viewport.width <= 900
+  const desktopBoardChromeReserve = 44
 
   // Mobile: board occupies ~50% of viewport height so analysis panels are visible below
   const boardWidth = isMobile
     ? Math.min(viewport.width - 16, Math.round(viewport.height * 0.46))
     : Math.min(
       viewport.width - leftWidth - rightWidth - 48,
-      viewport.height - (bottomPanelOpen ? 140 : 80) - (topPanelOpen ? 80 : 40),
+      viewport.height - (bottomPanelOpen ? 140 : 80) - (topPanelOpen ? 80 : 40) - desktopBoardChromeReserve,
       800,
     )
   const turnLabel = game.turn() === 'w' ? 'White to move' : 'Black to move'
