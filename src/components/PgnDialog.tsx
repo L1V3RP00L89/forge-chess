@@ -145,6 +145,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
     }
 
     const handleCopyCurrentFen = async () => {
+        resetFeedback()
         setFenText(currentFen)
         try {
             await navigator.clipboard.writeText(currentFen)
