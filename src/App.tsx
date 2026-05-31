@@ -89,7 +89,7 @@ type SampleLibraryFilter = 'all' | HistoricalSampleFormat
 type PromotionPiece = 'q' | 'r' | 'b' | 'n'
 type PendingPromotion = { from: Square; to: Square }
 
-const LICHESS_TOKEN_PAGE_URL = 'https://lichess.org/account/oauth/token'
+const LICHESS_TOKEN_PAGE_URL = 'https://lichess.org/account/oauth/token/create?'
 const SAMPLE_PGN_CACHE_LIMIT = 12
 const DEFAULT_LEFT_PANEL_WIDTH = 320
 const ANALYZE_MODE_IDS: AnalyzeMode[] = ['quick', 'deep', 'infinite', 'mate', 'review']
@@ -3825,7 +3825,7 @@ function App() {
                     <div className="opening-token-meta">
                       <span>Session only; never saved.</span>
                       <a href={LICHESS_TOKEN_PAGE_URL} target="_blank" rel="noreferrer">
-                        Open token page
+                        Create token
                       </a>
                     </div>
                     {openingSource === 'lichess' && (
