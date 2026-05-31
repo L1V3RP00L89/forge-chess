@@ -3132,6 +3132,16 @@ body.resizing * {
 
   .top-mode-pills[aria-label="Game mode"] .gc-pill {
     flex: 1 1 0;
+    min-width: 0;
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+    text-align: center;
+    white-space: normal;
+    line-height: 1.05;
+  }
+
+  .top-mode-pills[aria-label="Game mode"] .gc-pill-icon {
+    display: none;
   }
 
 
