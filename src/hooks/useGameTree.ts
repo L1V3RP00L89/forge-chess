@@ -15,6 +15,12 @@ export type GameNode = {
     quality?: ReviewLabel
 }
 
+export type GameTreeImportEntry = {
+    move: Move
+    fen: string
+    children?: GameTreeImportEntry[]
+}
+
 type GameTree = {
     nodes: Map<string, GameNode>
     rootId: string
@@ -185,6 +191,40 @@ export function useGameTree(startFen?: string) {
         return parent.id
     }, [publishTree])
 
+    const loadTree = useCallback((entries: GameTreeImportEntry[], startFen?: string): string => {
+        const nextTree = makeTree(startFen)
+        const root = nextTree.nodes.get(nextTree.rootId)!
+
+        const appendEntries = (parent: GameNode, childEntries: GameTreeImportEntry[]): GameNode | null => {
+            let firstLineLeaf: GameNode | null = null
+
+            for (const entry of childEntries) {
+                const move = entry.move
+                const node: GameNode = {
+                    id: nextId(),
+                    fen: entry.fen,
+                    move,
+                    san: move.san,
+                    uci: `${move.from}${move.to}${move.promotion ?? ''}`,
+                    parent: parent.id,
+                    children: [],
+                }
+
+                nextTree.nodes.set(node.id, node)
+                parent.children.push(node.id)
+
+                const leaf = appendEntries(node, entry.children ?? []) ?? node
+                if (!firstLineLeaf) firstLineLeaf = leaf
+            }
+
+            return firstLineLeaf
+        }
+
+        const current = appendEntries(root, entries) ?? root
+        publishTree({ ...nextTree, currentId: current.id })
+        return current.id
+    }, [publishTree])
+
     /**
      * Navigate to an arbitrary node (by id).
      * Returns a Chess instance from the node's stored FEN.
@@ -277,6 +317,7 @@ export function useGameTree(startFen?: string) {
         // Mutations
         addMove,
         loadMainLine,
+        loadTree,
         navigateTo,
         goBack,
         goForward,
@@ -291,6 +332,7 @@ export function useGameTree(startFen?: string) {
         goBack,
         goForward,
         loadMainLine,
+        loadTree,
         mainLine,
         navigateTo,
         nodesSnapshot,

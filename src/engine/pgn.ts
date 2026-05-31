@@ -1,5 +1,7 @@
 import { Chess } from 'chess.js'
-import type { GameNode } from '../hooks/useGameTree'
+import { parse as parsePgn } from 'chess.js/src/pgn.js'
+import type { Node as ParsedPgnNode } from 'chess.js/src/node'
+import type { GameNode, GameTreeImportEntry } from '../hooks/useGameTree'
 import type { EvalSnapshot } from './analysis'
 import { hasLegalKingPlacement } from './fen'
 
@@ -123,6 +125,66 @@ export function rootFenFromPgnHeaders(headers: Record<string, string>): string {
     const fen = new Chess(fenHeader).fen()
     if (!hasLegalKingPlacement(fen)) throw new Error('Invalid FEN king placement.')
     return fen
+}
+
+function firstMoveNode(node: ParsedPgnNode): ParsedPgnNode | null {
+    if (node.move) return node
+    for (const variation of node.variations) {
+        const child = firstMoveNode(variation)
+        if (child) return child
+    }
+    return null
+}
+
+function buildImportEntry(node: ParsedPgnNode, position: Chess): GameTreeImportEntry | null {
+    const moveNode = firstMoveNode(node)
+    if (!moveNode?.move) return null
+
+    const nextPosition = new Chess(position.fen())
+    const move = nextPosition.move(moveNode.move)
+    if (!move) throw new Error(`Invalid move in PGN: ${moveNode.move}`)
+
+    return {
+        move,
+        fen: nextPosition.fen(),
+        children: buildImportEntries(moveNode.variations, nextPosition),
+    }
+}
+
+function buildImportEntries(nodes: ParsedPgnNode[], position: Chess): GameTreeImportEntry[] {
+    return nodes
+        .map(node => buildImportEntry(node, position))
+        .filter((entry): entry is GameTreeImportEntry => entry !== null)
+}
+
+export function parsePgnMoveTree(pgnText: string): {
+    headers: Record<string, string>
+    rootFen: string
+    moves: GameTreeImportEntry[]
+    result?: string
+} {
+    const parsed = parsePgn(pgnText)
+    const rootFen = rootFenFromPgnHeaders(parsed.headers)
+    const rootPosition = new Chess(rootFen)
+
+    return {
+        headers: parsed.headers,
+        rootFen,
+        moves: buildImportEntries(parsed.root.variations, rootPosition),
+        result: parsed.result,
+    }
+}
+
+export function flattenPgnMainLine(entries: GameTreeImportEntry[]): Array<{ move: GameTreeImportEntry['move']; fen: string }> {
+    const line: Array<{ move: GameTreeImportEntry['move']; fen: string }> = []
+    let current: GameTreeImportEntry | undefined = entries[0]
+
+    while (current) {
+        line.push({ move: current.move, fen: current.fen })
+        current = current.children?.[0]
+    }
+
+    return line
 }
 
 export function exportAnnotatedPgn(

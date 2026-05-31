@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameNode } from '../hooks/useGameTree'
 import { Chess } from 'chess.js'
-import { exportAnnotatedPgn, rootFenFromPgnHeaders } from './pgn'
+import { exportAnnotatedPgn, flattenPgnMainLine, parsePgnMoveTree, rootFenFromPgnHeaders } from './pgn'
 
 function makeNode(
   id: string,
@@ -295,5 +295,24 @@ describe('PGN export helpers', () => {
     expect(pgn).toContain('1. e4 (1. d4 { [%eval -0.24]; Mistake }) 1... e5')
     expect(pgn).toContain('(1... c5)')
     expect(loader.history()).toEqual(['e4', 'e5', 'Nf3'])
+  })
+
+  it('parses PGN variations into a nested import tree', () => {
+    const parsed = parsePgnMoveTree(`
+[Event "Branch study"]
+[Result "*"]
+
+1. e4 (1. d4 d5) e5 (1... c5) 2. Nf3 *
+`)
+    const mainLine = flattenPgnMainLine(parsed.moves)
+
+    expect(parsed.rootFen).toBe(new Chess().fen())
+    expect(parsed.moves.map(entry => entry.move.san)).toEqual(['e4', 'd4'])
+    expect(parsed.moves[0]?.children?.map(entry => entry.move.san)).toEqual(['e5', 'c5'])
+    expect(parsed.moves[1]?.children?.map(entry => entry.move.san)).toEqual(['d5'])
+    expect(mainLine.map(entry => entry.move.san)).toEqual(['e4', 'e5', 'Nf3'])
+    const replay = new Chess()
+    for (const entry of mainLine) replay.move(entry.move)
+    expect(mainLine.at(-1)?.fen).toBe(replay.fen())
   })
 })

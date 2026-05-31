@@ -33,7 +33,7 @@ import {
   type OpeningSpeed,
 } from './engine/openingExplorer'
 import type { AnalyzeMode, UciGoLimits } from './engine/uci'
-import { rootFenFromPgnHeaders } from './engine/pgn'
+import { flattenPgnMainLine, parsePgnMoveTree } from './engine/pgn'
 import { hasLegalKingPlacement } from './engine/fen'
 import { normalizeSpinOptionInput } from './engine/options'
 import { engineProfiles, type EngineProfileId } from './engine/profiles'
@@ -2337,9 +2337,8 @@ function App() {
 
       setIsImportingGame(true)
       clearImportSweep()
-      const loader = new Chess()
-      loader.loadPgn(pgnText)
-      const rootFen = rootFenFromPgnHeaders(loader.getHeaders())
+      const importedGame = parsePgnMoveTree(pgnText)
+      const rootFen = importedGame.rootFen
       newGame()
       game.load(rootFen)
       setFen(game.fen())
@@ -2349,16 +2348,11 @@ function App() {
       setPendingPromotion(null)
       clearBoardSelection()
 
-      const moves = loader.history({ verbose: true })
-      const mainLineEntries: Array<{ move: (typeof moves)[number]; fen: string }> = []
-      for (const m of moves) {
-        game.move(m)
-        const nextFen = game.fen()
-        mainLineEntries.push({ move: m, fen: nextFen })
-      }
-      gameTree.loadMainLine(mainLineEntries, rootFen)
+      const mainLineEntries = flattenPgnMainLine(importedGame.moves)
+      gameTree.loadTree(importedGame.moves, rootFen)
 
-      const finalFen = game.fen()
+      const finalFen = mainLineEntries.at(-1)?.fen ?? rootFen
+      game.load(finalFen)
       setFen(finalFen)
       if (shouldAnalyzeAfterLoad) {
         setPendingShallowAnalyzeFen(finalFen)
