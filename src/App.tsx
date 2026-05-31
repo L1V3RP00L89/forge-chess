@@ -2816,17 +2816,19 @@ function App() {
               >
                 <span className="btn-icon"><IconSettings /></span> Settings
               </summary>
-              <div className="settings-backdrop" onClick={(e) => {
-                e.preventDefault()
-                setSettingsOpen(false)
-              }}></div>
-              <div
-                className="settings-body"
-                ref={settingsBodyRef}
-                role="dialog"
-                aria-modal="true"
-                aria-label="Settings"
-              >
+              {settingsOpen && (
+                <>
+                  <div className="settings-backdrop" onClick={(e) => {
+                    e.preventDefault()
+                    setSettingsOpen(false)
+                  }}></div>
+                  <div
+                    className="settings-body"
+                    ref={settingsBodyRef}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Settings"
+                  >
                 <div className="settings-header">
                   <h2>Settings</h2>
                   <button type="button" className="settings-close-btn" onClick={(e) => {
@@ -3117,7 +3119,9 @@ function App() {
                     </div>
                   </details>
                 )}
-              </div>
+                  </div>
+                </>
+              )}
             </details>
           </div>
         </div>
