@@ -1876,7 +1876,12 @@ function App() {
         const to = uciMove.slice(2, 4) as Square
         const promo = uciMove[4] as 'q' | 'r' | 'b' | 'n' | undefined
 
-        const move = game.move({ from, to, promotion: promo })
+        let move: Move | null
+        try {
+          move = game.move({ from, to, promotion: promo })
+        } catch {
+          return
+        }
         if (move) {
           const newFen = game.fen()
           setFen(newFen)

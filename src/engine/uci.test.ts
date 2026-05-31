@@ -69,7 +69,15 @@ describe('UCI helpers', () => {
       bestMove: 'e2e4',
       ponderMove: 'e7e5',
     })
+    expect(parseBestMoveLine('bestmove E2E4 ponder E7E5')).toEqual({
+      bestMove: 'e2e4',
+      ponderMove: 'e7e5',
+    })
     expect(parseBestMoveLine('bestmove (none)')).toEqual({
+      bestMove: null,
+      ponderMove: null,
+    })
+    expect(parseBestMoveLine('bestmove 0000 ponder not-a-move')).toEqual({
       bestMove: null,
       ponderMove: null,
     })

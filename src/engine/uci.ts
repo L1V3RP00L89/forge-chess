@@ -175,8 +175,8 @@ export function parseBestMoveLine(line: string): ParsedBestMove | null {
   const ponderIndex = parts.indexOf('ponder')
   const ponderRaw = ponderIndex >= 0 ? (parts[ponderIndex + 1] ?? null) : null
 
-  const bestMove = bestMoveRaw === '(none)' ? null : bestMoveRaw
-  const ponderMove = ponderRaw && ponderRaw !== '(none)' ? ponderRaw : null
+  const bestMove = isUciMove(bestMoveRaw) ? bestMoveRaw.trim().toLowerCase() : null
+  const ponderMove = ponderRaw && isUciMove(ponderRaw) ? ponderRaw.trim().toLowerCase() : null
 
   return { bestMove, ponderMove }
 }
