@@ -3,6 +3,7 @@ import { fetchOpeningExplorer, hasOpeningExplorerAuthToken, prefetchOpeningExplo
 
 describe('opening explorer client', () => {
   afterEach(() => {
+    vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })
 
@@ -184,6 +185,42 @@ describe('opening explorer client', () => {
 
     await expect(fetchOpeningExplorer({ source: 'masters', moves: ['d2d4'] })).resolves.toEqual(payload)
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('reuses the parsed browser storage snapshot across repeated misses', async () => {
+    const stored = {
+      'masters||d2d4||': {
+        expiresAt: Date.now() + 60_000,
+        payload: {
+          white: 1,
+          draws: 0,
+          black: 0,
+          moves: [],
+          topGames: [],
+          recentGames: [],
+          opening: null,
+        },
+      },
+    }
+    const fetchMock = vi.fn()
+    const localStorageMock = {
+      getItem: vi.fn(() => JSON.stringify(stored)),
+      setItem: vi.fn(),
+    }
+    const parseSpy = vi.spyOn(JSON, 'parse')
+
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('window', { localStorage: localStorageMock })
+
+    await expect(fetchOpeningExplorer({ source: 'masters', moves: ['a2a3'] })).rejects.toThrow(
+      'Opening Explorer requires a Lichess API token.',
+    )
+    await expect(fetchOpeningExplorer({ source: 'masters', moves: ['h2h3'] })).rejects.toThrow(
+      'Opening Explorer requires a Lichess API token.',
+    )
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(parseSpy).toHaveBeenCalledTimes(1)
   })
 
   it('ignores malformed browser storage entries before auth gating', async () => {

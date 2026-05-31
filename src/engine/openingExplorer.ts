@@ -63,17 +63,28 @@ type CacheEntry = {
 }
 
 let responseCache = new Map<string, CacheEntry>()
+let storageCacheRaw: string | null | undefined
+let storageCacheSnapshot: Record<string, unknown> = {}
 
 function readStorageCache(): Record<string, unknown> {
   if (typeof window === 'undefined') return {}
   try {
     const raw = window.localStorage.getItem(CACHE_STORAGE_KEY)
-    if (!raw) return {}
+    if (raw === storageCacheRaw) return storageCacheSnapshot
+    if (!raw) {
+      storageCacheRaw = raw
+      storageCacheSnapshot = {}
+      return storageCacheSnapshot
+    }
     const parsed = JSON.parse(raw)
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+    storageCacheRaw = raw
+    storageCacheSnapshot = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
       ? parsed as Record<string, CacheEntry>
       : {}
+    return storageCacheSnapshot
   } catch {
+    storageCacheRaw = undefined
+    storageCacheSnapshot = {}
     return {}
   }
 }
@@ -81,7 +92,10 @@ function readStorageCache(): Record<string, unknown> {
 function writeStorageCache(cache: Record<string, CacheEntry>) {
   if (typeof window === 'undefined') return
   try {
-    window.localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(cache))
+    const serialized = JSON.stringify(cache)
+    window.localStorage.setItem(CACHE_STORAGE_KEY, serialized)
+    storageCacheRaw = serialized
+    storageCacheSnapshot = cache
   } catch {
     // Cache persistence is optional; ignore private-mode/quota failures.
   }
@@ -89,7 +103,7 @@ function writeStorageCache(cache: Record<string, CacheEntry>) {
 
 function writeStorageCacheEntry(key: string, entry: CacheEntry) {
   const now = Date.now()
-  const stored = readStorageCache()
+  const stored = { ...readStorageCache() }
   stored[key] = entry
 
   const pruned = Object.fromEntries(
