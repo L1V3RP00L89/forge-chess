@@ -1117,8 +1117,10 @@ body.resizing * {
 
 .control input[type="range"] {
   accent-color: var(--accent);
-  height: 4px;
+  min-height: 32px;
+  height: 32px;
   width: 100%;
+  cursor: pointer;
 }
 
 /* Compact grid (top bar layout) */
