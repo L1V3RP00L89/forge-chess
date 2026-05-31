@@ -163,9 +163,17 @@ export const MoveListTree = memo(function MoveListTree({ tree, onNavigate }: Pro
     }
 
     return (
-        <div className="mtree-scroll" ref={scrollRef} tabIndex={-1}>
-            {rows}
-        </div>
+        <>
+            <div className="mtree-scroll" ref={scrollRef} tabIndex={-1}>
+                {rows}
+            </div>
+            {current.comment && (
+                <aside className="mtree-current-comment" aria-label="Current move comment">
+                    <span>Comment</span>
+                    <p>{current.comment}</p>
+                </aside>
+            )}
+        </>
     )
 })
 

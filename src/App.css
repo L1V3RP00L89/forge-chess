@@ -3741,6 +3741,32 @@ body.resizing * {
   width: auto;
 }
 
+.mtree-current-comment {
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+}
+
+.mtree-current-comment span {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mtree-current-comment p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 /* Interactive Active States */
 button:active:not(:disabled),
 .wc-btn:active:not(:disabled),
