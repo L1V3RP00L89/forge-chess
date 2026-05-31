@@ -130,4 +130,78 @@ describe('tablebase client', () => {
     await expect(fetchTablebase(fen)).resolves.toMatchObject({ category: 'draw' })
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
+
+  it('hydrates valid tablebase responses from browser storage', async () => {
+    const fen = '8/8/8/8/8/8/3K4/6k1 w - - 0 1'
+    const payload = {
+      fen: normalizeTablebaseFen(fen),
+      category: 'win',
+      dtz: 1,
+      preciseDtz: 1,
+      dtc: null,
+      dtm: 12,
+      checkmate: false,
+      stalemate: false,
+      insufficientMaterial: false,
+      moves: [{
+        uci: 'd2d1',
+        san: 'Kd1',
+        category: 'draw',
+        dtz: 0,
+        preciseDtz: 0,
+        dtc: null,
+        dtm: null,
+        zeroing: false,
+        checkmate: false,
+        stalemate: false,
+      }],
+      fetchedAt: 1_700_000_000_000,
+    }
+    const localStorageMock = {
+      getItem: vi.fn(() => JSON.stringify({
+        [normalizeTablebaseFen(fen)]: {
+          expiresAt: Date.now() + 60_000,
+          payload,
+        },
+      })),
+      setItem: vi.fn(),
+    }
+    const fetchMock = vi.fn()
+
+    vi.stubGlobal('window', { localStorage: localStorageMock })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchTablebase(fen)).resolves.toEqual(payload)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('ignores malformed browser storage entries before fetching fresh tablebase data', async () => {
+    const fen = '8/8/8/8/8/8/6K1/4k3 w - - 0 1'
+    const localStorageMock = {
+      getItem: vi.fn(() => JSON.stringify({
+        [normalizeTablebaseFen(fen)]: {
+          expiresAt: Date.now() + 60_000,
+          payload: { fen, category: 'win', fetchedAt: Number.NaN, moves: [{ uci: 'bad', san: 'Bad', category: 'draw' }] },
+        },
+      })),
+      setItem: vi.fn(),
+    }
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        category: 'draw',
+        dtz: 0,
+        moves: [{ uci: 'g2g3', san: 'Kg3', category: 'draw' }],
+      }),
+    })
+
+    vi.stubGlobal('window', { localStorage: localStorageMock })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchTablebase(fen)).resolves.toMatchObject({
+      category: 'draw',
+      moves: [{ uci: 'g2g3', san: 'Kg3', category: 'draw' }],
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
 })

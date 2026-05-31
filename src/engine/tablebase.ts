@@ -76,6 +76,10 @@ function booleanValue(value: unknown): boolean {
   return value === true
 }
 
+function fieldValue(row: Record<string, unknown>, preferred: string, fallback: string): unknown {
+  return Object.prototype.hasOwnProperty.call(row, preferred) ? row[preferred] : row[fallback]
+}
+
 function categoryValue(value: unknown): TablebaseCategory | null {
   return typeof value === 'string' && CATEGORY_VALUES.has(value as TablebaseCategory)
     ? value as TablebaseCategory
@@ -96,14 +100,14 @@ export function isTablebaseEligible(fen: string): boolean {
   return count > 0 && count <= 7
 }
 
-function readStorageCache(): Record<string, CacheEntry> {
+function readStorageCache(): Record<string, unknown> {
   if (typeof window === 'undefined') return {}
   try {
     const raw = window.localStorage.getItem(CACHE_STORAGE_KEY)
     if (!raw) return {}
     const parsed = JSON.parse(raw)
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? parsed as Record<string, CacheEntry>
+      ? parsed as Record<string, unknown>
       : {}
   } catch {
     return {}
@@ -126,11 +130,44 @@ function writeStorageCacheEntry(key: string, entry: CacheEntry) {
 
   const pruned = Object.fromEntries(
     Object.entries(stored)
-      .filter(([, value]) => value.expiresAt > now)
+      .map(([entryKey, value]) => [entryKey, parseCacheEntry(value)] as const)
+      .filter((entry): entry is readonly [string, CacheEntry] => entry[1] !== null && entry[1].expiresAt > now)
       .sort(([, a], [, b]) => b.expiresAt - a.expiresAt)
       .slice(0, CACHE_STORAGE_LIMIT),
   )
   writeStorageCache(pruned)
+}
+
+function parseCachedResult(raw: unknown): TablebaseResult | null {
+  if (!raw || typeof raw !== 'object') return null
+  const payload = raw as Record<string, unknown>
+  const category = categoryValue(payload.category)
+  if (!category) return null
+  if (typeof payload.fen !== 'string' || !isFiniteNumber(payload.fetchedAt)) return null
+
+  return {
+    fen: normalizeTablebaseFen(payload.fen),
+    category,
+    dtz: nullableInt(payload.dtz),
+    preciseDtz: nullableInt(fieldValue(payload, 'preciseDtz', 'precise_dtz')),
+    dtc: nullableInt(payload.dtc),
+    dtm: nullableInt(payload.dtm),
+    checkmate: booleanValue(payload.checkmate),
+    stalemate: booleanValue(payload.stalemate),
+    insufficientMaterial: booleanValue(payload.insufficientMaterial),
+    moves: Array.isArray(payload.moves)
+      ? payload.moves.map(parseMove).filter((move): move is TablebaseMove => Boolean(move))
+      : [],
+    fetchedAt: payload.fetchedAt,
+  }
+}
+
+function parseCacheEntry(raw: unknown): CacheEntry | null {
+  if (!raw || typeof raw !== 'object') return null
+  const entry = raw as Record<string, unknown>
+  if (!isFiniteNumber(entry.expiresAt)) return null
+  const payload = parseCachedResult(entry.payload)
+  return payload ? { expiresAt: entry.expiresAt, payload } : null
 }
 
 function readCached(fen: string): TablebaseResult | null {
@@ -142,7 +179,7 @@ function readCached(fen: string): TablebaseResult | null {
     responseCache.delete(key)
   }
 
-  const stored = readStorageCache()[key]
+  const stored = parseCacheEntry(readStorageCache()[key])
   if (!stored) return null
   if (stored.expiresAt <= now) return null
   responseCache.set(key, stored)
@@ -178,7 +215,7 @@ function parseMove(raw: unknown): TablebaseMove | null {
     san: row.san,
     category,
     dtz: nullableInt(row.dtz),
-    preciseDtz: nullableInt(row.precise_dtz),
+    preciseDtz: nullableInt(fieldValue(row, 'precise_dtz', 'preciseDtz')),
     dtc: nullableInt(row.dtc),
     dtm: nullableInt(row.dtm),
     zeroing: booleanValue(row.zeroing),
