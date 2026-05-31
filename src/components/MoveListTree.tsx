@@ -38,7 +38,31 @@ export const MoveListTree = memo(function MoveListTree({ tree, onNavigate }: Pro
     // Build rows: pairs of (white move, black move) from the main line.
     // Beneath each pair, show any variation branches.
     const rows: React.ReactElement[] = []
+    const pushVariationRows = (parent: GameNode) => {
+        if (parent.children.length <= 1) return
+
+        for (const varId of parent.children.slice(1)) {
+            const varLine = buildVariationLine(varId, nodesSnapshot)
+            rows.push(
+                <div key={`var-${parent.id}-${varId}`} className="mtree-variation">
+                    <span className="mtree-var-marker"><IconBranch /></span>
+                    {varLine.map(vn => (
+                        <MoveChip
+                            key={vn.id}
+                            node={vn}
+                            isCurrent={vn.id === current.id}
+                            onClick={() => onNavigate(navigateTo(vn.id))}
+                            compact
+                        />
+                    ))}
+                </div>,
+            )
+        }
+    }
+
     const rootState = moveStateFromFen(line[0]?.fen)
+    const rootNode = line[0]
+    let renderedRootVariations = false
     let moveNum = rootState.moveNumber
     let sideToMove = rootState.sideToMove
 
@@ -86,30 +110,15 @@ export const MoveListTree = memo(function MoveListTree({ tree, onNavigate }: Pro
             </div>
         )
 
+        if (!renderedRootVariations && rootNode) {
+            renderedRootVariations = true
+            pushVariationRows(rootNode)
+        }
+
         // Render any variation branches hanging off whiteNode or blackNode
         const varTargets = [whiteNode, blackNode].filter(Boolean) as GameNode[]
         for (const parent of varTargets) {
-            if (parent.children.length > 1) {
-                // children[0] is main line — show the rest as variations
-                const varChildren = parent.children.slice(1)
-                for (const varId of varChildren) {
-                    const varLine = buildVariationLine(varId, nodesSnapshot)
-                    rows.push(
-                        <div key={`var-${varId}`} className="mtree-variation">
-                            <span className="mtree-var-marker"><IconBranch /></span>
-                            {varLine.map(vn => (
-                                <MoveChip
-                                    key={vn.id}
-                                    node={vn}
-                                    isCurrent={vn.id === current.id}
-                                    onClick={() => onNavigate(navigateTo(vn.id))}
-                                    compact
-                                />
-                            ))}
-                        </div>
-                    )
-                }
-            }
+            pushVariationRows(parent)
         }
 
         if (blackNode) {
