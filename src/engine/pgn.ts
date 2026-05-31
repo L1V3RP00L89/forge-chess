@@ -3,6 +3,19 @@ import type { GameNode } from '../hooks/useGameTree'
 import type { EvalSnapshot } from './analysis'
 
 const INITIAL_FEN = new Chess().fen()
+const PGN_TAG_NAME_PATTERN = /^[A-Za-z0-9_]+$/
+const VALID_PGN_RESULTS = new Set(['1-0', '0-1', '1/2-1/2', '*'])
+
+function sanitizePgnHeaderValue(value: string): string {
+    return value
+        .replace(/[\r\n]+/g, ' ')
+        .replace(/"/g, "'")
+}
+
+function normalizePgnResult(result: string | undefined): string {
+    const normalized = result?.trim()
+    return normalized && VALID_PGN_RESULTS.has(normalized) ? normalized : '*'
+}
 
 export function rootFenFromPgnHeaders(headers: Record<string, string>): string {
     const fenHeader = headers.FEN?.trim()
@@ -36,8 +49,13 @@ export function exportAnnotatedPgn(
         defaultHeaders.FEN = rootFen
     }
 
-    for (const [key, value] of Object.entries({ ...defaultHeaders, ...header })) {
-        pgn += `[${key} "${value}"]\n`
+    const headers = { ...defaultHeaders, ...header }
+    const result = normalizePgnResult(headers.Result)
+    headers.Result = result
+
+    for (const [key, value] of Object.entries(headers)) {
+        if (!PGN_TAG_NAME_PATTERN.test(key)) continue
+        pgn += `[${key} "${sanitizePgnHeaderValue(value)}"]\n`
     }
     pgn += '\n'
 
@@ -92,7 +110,7 @@ export function exportAnnotatedPgn(
     }
 
     // Append result at the very end
-    pgn += ` ${(header.Result ?? defaultHeaders.Result)}`
+    pgn += ` ${result}`
 
     return pgn.trim() + '\n'
 }

@@ -73,4 +73,33 @@ describe('PGN export helpers', () => {
 
     expect(pgn).toContain('{ [%eval #3] }')
   })
+
+  it('sanitizes tag values and ignores invalid tag names when exporting', () => {
+    const mainLine = [
+      {
+        id: 'root',
+        fen: new Chess().fen(),
+        move: null,
+        san: '',
+        uci: '',
+        parent: null,
+        children: [],
+      },
+    ] as unknown as GameNode[]
+
+    const pgn = exportAnnotatedPgn(mainLine, new Map(), {
+      Event: 'Queen "Sacrifice" \\ Study\nFinal',
+      Result: '1-0"\n[Injected "1"]',
+      'Bad]Tag': 'ignored',
+    })
+    const loader = new Chess()
+    loader.loadPgn(pgn)
+
+    expect(pgn).toContain('[Event "Queen \'Sacrifice\' \\ Study Final"]')
+    expect(pgn).toContain('[Result "*"]')
+    expect(pgn).not.toContain('[Injected "1"]')
+    expect(pgn).not.toContain('Bad]Tag')
+    expect(loader.getHeaders().Event).toBe('Queen \'Sacrifice\' \\ Study Final')
+    expect(loader.getHeaders().Result).toBe('*')
+  })
 })
