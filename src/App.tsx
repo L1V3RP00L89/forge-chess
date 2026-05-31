@@ -26,6 +26,7 @@ import {
 } from './engine/cloudEval'
 import {
   getCachedOpeningExplorer,
+  hasOpeningExplorerAuthToken,
   prefetchOpeningExplorer,
   type OpeningDatabaseSource,
   type OpeningExplorerMove,
@@ -822,6 +823,7 @@ function App() {
   )
   const openingRequestSpeeds = openingSource === 'lichess' ? openingSpeeds : undefined
   const openingRequestRatings = openingSource === 'lichess' ? openingRatings : undefined
+  const hasOpeningExplorerToken = hasOpeningExplorerAuthToken(openingAuthToken)
   const openingExplorer = useOpeningExplorer({
     source: openingSource,
     fen: currentRootFen,
@@ -830,7 +832,7 @@ function App() {
     ratings: openingRequestRatings,
     authToken: openingAuthToken,
     enabled: workspaceMode === 'analysis'
-      && (analysisTab === 'analyze' || (analysisTab === 'engine-lab' && Boolean(openingAuthToken.trim()))),
+      && (analysisTab === 'analyze' || (analysisTab === 'engine-lab' && hasOpeningExplorerToken)),
   })
   const filteredSampleGames = useMemo(
     () => historicalSampleGames.filter(sample => sampleFilter === 'all' || sample.format === sampleFilter),
@@ -1737,7 +1739,7 @@ function App() {
     if (workspaceMode !== 'analysis') return
     if (analysisTab !== 'review') return
     if (!mainLineUciMoves.length) return
-    if (!openingAuthToken.trim()) return
+    if (!hasOpeningExplorerToken) return
 
     let cancelled = false
     const controller = new AbortController()
@@ -1764,7 +1766,7 @@ function App() {
       cancelled = true
       controller.abort()
     }
-  }, [analysisTab, currentRootFen, mainLineUciMoves, openingAuthToken, openingRatings, openingSource, openingSpeeds, workspaceMode])
+  }, [analysisTab, currentRootFen, hasOpeningExplorerToken, mainLineUciMoves, openingAuthToken, openingRatings, openingSource, openingSpeeds, workspaceMode])
 
   const reviewBookRows = useMemo(() => {
     void openingPrefetchTick
@@ -1786,7 +1788,7 @@ function App() {
           sideToMove,
           san,
           uci,
-          status: openingAuthToken.trim() ? 'loading' as const : 'auth-required' as const,
+          status: hasOpeningExplorerToken ? 'loading' as const : 'auth-required' as const,
         }
       }
 
@@ -1829,7 +1831,7 @@ function App() {
     mainLineUciMoves,
     mainLineNodes,
     currentRootFen,
-    openingAuthToken,
+    hasOpeningExplorerToken,
     openingPrefetchTick,
     openingRatings,
     openingSource,
