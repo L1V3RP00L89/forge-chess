@@ -3716,7 +3716,7 @@ function App() {
                     {criticalReviewRows.length > 0 ? (
                       <div className="critical-moment-list">
                         {criticalReviewRows.map(row => {
-                          const node = mainLineNodes[row.ply]
+                          const beforeNode = mainLineNodes[row.ply - 1]
                           const movePrefix = row.sideToMove === 'w' ? `${row.moveNumber}.` : `${row.moveNumber}...`
                           const bestMoveHint =
                             row.bestMove && row.bestMove !== row.uci ? `Best ${row.bestMoveSan ?? row.bestMove}` : null
@@ -3725,10 +3725,12 @@ function App() {
                               key={`${row.ply}-${row.uci}`}
                               type="button"
                               className={`critical-moment-row quality-${row.quality}`}
-                              disabled={!node}
+                              disabled={!beforeNode}
+                              aria-label={`Review position before ${movePrefix} ${row.san}`}
+                              title={bestMoveHint ?? undefined}
                               onClick={() => {
-                                if (!node) return
-                                navigateAndPonder(gameTree.navigateTo(node.id))
+                                if (!beforeNode) return
+                                navigateAndPonder(gameTree.navigateTo(beforeNode.id))
                               }}
                             >
                               <span className="critical-moment-move">
