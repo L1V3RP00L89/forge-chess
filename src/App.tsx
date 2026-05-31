@@ -3588,7 +3588,7 @@ function App() {
                 </div>
               )}
               {workspaceMode === 'analysis' && (
-                <div className="analysis-context-row">
+                <div className="analysis-context-row" role="status" aria-live="polite" aria-atomic="true">
                   <span>{engineName}</span>
                   <strong className={`status ${status}`}>{status}</strong>
                   <span>{analysisExperience === 'beginner' ? 'Coach view' : 'Pro view'}</span>
