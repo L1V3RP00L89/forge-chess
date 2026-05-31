@@ -651,6 +651,7 @@ function App() {
   const [rightWidth, setRightWidth] = useState(320)
   const [bottomPanelOpen, setBottomPanelOpen] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const settingsBodyRef = useRef<HTMLDivElement>(null)
   const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight })
 
   // ── Engine settings ──────────────────────────────────
@@ -897,6 +898,72 @@ function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [goFirst, goLast, goPrev, goNext, pause, resume, shortcutsSuspended, workspaceMode])
+
+  useEffect(() => {
+    if (!settingsOpen) return
+
+    const panelEl = settingsBodyRef.current
+    if (!panelEl) return
+
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    const focusableSelector = [
+      'button:not([disabled])',
+      '[href]',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(', ')
+
+    const isVisible = (element: HTMLElement) => {
+      const style = window.getComputedStyle(element)
+      return style.visibility !== 'hidden' && style.display !== 'none' && element.getClientRects().length > 0
+    }
+
+    const getFocusable = () =>
+      Array.from(panelEl.querySelectorAll<HTMLElement>(focusableSelector))
+        .filter(el => !el.hasAttribute('disabled') && el.tabIndex !== -1 && isVisible(el))
+
+    const focusable = getFocusable()
+    focusable[0]?.focus()
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setSettingsOpen(false)
+        return
+      }
+
+      if (event.key !== 'Tab') return
+      const currentFocusable = getFocusable()
+      if (!currentFocusable.length) return
+
+      const first = currentFocusable[0]
+      const last = currentFocusable[currentFocusable.length - 1]
+      const active = document.activeElement as HTMLElement | null
+
+      if (event.shiftKey) {
+        if (active === first || !panelEl.contains(active)) {
+          event.preventDefault()
+          last.focus()
+        }
+        return
+      }
+
+      if (active === last || !panelEl.contains(active)) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      if (previouslyFocused && document.contains(previouslyFocused)) {
+        previouslyFocused.focus?.()
+      }
+    }
+  }, [settingsOpen])
 
   // No wheel-to-navigate; it conflicts with trackpads and touch.
 
@@ -2677,7 +2744,13 @@ function App() {
                 e.preventDefault()
                 setSettingsOpen(false)
               }}></div>
-              <div className="settings-body">
+              <div
+                className="settings-body"
+                ref={settingsBodyRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Settings"
+              >
                 <div className="settings-header">
                   <h2>Settings</h2>
                   <button type="button" className="settings-close-btn" onClick={(e) => {
