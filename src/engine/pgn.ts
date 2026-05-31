@@ -222,12 +222,14 @@ export function parsePgnMoveTree(pgnText: string): {
     result?: string
 } {
     const parsed = parsePgn(pgnText)
+    const headers = { ...parsed.headers }
+    if (parsed.result && !headers.Result) headers.Result = parsed.result
     const rootFen = rootFenFromPgnHeaders(parsed.headers)
     const rootPosition = new Chess(rootFen)
     const evaluations = new Map<string, EvalSnapshot>()
 
     return {
-        headers: parsed.headers,
+        headers,
         rootFen,
         moves: buildImportEntries(parsed.root.variations, rootPosition, evaluations),
         evaluations,

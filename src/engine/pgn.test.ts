@@ -349,4 +349,38 @@ describe('PGN export helpers', () => {
     expect(pgn).toContain('{ [%eval 0.34] }')
     expect(pgn).toContain('{ [%eval #-3] }')
   })
+
+  it('preserves imported PGN headers for export', () => {
+    const parsed = parsePgnMoveTree(`
+[Event "Training Match"]
+[Site "Berlin"]
+[White "Ada"]
+[Black "Max"]
+[Result "1-0"]
+
+1. e4 1-0
+`)
+    const rootFen = new Chess().fen()
+    const e4 = parsed.moves[0]!
+    const root = makeNode('root', rootFen, null, null, ['e4'])
+    const e4Node = makeNode('e4', e4.fen, e4.move, 'root')
+    const pgn = exportAnnotatedPgn([root, e4Node], new Map(), parsed.headers)
+    const loader = new Chess()
+    loader.loadPgn(pgn)
+
+    expect(parsed.headers.Event).toBe('Training Match')
+    expect(parsed.headers.White).toBe('Ada')
+    expect(pgn).toContain('[Event "Training Match"]')
+    expect(pgn).toContain('[Site "Berlin"]')
+    expect(pgn).toContain('[White "Ada"]')
+    expect(pgn).toContain('[Black "Max"]')
+    expect(pgn).toContain('[Result "1-0"]')
+    expect(loader.history()).toEqual(['e4'])
+    expect(loader.getHeaders().White).toBe('Ada')
+  })
+
+  it('uses the PGN termination marker as Result when the tag is missing', () => {
+    const parsed = parsePgnMoveTree('1. e4 e5 1/2-1/2')
+    expect(parsed.headers.Result).toBe('1/2-1/2')
+  })
 })

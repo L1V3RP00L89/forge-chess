@@ -715,6 +715,7 @@ function App() {
 
   // ── Evaluations ──────────────────────────────────────
   const [evaluationsByFen, setEvaluationsByFen] = useState<Map<string, EvalSnapshot>>(new Map())
+  const [pgnHeaders, setPgnHeaders] = useState<Record<string, string>>({})
 
   // ── Game mode ────────────────────────────────────────
   const [showNewGameDialog, setShowNewGameDialog] = useState(false)
@@ -2347,6 +2348,7 @@ function App() {
       setSampleLoadError(null)
       setPendingPromotion(null)
       clearBoardSelection()
+      setPgnHeaders(importedGame.headers)
 
       const mainLineEntries = flattenPgnMainLine(importedGame.moves)
       gameTree.loadTree(importedGame.moves, rootFen)
@@ -2376,7 +2378,7 @@ function App() {
       setIsImportingGame(false)
       return { ok: false, error: 'Failed to parse PGN. Check the move text, headers, and move numbers.' }
     }
-  }, [cancelSampleLoad, clearBoardSelection, clearImportSweep, engineEnabled, game, gameTree, newGame])
+  }, [cancelSampleLoad, clearBoardSelection, clearImportSweep, engineEnabled, game, gameTree, newGame, setPgnHeaders])
 
   const handleFenLoad = useCallback((fenText: string, options?: FenLoadOptions) => {
     try {
@@ -2398,6 +2400,7 @@ function App() {
       setFen(rootFen)
       gameTree.reset(rootFen)
       setEvaluationsByFen(new Map())
+      setPgnHeaders({})
       clearImportSweep()
       setPendingShallowAnalyzeFen(shouldAnalyzeAfterLoad ? rootFen : null)
       setSampleLoadError(null)
@@ -2414,7 +2417,7 @@ function App() {
     } catch {
       return { ok: false, error: 'Failed to parse FEN. Check piece placement, side to move, castling rights, and counters.' }
     }
-  }, [cancelSampleLoad, clearImportSweep, engineEnabled, game, gameTree, newGame])
+  }, [cancelSampleLoad, clearImportSweep, engineEnabled, game, gameTree, newGame, setPgnHeaders])
 
   useEffect(() => {
     const loadSharedHash = () => {
@@ -2475,6 +2478,7 @@ function App() {
       setIsAiThinking(false)
       aiMoveScheduledRef.current = false
       setEvaluationsByFen(new Map())
+      setPgnHeaders({})
       clearImportSweep()
       setPendingShallowAnalyzeFen(null)
       setIsImportingGame(false)
@@ -2486,7 +2490,7 @@ function App() {
 
       setOrientation(mode === 'human-vs-ai' ? color : 'white')
     },
-    [aiPlayer, cancelSampleLoad, clearBoardSelection, clearImportSweep, game, gameTree, newGame],
+    [aiPlayer, cancelSampleLoad, clearBoardSelection, clearImportSweep, game, gameTree, newGame, setPgnHeaders],
   )
 
   // ── Mode switch mid-game ──────────────────────────────
@@ -3367,6 +3371,7 @@ function App() {
           mainLineNodes={mainLineNodes}
           gameNodes={gameTree.nodesSnapshot}
           evaluations={evaluationsByFen}
+          pgnHeaders={pgnHeaders}
         />
 
         {/* ── Right panel ── */}
