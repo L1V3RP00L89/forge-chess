@@ -3449,6 +3449,7 @@ function App() {
                     <MoveListTree
                       tree={gameTree}
                       onNavigate={navigateMoveListAndPause}
+                      allowCommentEditing={false}
                     />
                   </div>
                 </>

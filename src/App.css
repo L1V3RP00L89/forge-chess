@@ -3750,7 +3750,8 @@ body.resizing * {
   color: var(--text-secondary);
 }
 
-.mtree-current-comment label {
+.mtree-current-comment label,
+.mtree-current-comment-label {
   display: block;
   margin-bottom: 0.25rem;
   color: var(--text-muted);
@@ -3759,6 +3760,14 @@ body.resizing * {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.mtree-current-comment p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .mtree-comment-input {

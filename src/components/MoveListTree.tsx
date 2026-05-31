@@ -5,6 +5,7 @@ import { IconPawn, IconBranch } from './icons'
 type Props = {
     tree: GameTreeHandle
     onNavigate: (chess: ReturnType<GameTreeHandle['navigateTo']>) => void
+    allowCommentEditing?: boolean
 }
 
 function scrollWithinMoveList(container: HTMLElement, element: HTMLElement) {
@@ -43,12 +44,13 @@ function scrollWithinMoveList(container: HTMLElement, element: HTMLElement) {
  * Main line: "1. e4  e5   2. Nf3  Nc6 …"
  * Variation nodes are shown as indented continuation rows.
  */
-export const MoveListTree = memo(function MoveListTree({ tree, onNavigate }: Props) {
+export const MoveListTree = memo(function MoveListTree({ tree, onNavigate, allowCommentEditing = true }: Props) {
     const { current, mainLine, nodesSnapshot, navigateTo } = tree
     const scrollRef = useRef<HTMLDivElement>(null)
     const commentId = useId()
 
     const line = mainLine()
+    const currentComment = current.comment?.trim() ?? ''
 
     // Keyboard navigation on the container is already handled globally in App.tsx
 
@@ -64,7 +66,7 @@ export const MoveListTree = memo(function MoveListTree({ tree, onNavigate }: Pro
         return (
             <div className="empty-state">
                 <span className="empty-state-icon"><IconPawn /></span>
-                <p>Play some moves — they'll appear here with analysis.</p>
+                <p>Moves will appear here as you play or explore.</p>
             </div>
         )
     }
@@ -168,17 +170,26 @@ export const MoveListTree = memo(function MoveListTree({ tree, onNavigate }: Pro
             <div className="mtree-scroll" ref={scrollRef} tabIndex={-1}>
                 {rows}
             </div>
-            {current.move && (
+            {current.move && (allowCommentEditing || currentComment) && (
                 <aside className="mtree-current-comment" aria-label="Current move comment">
-                    <label htmlFor={commentId}>Move note</label>
-                    <textarea
-                        id={commentId}
-                        className="mtree-comment-input"
-                        value={current.comment ?? ''}
-                        onChange={event => tree.setNodeComment(current.id, event.target.value)}
-                        rows={3}
-                        placeholder="Add a note"
-                    />
+                    {allowCommentEditing ? (
+                        <>
+                            <label htmlFor={commentId}>Move note</label>
+                            <textarea
+                                id={commentId}
+                                className="mtree-comment-input"
+                                value={current.comment ?? ''}
+                                onChange={event => tree.setNodeComment(current.id, event.target.value)}
+                                rows={3}
+                                placeholder="Add a note"
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <span className="mtree-current-comment-label">Move note</span>
+                            <p>{currentComment}</p>
+                        </>
+                    )}
                 </aside>
             )}
         </>
