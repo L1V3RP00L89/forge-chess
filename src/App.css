@@ -3670,13 +3670,30 @@ body.resizing * {
 }
 
 /* Quality dot on chip */
+.mtree-chip-markers {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .mtree-quality-dot {
   display: inline-block;
   width: 5px;
   height: 5px;
   border-radius: 50%;
   flex-shrink: 0;
-  margin-left: auto;
+}
+
+.mtree-comment-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  border: 1px solid var(--text-muted);
+  background: var(--bg-elevated);
+  flex-shrink: 0;
 }
 
 /* Inherit dot color from quality classes */

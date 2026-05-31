@@ -8,6 +8,7 @@ import { hasLegalKingPlacement } from './fen'
 const INITIAL_FEN = new Chess().fen()
 const PGN_TAG_NAME_PATTERN = /^[A-Za-z0-9_]+$/
 const VALID_PGN_RESULTS = new Set(['1-0', '0-1', '1/2-1/2', '*'])
+const PGN_EVAL_COMMENT_PATTERN = /\[%eval\s+[^\]]+\]/gi
 const QUALITY_EXPORT_LABELS: Record<NonNullable<GameNode['quality']>, string> = {
     best: 'Best',
     good: 'Good',
@@ -76,6 +77,51 @@ function evaluationFromComment(fen: string, comment: string | undefined): EvalSn
     return sideToMoveScoreFromWhitePov(fen, { cp: Math.round(pawnScore * 100) })
 }
 
+function sanitizePgnCommentText(value: string | undefined): string | undefined {
+    const sanitized = value
+        ?.replace(/[\r\n]+/g, ' ')
+        .replace(/{/g, '[')
+        .replace(/}/g, ']')
+        .replace(/\s+/g, ' ')
+        .replace(/\s*;\s*/g, '; ')
+        .replace(/^(?:;\s*)+|(?:;\s*)+$/g, '')
+        .trim()
+
+    return sanitized || undefined
+}
+
+function humanCommentFromPgnComment(comment: string | undefined): string | undefined {
+    if (!comment) return undefined
+    return sanitizePgnCommentText(
+        comment
+            .replace(PGN_EVAL_COMMENT_PATTERN, '')
+            .replace(/\s*;\s*/g, '; '),
+    )
+}
+
+function normalizePgnSuffix(suffix: unknown): string | undefined {
+    const value = Array.isArray(suffix) ? suffix.join('') : typeof suffix === 'string' ? suffix : ''
+    return /^[!?]{1,2}$/.test(value) ? value : undefined
+}
+
+function normalizePgnNags(nags: unknown): string[] | undefined {
+    const values = Array.isArray(nags) ? nags : typeof nags === 'string' ? [nags] : []
+    const normalized = values
+        .map(value => String(value).trim().replace(/^\$/, ''))
+        .filter(value => /^\d+$/.test(value))
+
+    return normalized.length ? normalized : undefined
+}
+
+function moveTextForNode(node: GameNode, parentFen: string): string {
+    const suffix = normalizePgnSuffix(node.suffix) ?? ''
+    const nags = normalizePgnNags(node.nags)?.map(nag => `$${nag}`) ?? []
+    return [
+        `${movePrefixFromFen(parentFen)} ${node.san}${suffix}`,
+        ...nags,
+    ].join(' ')
+}
+
 function bestMoveSanFromFen(fen: string, bestMove: string): string {
     if (bestMove.length < 4) return bestMove
 
@@ -105,6 +151,7 @@ function commentForNode(
 ): string | null {
     const commentParts: string[] = []
     const evaluation = evaluationsByFen.get(node.fen)
+    const preservedComment = sanitizePgnCommentText(node.comment)
 
     if (evaluation) {
         const turn = node.fen.split(' ')[1]
@@ -124,6 +171,10 @@ function commentForNode(
         }
 
         if (evalStr) commentParts.push(`[%eval ${evalStr}]`)
+    }
+
+    if (preservedComment) {
+        commentParts.push(preservedComment)
     }
 
     const beforeEvaluation = evaluationsByFen.get(parentFen)
@@ -200,6 +251,9 @@ function buildImportEntry(
     return {
         move,
         fen: nextPosition.fen(),
+        comment: humanCommentFromPgnComment(moveNode.comment),
+        suffix: normalizePgnSuffix(moveNode.suffix),
+        nags: normalizePgnNags(moveNode.nag),
         children: buildImportEntries(moveNode.variations, nextPosition, evaluations),
     }
 }
@@ -296,7 +350,7 @@ export function exportAnnotatedPgn(
             visited.add(node.id)
             const parent = node.parent ? nodeLookup.get(node.parent) : undefined
             const parentFen = parent?.fen ?? rootFen
-            lineTokens.push(`${movePrefixFromFen(parentFen)} ${node.san}`)
+            lineTokens.push(moveTextForNode(node, parentFen))
 
             const comment = commentForNode(node, parentFen, evaluationsByFen)
             if (comment) lineTokens.push(comment)

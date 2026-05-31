@@ -191,11 +191,21 @@ type ChipProps = {
 
 function MoveChip({ node, isCurrent, onClick, compact }: ChipProps) {
     const q = node.quality
+    const displaySan = `${node.san}${node.suffix ?? ''}`
+    const nagText = node.nags?.length ? node.nags.map(nag => `$${nag}`).join(' ') : ''
     const labelParts = [
-        `Go to ${compact ? 'variation move' : 'move'} ${node.san}`,
+        `Go to ${compact ? 'variation move' : 'move'} ${displaySan}`,
+        nagText,
         isCurrent ? 'current position' : '',
         q ? `review ${q}` : '',
+        node.comment ? 'has comment' : '',
     ].filter(Boolean)
+    const title = [
+        displaySan,
+        nagText,
+        q,
+        node.comment,
+    ].filter(Boolean).join(' - ')
 
     return (
         <button
@@ -210,11 +220,14 @@ function MoveChip({ node, isCurrent, onClick, compact }: ChipProps) {
                 compact ? 'mtree-chip-compact' : '',
             ].filter(Boolean).join(' ')}
             onClick={onClick}
-            title={q ? `${node.san} — ${q}` : node.san}
+            title={title}
         >
-            {node.san}
-            {q && q !== 'pending' && (
-                <span className="mtree-quality-dot" aria-hidden="true" />
+            {displaySan}
+            {((q && q !== 'pending') || node.comment) && (
+                <span className="mtree-chip-markers" aria-hidden="true">
+                    {q && q !== 'pending' && <span className="mtree-quality-dot" />}
+                    {node.comment && <span className="mtree-comment-dot" />}
+                </span>
             )}
         </button>
     )

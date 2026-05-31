@@ -10,6 +10,7 @@ function makeNode(
   parent: string | null,
   children: string[] = [],
   quality?: GameNode['quality'],
+  extra: Partial<GameNode> = {},
 ): GameNode {
   return {
     id,
@@ -20,6 +21,7 @@ function makeNode(
     parent,
     children,
     quality,
+    ...extra,
   } as GameNode
 }
 
@@ -348,6 +350,49 @@ describe('PGN export helpers', () => {
 
     expect(pgn).toContain('{ [%eval 0.34] }')
     expect(pgn).toContain('{ [%eval #-3] }')
+  })
+
+  it('round-trips imported PGN comments, suffix annotations, and NAGs', () => {
+    const parsed = parsePgnMoveTree(`
+[Event "Annotated study"]
+[Result "*"]
+
+1. e4! $1 { [%eval 0.34]; Takes the center } e5?! $6 {Sharp reply} *
+`)
+
+    const e4 = parsed.moves[0]!
+    const e5 = e4.children![0]!
+
+    expect(e4.comment).toBe('Takes the center')
+    expect(e4.suffix).toBe('!')
+    expect(e4.nags).toEqual(['1'])
+    expect(e5.comment).toBe('Sharp reply')
+    expect(e5.suffix).toBe('?!')
+    expect(e5.nags).toEqual(['6'])
+
+    const pgn = exportAnnotatedPgn(
+      [
+        makeNode('root', new Chess().fen(), null, null, ['e4']),
+        makeNode('e4', e4.fen, e4.move, 'root', ['e5'], undefined, {
+          comment: e4.comment,
+          suffix: e4.suffix,
+          nags: e4.nags,
+        }),
+        makeNode('e5', e5.fen, e5.move, 'e4', [], undefined, {
+          comment: e5.comment,
+          suffix: e5.suffix,
+          nags: e5.nags,
+        }),
+      ],
+      parsed.evaluations,
+      parsed.headers,
+    )
+    const loader = new Chess()
+    loader.loadPgn(pgn)
+
+    expect(pgn).toContain('1. e4! $1 { [%eval 0.34]; Takes the center }')
+    expect(pgn).toMatch(/1\.\.\. e5\?! \$6\s+\{ Sharp reply \}/)
+    expect(loader.history()).toEqual(['e4', 'e5'])
   })
 
   it('preserves imported PGN headers for export', () => {

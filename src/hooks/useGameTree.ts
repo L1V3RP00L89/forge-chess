@@ -12,12 +12,18 @@ export type GameNode = {
     uci: string          // '' for root
     parent: string | null
     children: string[]
+    comment?: string
+    suffix?: string
+    nags?: string[]
     quality?: ReviewLabel
 }
 
 export type GameTreeImportEntry = {
     move: Move
     fen: string
+    comment?: string
+    suffix?: string
+    nags?: string[]
     children?: GameTreeImportEntry[]
 }
 
@@ -166,7 +172,7 @@ export function useGameTree(startFen?: string) {
      * Replace the current tree with a single imported main-line in one render pass.
      * This avoids O(n) re-render thrashing during large PGN imports.
      */
-    const loadMainLine = useCallback((entries: Array<{ move: Move; fen: string }>, startFen?: string): string => {
+    const loadMainLine = useCallback((entries: GameTreeImportEntry[], startFen?: string): string => {
         const nextTree = makeTree(startFen)
         let parent = nextTree.nodes.get(nextTree.rootId)!
 
@@ -180,6 +186,9 @@ export function useGameTree(startFen?: string) {
                 uci: `${move.from}${move.to}${move.promotion ?? ''}`,
                 parent: parent.id,
                 children: [],
+                comment: entry.comment,
+                suffix: entry.suffix,
+                nags: entry.nags,
             }
 
             nextTree.nodes.set(node.id, node)
@@ -208,6 +217,9 @@ export function useGameTree(startFen?: string) {
                     uci: `${move.from}${move.to}${move.promotion ?? ''}`,
                     parent: parent.id,
                     children: [],
+                    comment: entry.comment,
+                    suffix: entry.suffix,
+                    nags: entry.nags,
                 }
 
                 nextTree.nodes.set(node.id, node)
