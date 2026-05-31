@@ -2531,15 +2531,16 @@ function App() {
               <span className="toolbar-divider desktop-only" />
               <div className="top-mode-pills" aria-label="Game mode">
                 {([
-                  { id: 'human-vs-human', label: 'H vs H', icon: <IconUsers /> },
-                  { id: 'human-vs-ai', label: 'H vs AI', icon: <IconBot /> },
-                  { id: 'ai-vs-ai', label: 'AI vs AI', icon: <IconZap /> },
-                ] as const).map(({ id, label, icon }) => (
+                  { id: 'human-vs-human', label: 'Human vs Human', title: 'Local board for two players', icon: <IconUsers /> },
+                  { id: 'human-vs-ai', label: 'Human vs AI', title: 'Play against the engine', icon: <IconBot /> },
+                  { id: 'ai-vs-ai', label: 'AI vs AI', title: 'Watch two engines play', icon: <IconZap /> },
+                ] as const).map(({ id, label, title, icon }) => (
                   <button
                     key={id}
                     type="button"
                     className={`gc-pill ${gameMode === id ? 'gc-pill-active' : ''}`}
                     aria-pressed={gameMode === id}
+                    title={title}
                     onClick={() => id !== gameMode && handleModeChange(id)}
                   >
                     <span className="gc-pill-icon">{icon}</span>
