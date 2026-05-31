@@ -2482,6 +2482,11 @@ function App() {
     }
   }, [cancelPendingAiMove, cancelSampleLoad, clearBoardSelection, clearImportSweep, engineEnabled, game, gameTree, newGame, setPgnHeaders])
 
+  const handleAnalysisPgnImport = useCallback(
+    (pgnText: string) => handlePgnImport(pgnText, { analyzeAfterLoad: true }),
+    [handlePgnImport],
+  )
+
   const handleFenLoad = useCallback((fenText: string, options?: FenLoadOptions) => {
     try {
       cancelSampleLoad()
@@ -2520,6 +2525,11 @@ function App() {
       return { ok: false, error: 'Failed to parse FEN. Check piece placement, side to move, castling rights, and counters.' }
     }
   }, [cancelPendingAiMove, cancelSampleLoad, clearImportSweep, engineEnabled, game, gameTree, newGame, setPgnHeaders])
+
+  const handleAnalysisFenLoad = useCallback(
+    (fenText: string) => handleFenLoad(fenText, { forceAnalysis: true }),
+    [handleFenLoad],
+  )
 
   useEffect(() => {
     const loadSharedHash = () => {
@@ -3512,8 +3522,8 @@ function App() {
             <PgnDialog
               open
               onClose={() => setShowPgnDialog(false)}
-              onImport={handlePgnImport}
-              onLoadFen={handleFenLoad}
+              onImport={handleAnalysisPgnImport}
+              onLoadFen={handleAnalysisFenLoad}
               currentFen={fen}
               mainLineNodes={mainLineNodes}
               gameNodes={gameTree.nodesSnapshot}

@@ -319,7 +319,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                             <div className="dialog-actions">
                                 <button type="button" className="btn-cancel" onClick={closeDialog}>Cancel</button>
                                 <button type="button" className="btn-start" onClick={handleImport} disabled={!importText.trim()}>
-                                    Import Game
+                                    Import & Analyze
                                 </button>
                             </div>
                         </div>
@@ -358,7 +358,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                             <div className="dialog-actions">
                                 <button type="button" className="btn-cancel" onClick={closeDialog}>Cancel</button>
                                 <button type="button" className="btn-start" onClick={handleLoadFen} disabled={!fenText.trim()}>
-                                    Load Position
+                                    Load & Analyze
                                 </button>
                             </div>
                         </div>
