@@ -40,6 +40,7 @@ import { fetchSamplePgn } from './engine/samplePgn'
 import { parseFenShareHash } from './engine/shareLink'
 import type { TablebaseCategory, TablebaseMove, TablebaseResult } from './engine/tablebase'
 import { BOARD_SQUARES, describeBoardSquare, isBoardSquare } from './engine/boardAccessibility'
+import { isBoardInputLocked } from './engine/boardInput'
 import { isHeavyEngineLabCommand } from './engine/labCommands'
 import { useStockfishEngine } from './hooks/useStockfishEngine'
 import { DIFFICULTY_LABELS, useAiPlayer, type AiDifficulty } from './hooks/useAiPlayer'
@@ -546,6 +547,10 @@ function isPromotionMove(chess: Chess, from: Square, to: Square): boolean {
 
 function uniqueSquares(squares: Square[]): Square[] {
   return Array.from(new Set(squares))
+}
+
+function playerColorToTurn(color: PlayerColor): 'w' | 'b' {
+  return color === 'white' ? 'w' : 'b'
 }
 
 function loadPersistedSettings(): PersistedAppSettings {
@@ -2069,9 +2074,14 @@ function App() {
   const onPieceDrop = (sourceSquare: Square, targetSquare: Square, pieceType: string) => {
     if (pendingPromotion) return false
     if (sourceSquare === targetSquare) return false
-    if (workspaceMode === 'play' && gameMode === 'ai-vs-ai') return false
-    if (gameMode === 'human-vs-ai' && isAiThinking) return false
-    if (gameMode === 'human-vs-ai' && !paused && game.turn() !== playerColor[0]) return false
+    if (isBoardInputLocked({
+      workspaceMode,
+      gameMode,
+      isAiThinking,
+      paused,
+      turn: game.turn(),
+      playerColor: playerColorToTurn(playerColor),
+    })) return false
 
     if (pieceType.toLowerCase().endsWith('p') && isPromotionMove(game, sourceSquare, targetSquare)) {
       beginPromotion(sourceSquare, targetSquare)
@@ -2083,9 +2093,14 @@ function App() {
 
   const onSquareClick = useCallback((square: Square) => {
     if (pendingPromotion) return
-    if (workspaceMode === 'play' && gameMode === 'ai-vs-ai') return
-    if (gameMode === 'human-vs-ai' && isAiThinking) return
-    if (gameMode === 'human-vs-ai' && !paused && game.turn() !== playerColor[0]) return
+    if (isBoardInputLocked({
+      workspaceMode,
+      gameMode,
+      isAiThinking,
+      paused,
+      turn: game.turn(),
+      playerColor: playerColorToTurn(playerColor),
+    })) return
 
     // If a source square is already selected, try to move there
     if (selectedSquare) {
@@ -2668,6 +2683,14 @@ function App() {
     : playEngineActive
       ? (playEngineStatus === 'thinking' ? 'analyzing' : playEngineStatus)
       : 'standby'
+  const boardInputLocked = isBoardInputLocked({
+    workspaceMode,
+    gameMode,
+    isAiThinking,
+    paused,
+    turn: game.turn(),
+    playerColor: playerColorToTurn(playerColor),
+  })
 
   // ─────────────────────────────────────────────────────
   return (
@@ -3267,9 +3290,7 @@ function App() {
                     },
                     arrows,
                     allowDrawingArrows: false,
-                    allowDragging: !(workspaceMode === 'play' && gameMode === 'ai-vs-ai')
-                      && !isAiThinking
-                      && !(gameMode === 'human-vs-ai' && !paused && game.turn() !== playerColor[0]),
+                    allowDragging: !boardInputLocked,
                     darkSquareStyle: { backgroundColor: '#b58863' },
                     lightSquareStyle: { backgroundColor: '#f0d9b5' },
                     boardStyle: {
