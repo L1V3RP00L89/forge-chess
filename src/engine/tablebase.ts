@@ -90,6 +90,30 @@ function categoryValue(value: unknown): TablebaseCategory | null {
     : null
 }
 
+export function tablebaseMoveCategoryForPlayer(category: TablebaseCategory): TablebaseCategory {
+  switch (category) {
+    case 'win':
+      return 'loss'
+    case 'syzygy-win':
+      return 'syzygy-loss'
+    case 'maybe-win':
+      return 'maybe-loss'
+    case 'cursed-win':
+      return 'blessed-loss'
+    case 'blessed-loss':
+      return 'cursed-win'
+    case 'maybe-loss':
+      return 'maybe-win'
+    case 'syzygy-loss':
+      return 'syzygy-win'
+    case 'loss':
+      return 'win'
+    case 'draw':
+    case 'unknown':
+      return category
+  }
+}
+
 export function normalizeTablebaseFen(fen: string): string {
   return fen.trim().replace(/\s+/g, ' ')
 }

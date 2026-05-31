@@ -41,6 +41,7 @@ import { engineProfiles, type EngineProfileId } from './engine/profiles'
 import { fetchSamplePgn } from './engine/samplePgn'
 import { parseFenShareHash } from './engine/shareLink'
 import type { TablebaseCategory, TablebaseMove, TablebaseResult } from './engine/tablebase'
+import { tablebaseMoveCategoryForPlayer } from './engine/tablebase'
 import { BOARD_SQUARES, describeBoardSquare, isBoardSquare } from './engine/boardAccessibility'
 import { isBoardInputLocked } from './engine/boardInput'
 import { selectCoachBestMove } from './engine/coach'
@@ -416,8 +417,10 @@ function tablebaseSummary(result: TablebaseResult): string {
 }
 
 function tablebaseMoveSummary(move: TablebaseMove): string {
+  const playerCategory = tablebaseMoveCategoryForPlayer(move.category)
+
   return [
-    TABLEBASE_CATEGORY_LABELS[move.category],
+    TABLEBASE_CATEGORY_LABELS[playerCategory],
     formatTablebaseDistance('DTM', move.dtm),
     formatTablebaseDistance('DTZ', move.preciseDtz ?? move.dtz),
   ].filter(Boolean).join(' · ')

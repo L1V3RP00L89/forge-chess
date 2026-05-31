@@ -4,6 +4,7 @@ import {
   isTablebaseEligible,
   normalizeTablebaseFen,
   parseTablebaseResponse,
+  tablebaseMoveCategoryForPlayer,
   tablebasePieceCount,
 } from './tablebase'
 
@@ -17,6 +18,19 @@ describe('tablebase client', () => {
     expect(tablebasePieceCount('8/8/8/8/8/8/4K3/6k1 w - - 0 1')).toBe(2)
     expect(isTablebaseEligible('8/8/8/8/8/8/4K3/6k1 w - - 0 1')).toBe(true)
     expect(isTablebaseEligible('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')).toBe(false)
+  })
+
+  it('labels move categories from the player perspective', () => {
+    expect(tablebaseMoveCategoryForPlayer('loss')).toBe('win')
+    expect(tablebaseMoveCategoryForPlayer('syzygy-loss')).toBe('syzygy-win')
+    expect(tablebaseMoveCategoryForPlayer('maybe-loss')).toBe('maybe-win')
+    expect(tablebaseMoveCategoryForPlayer('blessed-loss')).toBe('cursed-win')
+    expect(tablebaseMoveCategoryForPlayer('draw')).toBe('draw')
+    expect(tablebaseMoveCategoryForPlayer('unknown')).toBe('unknown')
+    expect(tablebaseMoveCategoryForPlayer('cursed-win')).toBe('blessed-loss')
+    expect(tablebaseMoveCategoryForPlayer('maybe-win')).toBe('maybe-loss')
+    expect(tablebaseMoveCategoryForPlayer('syzygy-win')).toBe('syzygy-loss')
+    expect(tablebaseMoveCategoryForPlayer('win')).toBe('loss')
   })
 
   it('parses exact tablebase responses and filters malformed moves', () => {
