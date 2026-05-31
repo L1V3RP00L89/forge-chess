@@ -128,7 +128,9 @@ export function NewGameDialog({
         document.addEventListener('keydown', onKeyDown)
         return () => {
             document.removeEventListener('keydown', onKeyDown)
-            previouslyFocused?.focus?.()
+            if (previouslyFocused && document.contains(previouslyFocused)) {
+                previouslyFocused.focus?.()
+            }
         }
     }, [mode, onCancel, open])
 

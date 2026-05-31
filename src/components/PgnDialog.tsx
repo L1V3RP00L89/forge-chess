@@ -222,7 +222,9 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
         document.addEventListener('keydown', onKeyDown)
         return () => {
             document.removeEventListener('keydown', onKeyDown)
-            previouslyFocused?.focus?.()
+            if (previouslyFocused && document.contains(previouslyFocused)) {
+                previouslyFocused.focus?.()
+            }
         }
     }, [closeDialog, open])
 
