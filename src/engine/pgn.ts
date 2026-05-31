@@ -17,6 +17,10 @@ function normalizePgnResult(result: string | undefined): string {
     return normalized && VALID_PGN_RESULTS.has(normalized) ? normalized : '*'
 }
 
+function isFiniteNumber(value: unknown): value is number {
+    return typeof value === 'number' && Number.isFinite(value)
+}
+
 export function rootFenFromPgnHeaders(headers: Record<string, string>): string {
     const fenHeader = headers.FEN?.trim()
     if (!fenHeader) return INITIAL_FEN
@@ -79,20 +83,22 @@ export function exportAnnotatedPgn(
         if (evaluation) {
             // Normalize to White's perspective since Stockfish outputs from side-to-move's perspective
             const turn = node.fen.split(' ')[1]
-            const cpPov = turn === 'w' ? evaluation.cp : -evaluation.cp
+            const cpPov = isFiniteNumber(evaluation.cp)
+                ? turn === 'w' ? evaluation.cp : -evaluation.cp
+                : undefined
 
-            let evalStr = ''
-            if (typeof evaluation.mate === 'number') {
+            let evalStr: string | null = null
+            if (isFiniteNumber(evaluation.mate)) {
                 const matePov = turn === 'w' ? evaluation.mate : -evaluation.mate
                 evalStr = `#${matePov}`
-            } else if (Math.abs(cpPov) >= 10000) {
+            } else if (typeof cpPov === 'number' && Math.abs(cpPov) >= 10000) {
                 evalStr = cpPov > 0 ? '#1' : '#-1'
-            } else {
+            } else if (typeof cpPov === 'number') {
                 const cpVal = cpPov / 100
                 evalStr = cpVal.toFixed(2)
             }
 
-            currentLine += `{ [%eval ${evalStr}] } `
+            if (evalStr) currentLine += `{ [%eval ${evalStr}] } `
         }
 
         // Wrap to ~80 chars

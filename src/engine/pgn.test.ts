@@ -75,6 +75,41 @@ describe('PGN export helpers', () => {
     expect(pgn).toContain('{ [%eval #3] }')
   })
 
+  it('omits non-finite eval annotations from exported PGN', () => {
+    const fenAfterWhiteMove = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'
+    const mainLine = [
+      {
+        id: 'root',
+        fen: new Chess().fen(),
+        move: null,
+        san: '',
+        uci: '',
+        parent: null,
+        children: ['n1'],
+      },
+      {
+        id: 'n1',
+        fen: fenAfterWhiteMove,
+        move: {},
+        san: 'e4',
+        uci: 'e2e4',
+        parent: 'root',
+        children: [],
+      },
+    ] as unknown as GameNode[]
+
+    const pgn = exportAnnotatedPgn(
+      mainLine,
+      new Map([[fenAfterWhiteMove, { cp: Number.NaN, mate: Number.POSITIVE_INFINITY }]]),
+      { Result: '*' },
+    )
+
+    expect(pgn).toContain('1. e4')
+    expect(pgn).not.toContain('%eval')
+    expect(pgn).not.toContain('NaN')
+    expect(pgn).not.toContain('Infinity')
+  })
+
   it('sanitizes tag values and ignores invalid tag names when exporting', () => {
     const mainLine = [
       {
