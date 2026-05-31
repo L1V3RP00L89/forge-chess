@@ -1044,6 +1044,7 @@ function App() {
     lastBestMoveFen,
     lastPonderMoveFen,
   } = useStockfishEngine(engineProfile, engineEnabled)
+  const analysisStatusAnnouncement = `${engineName}. ${status}. ${analysisExperience === 'beginner' ? 'Coach view' : 'Pro view'}.`
 
   // ── Batch Review ─────────────────────────────────────
   const [isBatchReviewing, setIsBatchReviewing] = useState(false)
@@ -3588,7 +3589,13 @@ function App() {
                 </div>
               )}
               {workspaceMode === 'analysis' && (
-                <div className="analysis-context-row" role="status" aria-live="polite" aria-atomic="true">
+                <div
+                  className="analysis-context-row"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  aria-label={analysisStatusAnnouncement}
+                >
                   <span>{engineName}</span>
                   <strong className={`status ${status}`}>{status}</strong>
                   <span>{analysisExperience === 'beginner' ? 'Coach view' : 'Pro view'}</span>
