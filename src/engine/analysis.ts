@@ -336,7 +336,8 @@ export function buildWinrateSeries(
   const series: WinratePoint[] = []
 
   const startFen = replay.fen()
-  const startCp = evaluationsByFen.get(startFen)?.cp
+  const startSnapshot = evaluationsByFen.get(startFen)
+  const startCp = startSnapshot ? scoreToCp(startSnapshot.cp, startSnapshot.mate) : undefined
   if (isFiniteNumber(startCp)) {
     series.push({
       index: 0,
@@ -348,7 +349,8 @@ export function buildWinrateSeries(
   history.forEach((move, index) => {
     replay.move({ from: move.from, to: move.to, promotion: move.promotion })
     const fen = replay.fen()
-    const cp = evaluationsByFen.get(fen)?.cp
+    const snapshot = evaluationsByFen.get(fen)
+    const cp = snapshot ? scoreToCp(snapshot.cp, snapshot.mate) : undefined
     if (!isFiniteNumber(cp)) return
 
     const moveNumber = Math.floor(index / 2) + 1

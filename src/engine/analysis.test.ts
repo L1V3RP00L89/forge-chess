@@ -91,6 +91,28 @@ describe('review analysis helpers', () => {
     })
   })
 
+  it('includes finite mate evaluations in the winrate graph', () => {
+    const game = new Chess()
+    const rootFen = game.fen()
+    const move = game.move('e4')
+    const afterFen = game.fen()
+
+    const series = buildWinrateSeries(
+      [move],
+      new Map([
+        [rootFen, { cp: Number.NaN, mate: 3 }],
+        [afterFen, { cp: Number.NaN, mate: -2 }],
+      ]),
+      rootFen,
+    )
+
+    expect(series).toHaveLength(2)
+    expect(series[0]?.label).toBe('Start')
+    expect(series[1]?.label).toBe('1. e4')
+    expect(series[0]?.whiteWinrate).toBeGreaterThan(99)
+    expect(series[1]?.whiteWinrate).toBeGreaterThan(99)
+  })
+
   it('adds best-move hints to review rows', () => {
     const game = new Chess()
     const rootFen = game.fen()
