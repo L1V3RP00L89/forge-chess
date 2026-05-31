@@ -3063,19 +3063,31 @@ body.resizing * {
   }
 
   .right .analysis-header {
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "title context"
+      "tabs tabs";
     align-items: center;
-    gap: 0.55rem;
+    gap: 0.35rem 0.55rem;
     padding: 0.55rem 0.7rem;
   }
 
   .right .analysis-header h2 {
-    flex: 0 0 auto;
+    grid-area: title;
   }
 
   .right .analysis-tab-strip {
-    flex: 1;
+    grid-area: tabs;
     min-width: 0;
+  }
+
+  .right .analysis-context-row {
+    grid-area: context;
+    justify-content: flex-end;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
   }
 
   .bottom {
