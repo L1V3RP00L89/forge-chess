@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { profileById } from '../engine/profiles'
-import { parseInfoLine, recommendedThreadCount } from './useStockfishEngine'
+import { parseInfoLine, recommendedThreadCount, shouldStopTimedOutSearchCommand } from './useStockfishEngine'
 
 describe('Stockfish engine output parsing', () => {
   it('parses finite score, telemetry, WDL, and PV values from info lines', () => {
@@ -55,5 +55,16 @@ describe('Stockfish thread recommendations', () => {
     expect(recommendedThreadCount(threadedProfile, { ...desktopCapabilities, hardwareConcurrency: 2 })).toBe(1)
     expect(recommendedThreadCount(threadedProfile, { ...desktopCapabilities, crossOriginIsolated: false })).toBe(1)
     expect(recommendedThreadCount(profileById('lite-single-local'), desktopCapabilities)).toBe(1)
+  })
+})
+
+describe('Stockfish command queue safety', () => {
+  it('sends stop only for timed-out UCI search commands', () => {
+    expect(shouldStopTimedOutSearchCommand('go infinite')).toBe(true)
+    expect(shouldStopTimedOutSearchCommand('go depth 30')).toBe(true)
+
+    expect(shouldStopTimedOutSearchCommand('bench')).toBe(false)
+    expect(shouldStopTimedOutSearchCommand('perft 5')).toBe(false)
+    expect(shouldStopTimedOutSearchCommand('isready')).toBe(false)
   })
 })

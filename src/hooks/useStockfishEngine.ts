@@ -105,6 +105,10 @@ function commandKindFromCommand(command: string): EngineCommandKind {
   return 'other'
 }
 
+export function shouldStopTimedOutSearchCommand(command: string): boolean {
+  return firstWord(command) === 'go'
+}
+
 function commandKindFromLine(line: string): EngineCommandKind {
   if (line === 'uciok' || line.startsWith('option name ')) return 'uci'
   if (line === 'readyok') return 'isready'
@@ -448,9 +452,15 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
         item.timeoutId = setTimeout(() => {
           const queue = commandQueueRef.current
           const idx = queue.findIndex(entry => entry.id === id)
-          if (idx >= 0) queue.splice(idx, 1)
+          if (idx >= 0) {
+            queue.splice(idx, 1)
+            if (shouldStopTimedOutSearchCommand(trimmed)) {
+              send('stop')
+            }
+          }
           setQueueLength(queue.length)
-          reject(new Error(`Timed out waiting for response to "${trimmed}".`))
+          const stopSuffix = shouldStopTimedOutSearchCommand(trimmed) ? ' Sent "stop" to cancel the search.' : ''
+          reject(new Error(`Timed out waiting for response to "${trimmed}".${stopSuffix}`))
         }, timeoutMs)
 
         commandQueueRef.current = [...commandQueueRef.current, item]
@@ -753,6 +763,7 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
         }
 
         if (line.startsWith('bestmove ')) {
+          if (!isSearchingRef.current) continue
           flushLinesMap()
           flushRawLines()
           const parsed = parseBestMoveLine(line)
