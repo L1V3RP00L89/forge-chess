@@ -2693,6 +2693,8 @@ function App() {
     : gameMode === 'human-vs-ai'
       ? 'Human vs AI'
       : 'AI vs AI'
+  const leftPanelCollapsed = !isMobile && leftWidth === 0
+  const rightPanelCollapsed = !isMobile && rightWidth === 0
   const playEngineActive = workspaceMode === 'play' && gameMode !== 'human-vs-human'
   const playEngineStatus = isAiThinking ? 'thinking' : aiPlayer.status
   const bottomStatusTitle = engineEnabled
@@ -3146,7 +3148,12 @@ function App() {
           >
             <span className="resize-pill" />
           </div>
-          <div className="panel-inner" style={{ opacity: (!isMobile && leftWidth === 0) ? 0 : 1 }}>
+          <div
+            className="panel-inner"
+            aria-hidden={leftPanelCollapsed ? true : undefined}
+            inert={leftPanelCollapsed ? true : undefined}
+            style={{ opacity: leftPanelCollapsed ? 0 : 1 }}
+          >
             <div className="panel-content">
               <section className="analytics-card">
                 <header className="section-heading">
@@ -3419,7 +3426,12 @@ function App() {
           >
             <span className="resize-pill" />
           </div>
-          <div className="panel-inner" style={{ opacity: (!isMobile && rightWidth === 0) ? 0 : 1 }}>
+          <div
+            className="panel-inner"
+            aria-hidden={rightPanelCollapsed ? true : undefined}
+            inert={rightPanelCollapsed ? true : undefined}
+            style={{ opacity: rightPanelCollapsed ? 0 : 1 }}
+          >
             <header className="panel-header analysis-header">
               <h2>{workspaceMode === 'analysis' ? 'Analysis' : 'Play'}</h2>
               {workspaceMode === 'analysis' && (

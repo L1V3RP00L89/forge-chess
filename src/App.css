@@ -60,6 +60,10 @@ body.resizing * {
   transition: opacity 180ms ease;
 }
 
+.panel-inner[aria-hidden="true"] {
+  pointer-events: none;
+}
+
 .panel-header {
   display: flex;
   align-items: center;
