@@ -25,6 +25,7 @@ import {
   cloudEvalToSnapshot,
   cloudLineToSideToMoveScore,
 } from './engine/cloudEval'
+import { shouldFetchCloudEvaluation } from './engine/cloudEvalPolicy'
 import {
   getCachedOpeningExplorer,
   hasOpeningExplorerAuthToken,
@@ -1028,6 +1029,10 @@ function App() {
   const [batchReviewProgress, setBatchReviewProgress] = useState({ done: 0, total: 0 })
   const batchReviewQueueRef = useRef<BatchReviewTarget[]>([])
   const activeBatchReviewRef = useRef<BatchReviewTarget | null>(null)
+  const tablebase = useTablebase({
+    fen,
+    enabled: workspaceMode === 'analysis',
+  })
   const {
     error: cloudEvalError,
     multiPv: cloudEvalMultiPv,
@@ -1036,11 +1041,13 @@ function App() {
   } = useCloudEvaluation({
     fen,
     multiPv,
-    enabled: engineEnabled && !isImportingGame && !isBatchReviewing,
-  })
-  const tablebase = useTablebase({
-    fen,
-    enabled: workspaceMode === 'analysis',
+    enabled: shouldFetchCloudEvaluation({
+      engineEnabled,
+      isBatchReviewing,
+      isImportingGame,
+      tablebaseEligible: tablebase.eligible,
+      tablebaseStatus: tablebase.status,
+    }),
   })
 
   const stopBatchReview = useCallback(() => {
