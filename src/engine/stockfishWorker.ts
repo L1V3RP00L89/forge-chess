@@ -13,11 +13,38 @@ function needsBootstrap(profile: EngineProfile): boolean {
   return profile.source === 'cdn' || profile.id === 'lite-single-local'
 }
 
-function createBootstrapSource(workerPath: string): string {
+function createBootstrapSource(workerPath: string, threaded: boolean): string {
   const scriptUrl = toAbsoluteAssetUrl(workerPath)
+  const wasmUrl = toAbsoluteAssetUrl(deriveWasmPath(workerPath))
+  const pthreadProxy = threaded
+    ? `
+var StockfishNativeWorker = self.Worker;
+var StockfishPthreadWorkerUrl = URL.createObjectURL(new Blob([\`
+self.window = self;
+self.addEventListener('error', function (event) {
+  try {
+    self.postMessage('__BOOT_ERROR__:' + (event && event.message ? event.message : 'Unknown pthread bootstrap error'));
+  } catch (_) {}
+  event.preventDefault();
+});
+try {
+  importScripts(${JSON.stringify(scriptUrl)});
+} catch (error) {
+  self.postMessage('__BOOT_ERROR__:' + (error && error.message ? error.message : String(error)));
+}
+\`], { type: 'application/javascript' }));
+self.Worker = function (url, options) {
+  if (String(url).includes(',worker')) {
+    return new StockfishNativeWorker(StockfishPthreadWorkerUrl + '#' + ${JSON.stringify(encodeURIComponent(wasmUrl))} + ',worker', options);
+  }
+  return new StockfishNativeWorker(url, options);
+};
+`
+    : ''
 
   return `
 self.window = self;
+${pthreadProxy}
 self.addEventListener('error', function (event) {
   try {
     self.postMessage('__BOOT_ERROR__:' + (event && event.message ? event.message : 'Unknown worker bootstrap error'));
@@ -45,7 +72,9 @@ export function createStockfishWorker(profile: EngineProfile): StockfishWorkerHa
   }
 
   const wasmPath = toAbsoluteAssetUrl(deriveWasmPath(profile.workerPath))
-  const blobUrl = URL.createObjectURL(new Blob([createBootstrapSource(profile.workerPath)], { type: 'application/javascript' }))
+  const blobUrl = URL.createObjectURL(
+    new Blob([createBootstrapSource(profile.workerPath, profile.requiresIsolation)], { type: 'application/javascript' }),
+  )
 
   try {
     return {
