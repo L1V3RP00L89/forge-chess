@@ -3920,14 +3920,13 @@ function App() {
                   )}
                   <div className="pv-list">
                     <h3><span className="section-icon"><IconSearch /></span> Lines</h3>
-                    {lines.length === 0 && !activeGoCommand && !currentLastBestMove && (
+                    {currentFenLines.length === 0 && !activeGoCommand && !currentLastBestMove && (
                       <div className="empty-state">
                         <span className="empty-state-icon"><IconSearch /></span>
                         <p>Start analysis to see principal variation lines here.</p>
                       </div>
                     )}
-                    {lines
-                      .filter(l => !l.fen || l.fen === fen)
+                    {currentFenLines
                       .slice(0, analysisExperience === 'beginner' ? 2 : undefined)
                       .map(line => (
                         <article key={`${line.multipv}-${line.depth}-${line.pv[0] ?? 'pv'}`}>
