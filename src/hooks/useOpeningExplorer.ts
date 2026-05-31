@@ -7,6 +7,7 @@ import {
   type OpeningExplorerResponse,
   type OpeningSpeed,
 } from '../engine/openingExplorer'
+import { withBoundedRecordEntry, withoutRecordEntry } from './cacheLimit'
 
 export type UseOpeningExplorerArgs = {
   source: OpeningDatabaseSource
@@ -26,6 +27,9 @@ export type OpeningExplorerState = {
   stale: boolean
   authRequired: boolean
 }
+
+const LOCAL_OPENING_DATA_LIMIT = 80
+const LOCAL_OPENING_ERROR_LIMIT = 40
 
 export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplorerState {
   const enabled = args.enabled ?? true
@@ -92,19 +96,16 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
           if (controller.signal.aborted) return
           setDataByKey(previous => {
             if (previous[requestKey]) return previous
-            return { ...previous, [requestKey]: payload }
+            return withBoundedRecordEntry(previous, requestKey, payload, LOCAL_OPENING_DATA_LIMIT)
           })
           setErrorByKey(previous => {
-            if (!(requestKey in previous)) return previous
-            const next = { ...previous }
-            delete next[requestKey]
-            return next
+            return withoutRecordEntry(previous, requestKey)
           })
         })
         .catch(fetchError => {
           if (controller.signal.aborted) return
           const message = fetchError instanceof Error ? fetchError.message : String(fetchError)
-          setErrorByKey(previous => ({ ...previous, [requestKey]: message }))
+          setErrorByKey(previous => withBoundedRecordEntry(previous, requestKey, message, LOCAL_OPENING_ERROR_LIMIT))
         })
     }, debounceMs)
 

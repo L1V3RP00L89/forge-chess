@@ -6,8 +6,10 @@ import {
   tablebasePieceCount,
   type TablebaseResult,
 } from '../engine/tablebase'
+import { withBoundedRecordEntry } from './cacheLimit'
 
 export type TablebaseStatus = 'idle' | 'ineligible' | 'loading' | 'hit' | 'missing' | 'error'
+const LOCAL_TABLEBASE_LIMIT = 80
 
 type UseTablebaseArgs = {
   fen: string
@@ -53,7 +55,7 @@ export function useTablebase({ fen, enabled, debounceMs = 280 }: UseTablebaseArg
             return
           }
 
-          setResultByFen(previous => ({ ...previous, [fen]: nextResult }))
+          setResultByFen(previous => withBoundedRecordEntry(previous, fen, nextResult, LOCAL_TABLEBASE_LIMIT))
           setRequestState({ error: null, fen, status: 'hit' })
         })
         .catch(nextError => {

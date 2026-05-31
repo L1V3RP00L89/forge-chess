@@ -5,6 +5,7 @@ import {
   getCachedCloudEvaluation,
   type CloudEvalResult,
 } from '../engine/cloudEval'
+import { withBoundedMapEntry } from './cacheLimit'
 
 export type CloudEvalStatus = 'idle' | 'loading' | 'hit' | 'missing' | 'error'
 
@@ -15,6 +16,7 @@ type UseCloudEvaluationOptions = {
 }
 
 const CLOUD_EVAL_DEBOUNCE_MS = 320
+const LOCAL_CLOUD_EVAL_LIMIT = 120
 
 export function useCloudEvaluation({ fen, multiPv, enabled }: UseCloudEvaluationOptions) {
   const normalizedMultiPv = Math.max(1, Math.min(5, multiPv))
@@ -56,9 +58,7 @@ export function useCloudEvaluation({ fen, multiPv, enabled }: UseCloudEvaluation
           }
 
           setEvaluations(previous => {
-            const next = new Map(previous)
-            next.set(currentKey, nextResult)
-            return next
+            return withBoundedMapEntry(previous, currentKey, nextResult, LOCAL_CLOUD_EVAL_LIMIT)
           })
           setRequestState({ error: null, key: currentKey, status: 'hit' })
         })
