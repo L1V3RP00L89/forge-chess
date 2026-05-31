@@ -3329,7 +3329,33 @@ body.resizing * {
   }
 
   .bottom-status-row {
-    display: none !important;
+    display: flex !important;
+    justify-content: center;
+    margin-left: 0;
+    min-height: 1.45rem;
+    gap: 0.32rem;
+    overflow: hidden;
+  }
+
+  .bottom-status-row .bottom-engine-info {
+    justify-content: center;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bottom-status-row .engine-command-inline,
+  .bottom-status-row .engine-telemetry-inline,
+  .bottom-status-row .best-move {
+    display: none;
+  }
+
+  .bottom-status-row .game-over-badge {
+    flex: 0 0 auto;
+    font-size: 0.69rem;
+    padding: 0.12rem 0.42rem;
   }
 
   .watch-controls {
