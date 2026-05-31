@@ -2813,7 +2813,9 @@ function App() {
                       </label>
                       <label className="engine-option-row profile-picker">
                         <span>Engine profile</span>
-                        <select value={engineProfile}
+                        <select
+                          aria-label="Engine profile in settings"
+                          value={engineProfile}
                           onChange={e => setEngineProfile(e.target.value as EngineProfileId)}>
                           <option value="auto">Auto (recommended)</option>
                           {engineProfiles.map(p => (
@@ -3667,7 +3669,9 @@ function App() {
                     <h3><span className="section-icon"><IconSettings /></span> Runtime</h3>
                     <label className="engine-option-row profile-picker">
                       <span>Engine profile</span>
-                      <select value={engineProfile}
+                      <select
+                        aria-label="Engine profile in Engine Lab"
+                        value={engineProfile}
                         onChange={e => setEngineProfile(e.target.value as EngineProfileId)}>
                         <option value="auto">Auto (recommended)</option>
                         {engineProfiles.map(p => (
@@ -3688,6 +3692,7 @@ function App() {
                     <label className="switch-control expert-toggle">
                       <input
                         type="checkbox"
+                        aria-label="Enable expert engine commands"
                         checked={expertModeEnabled}
                         onChange={e => setExpertModeEnabled(e.target.checked)}
                       />
@@ -3961,7 +3966,11 @@ function EngineOptionControl({ option, onSetOption, disabled = false }: EngineOp
     const checked = value === 'true'
     return (
       <label className="switch-control">
-        <input type="checkbox" checked={checked} disabled={disabled}
+        <input
+          type="checkbox"
+          aria-label={option.name}
+          checked={checked}
+          disabled={disabled}
           onChange={e => {
             const nv = e.target.checked ? 'true' : 'false'
             setValue(nv)
@@ -3976,7 +3985,13 @@ function EngineOptionControl({ option, onSetOption, disabled = false }: EngineOp
     return (
       <label className="engine-option-row">
         <span>{option.name}</span>
-        <input type="number" min={option.min} max={option.max} value={value} disabled={disabled}
+        <input
+          type="number"
+          aria-label={option.name}
+          min={option.min}
+          max={option.max}
+          value={value}
+          disabled={disabled}
           onChange={e => setValue(e.target.value)}
           onBlur={() => {
             const normalized = normalizeSpinOptionInput(option, value)
@@ -3990,7 +4005,11 @@ function EngineOptionControl({ option, onSetOption, disabled = false }: EngineOp
   return (
     <label className="engine-option-row">
       <span>{option.name}</span>
-      <input type="text" value={value} disabled={disabled}
+      <input
+        type="text"
+        aria-label={option.name}
+        value={value}
+        disabled={disabled}
         onChange={e => setValue(e.target.value)}
         onBlur={() => onSetOption(option.name, value)} />
     </label>
