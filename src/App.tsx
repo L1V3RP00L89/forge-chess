@@ -608,7 +608,7 @@ function App() {
   const game = useMemo(() => new Chess(), [])
   const [fen, setFen] = useState(game.fen())
   const [orientation, setOrientation] = useState<Orientation>('white')
-  const persistedSettings = useMemo(loadPersistedSettings, [])
+  const persistedSettings = useMemo(() => loadPersistedSettings(), [])
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(persistedSettings.workspaceMode)
   const engineEnabled = workspaceMode === 'analysis'
 
@@ -684,8 +684,11 @@ function App() {
   const aiMoveScheduledRef = useRef(false)
   const gameModeRef = useRef<GameMode>('human-vs-human')
   const playerColorRef = useRef<PlayerColor>('white')
-  gameModeRef.current = gameMode
-  playerColorRef.current = playerColor
+
+  useEffect(() => {
+    gameModeRef.current = gameMode
+    playerColorRef.current = playerColor
+  }, [gameMode, playerColor])
 
   // ── Click-to-move (tap support) ───────────────────────
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
@@ -725,7 +728,10 @@ function App() {
   // Stable ref so the AI-loop effect can call addMove without
   // including the (ever-changing) gameTree object in its dep array.
   const gameTreeRef = useRef(gameTree)
-  gameTreeRef.current = gameTree
+
+  useEffect(() => {
+    gameTreeRef.current = gameTree
+  }, [gameTree])
 
   const clearImportSweep = useCallback(() => {
     importSweepQueueRef.current = []
