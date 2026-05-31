@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { profileById } from '../engine/profiles'
-import { parseInfoLine, recommendedThreadCount, shouldStopTimedOutSearchCommand } from './useStockfishEngine'
+import { parseInfoLine, parseOptionLine, recommendedThreadCount, shouldStopTimedOutSearchCommand } from './useStockfishEngine'
 
 describe('Stockfish engine output parsing', () => {
   it('parses finite score, telemetry, WDL, and PV values from info lines', () => {
@@ -31,6 +31,34 @@ describe('Stockfish engine output parsing', () => {
 
   it('ignores lines without principal variations', () => {
     expect(parseInfoLine('info depth 20 score cp 12 nodes 5000')).toBeNull()
+  })
+})
+
+describe('Stockfish option parsing', () => {
+  it('parses combo option variants for pro engine controls', () => {
+    expect(parseOptionLine('option name Analysis Contempt type combo default Both var Off var White var Black var Both')).toEqual({
+      name: 'Analysis Contempt',
+      type: 'combo',
+      defaultValue: 'Both',
+      currentValue: 'Both',
+      vars: ['Off', 'White', 'Black', 'Both'],
+    })
+  })
+
+  it('stops default string values before var/min/max fields', () => {
+    expect(parseOptionLine('option name EvalFile type string default nn-abcdef.nnue var ignored')).toMatchObject({
+      name: 'EvalFile',
+      type: 'string',
+      defaultValue: 'nn-abcdef.nnue',
+    })
+
+    expect(parseOptionLine('option name Threads type spin default 1 min 1 max 1024')).toMatchObject({
+      name: 'Threads',
+      type: 'spin',
+      defaultValue: '1',
+      min: 1,
+      max: 1024,
+    })
   })
 })
 

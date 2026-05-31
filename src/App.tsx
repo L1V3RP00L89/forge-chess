@@ -4235,11 +4235,12 @@ const ReviewMoveList = memo(function ReviewMoveList({ rows, nodes, currentNodeId
 type EngineOptionControlProps = {
   option: {
     name: string
-    type: 'check' | 'spin' | 'string' | 'button'
+    type: 'check' | 'spin' | 'string' | 'button' | 'combo'
     defaultValue?: string
     currentValue?: string
     min?: number
     max?: number
+    vars?: string[]
   }
   onSetOption: (name: string, value?: string | number | boolean) => void
   disabled?: boolean
@@ -4299,6 +4300,27 @@ function EngineOptionControl({ option, onSetOption, disabled = false }: EngineOp
             setValue(String(normalized))
             onSetOption(option.name, normalized)
           }} />
+      </label>
+    )
+  }
+
+  if (option.type === 'combo') {
+    const choices = option.vars?.length ? option.vars : [optionValue].filter(Boolean)
+    return (
+      <label className="engine-option-row">
+        <span>{option.name}</span>
+        <select
+          aria-label={option.name}
+          value={value}
+          disabled={disabled}
+          onChange={e => {
+            setValue(e.target.value)
+            onSetOption(option.name, e.target.value)
+          }}>
+          {choices.map(choice => (
+            <option key={choice} value={choice}>{choice}</option>
+          ))}
+        </select>
       </label>
     )
   }

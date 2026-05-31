@@ -30,7 +30,7 @@ type EngineLine = {
   time?: number
 }
 
-type EngineOptionType = 'check' | 'spin' | 'string' | 'button'
+type EngineOptionType = 'check' | 'spin' | 'string' | 'button' | 'combo'
 
 type EngineOption = {
   name: string
@@ -39,6 +39,7 @@ type EngineOption = {
   currentValue?: string
   min?: number
   max?: number
+  vars?: string[]
 }
 
 type AnalyzeParams = {
@@ -215,7 +216,23 @@ export function parseInfoLine(line: string): EngineLine | null {
   return { multipv, depth, cp, mate, scoreBound, wdl, pv, nodes, nps, time }
 }
 
-function parseOptionLine(line: string): EngineOption | null {
+function optionFieldValue(input: string, field: 'default' | 'min' | 'max' | 'var'): string | undefined {
+  const match = input.match(new RegExp(`(?:^|\\s)${field}\\s+([^]+?)(?=\\s(?:default|min|max|var)\\s|$)`))
+  return match?.[1]?.trim()
+}
+
+function optionVarValues(input: string): string[] {
+  const values: string[] = []
+  const pattern = /(?:^|\s)var\s+([^]+?)(?=\s(?:default|min|max|var)\s|$)/g
+  let match: RegExpExecArray | null
+  while ((match = pattern.exec(input)) !== null) {
+    const value = match[1]?.trim()
+    if (value) values.push(value)
+  }
+  return values
+}
+
+export function parseOptionLine(line: string): EngineOption | null {
   if (!line.startsWith('option name ')) return null
 
   const typeToken = ' type '
@@ -226,12 +243,12 @@ function parseOptionLine(line: string): EngineOption | null {
   const rest = line.slice(typeIndex + typeToken.length)
   const [typeRaw] = rest.split(' ')
   const type = typeRaw as EngineOptionType
-  if (!['check', 'spin', 'string', 'button'].includes(type)) return null
+  if (!['check', 'spin', 'string', 'button', 'combo'].includes(type)) return null
 
-  const min = rest.match(/\bmin (-?\d+)/)?.[1]
-  const max = rest.match(/\bmax (-?\d+)/)?.[1]
-  const defaultMatch = rest.match(/\bdefault ([^]+?)(?=\s(?:min|max)\s|$)/)
-  const defaultValue = defaultMatch?.[1]?.trim()
+  const min = optionFieldValue(rest, 'min')
+  const max = optionFieldValue(rest, 'max')
+  const defaultValue = optionFieldValue(rest, 'default')
+  const vars = type === 'combo' ? optionVarValues(rest) : undefined
 
   return {
     name,
@@ -240,6 +257,7 @@ function parseOptionLine(line: string): EngineOption | null {
     currentValue: defaultValue,
     min: min ? Number(min) : undefined,
     max: max ? Number(max) : undefined,
+    vars,
   }
 }
 
