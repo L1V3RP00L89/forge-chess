@@ -2747,6 +2747,9 @@ function App() {
     : playEngineActive
       ? (playEngineStatus === 'thinking' ? 'analyzing' : playEngineStatus)
       : 'standby'
+  const canStepAiMove = playEngineActive && !game.isGameOver() && (
+    gameMode === 'ai-vs-ai' || (gameMode === 'human-vs-ai' && game.turn() !== playerColor[0])
+  )
   const boardInputLocked = isBoardInputLocked({
     workspaceMode,
     gameMode,
@@ -4224,6 +4227,7 @@ function App() {
               paused={paused}
               isGameOver={game.isGameOver()}
               stepMode={aiSpeed === 'step'}
+              canStep={canStepAiMove}
               onPause={pause}
               onResume={resume}
               onStep={handleStep}

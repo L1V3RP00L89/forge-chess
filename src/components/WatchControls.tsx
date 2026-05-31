@@ -14,6 +14,7 @@ type Props = {
     paused: boolean
     isGameOver: boolean
     stepMode: boolean
+    canStep: boolean
     onPause: () => void
     onResume: () => void
     onStep: () => void      // advance one AI move in step mode
@@ -40,6 +41,7 @@ export function WatchControls({
     paused,
     isGameOver,
     stepMode,
+    canStep,
     onPause,
     onResume,
     onStep,
@@ -67,8 +69,15 @@ export function WatchControls({
             {/* ── Play / Pause / Step (AI only) ── */}
             {aiActive && !isGameOver && (
                 <div className="wc-play">
-                    {stepMode && paused ? (
-                        <button type="button" className="wc-btn wc-btn-step" onClick={onStep} title="Advance one AI move" aria-label="Advance one AI move">
+                    {stepMode ? (
+                        <button
+                            type="button"
+                            className="wc-btn wc-btn-step"
+                            onClick={onStep}
+                            disabled={!canStep}
+                            title={canStep ? 'Advance one AI move' : 'Waiting for AI turn'}
+                            aria-label={canStep ? 'Advance one AI move' : 'Waiting for AI turn'}
+                        >
                             <IconStepForward /> Step
                         </button>
                     ) : paused ? (
