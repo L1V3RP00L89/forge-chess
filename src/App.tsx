@@ -835,6 +835,8 @@ function App() {
   const opening = useOpening(openingFenPath, workspaceMode === 'analysis' && currentPathNodes.length > 1)
   const canGoBack = currentPathNodes.length > 1
   const canGoForward = gameTree.current.children.length > 0
+  const shortcutsSuspended =
+    showNewGameDialog || showPgnDialog || settingsOpen || pendingPromotion !== null
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -872,6 +874,7 @@ function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return
+      if (shortcutsSuspended) return
       const target = e.target as HTMLElement | null
       const tag = target?.tagName
       if (target?.isContentEditable || tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
@@ -893,7 +896,7 @@ function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [goFirst, goLast, goPrev, goNext, pause, resume, workspaceMode])
+  }, [goFirst, goLast, goPrev, goNext, pause, resume, shortcutsSuspended, workspaceMode])
 
   // No wheel-to-navigate; it conflicts with trackpads and touch.
 
