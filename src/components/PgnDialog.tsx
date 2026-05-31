@@ -162,7 +162,6 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
             setCopyStatus('link-copied')
         } catch {
             setCopyStatus('failed')
-            setError('Clipboard access failed. The current FEN is in the text box.')
         }
     }
 
