@@ -57,6 +57,39 @@ describe('review analysis helpers', () => {
     expect(summarizeReview(rows).pending).toBe(1)
   })
 
+  it('uses mate scores when reviewing move quality', () => {
+    const game = new Chess()
+    const rootFen = game.fen()
+    const move = game.move('e4')
+    const afterFen = game.fen()
+
+    const keepsForcedMate = buildReviewRows(
+      [move],
+      new Map([
+        [rootFen, { cp: Number.NaN, mate: 3 }],
+        [afterFen, { cp: Number.NaN, mate: -2 }],
+      ]),
+      rootFen,
+    )
+    const dropsForcedMate = buildReviewRows(
+      [move],
+      new Map([
+        [rootFen, { cp: Number.NaN, mate: 3 }],
+        [afterFen, { cp: 0 }],
+      ]),
+      rootFen,
+    )
+
+    expect(keepsForcedMate[0]).toMatchObject({
+      deltaCp: 0,
+      quality: 'best',
+    })
+    expect(dropsForcedMate[0]).toMatchObject({
+      deltaCp: -10000,
+      quality: 'blunder',
+    })
+  })
+
   it('does not assign a final quality label from shallow import scans', () => {
     const game = new Chess()
     const rootFen = game.fen()

@@ -164,8 +164,8 @@ export function buildReviewRows(
 
     const beforeSnapshot = evaluationsByFen.get(beforeFen)
     const afterSnapshot = evaluationsByFen.get(afterFen)
-    const before = beforeSnapshot?.cp
-    const after = afterSnapshot?.cp
+    const before = beforeSnapshot ? scoreToCp(beforeSnapshot.cp, beforeSnapshot.mate) : undefined
+    const after = afterSnapshot ? scoreToCp(afterSnapshot.cp, afterSnapshot.mate) : undefined
     if (!beforeSnapshot || !afterSnapshot || !isFiniteNumber(before) || !isFiniteNumber(after)) {
       return {
         ply: index + 1,
