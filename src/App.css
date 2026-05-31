@@ -1394,6 +1394,8 @@ body.resizing * {
 .analysis-experience-toggle .mode-pill {
   flex: 1;
   justify-content: center;
+  min-height: 32px;
+  box-sizing: border-box;
 }
 
 .coach-card {
