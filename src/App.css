@@ -3107,6 +3107,8 @@ body.resizing * {
 
   .top .settings-menu>summary {
     width: 2.5rem;
+    min-width: 2.5rem;
+    max-width: none;
     padding: 0;
     font-size: 0;
   }
