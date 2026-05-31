@@ -2989,6 +2989,8 @@ function App() {
                             type="button"
                             onClick={() => void loadHistoricalSample(sample)}
                             disabled={isLoading}
+                            aria-label={`${isLoading ? 'Loading' : 'Load'} ${sample.white} vs ${sample.black}, ${sample.event}`}
+                            title={`${sample.white} vs ${sample.black}, ${sample.event}`}
                           >
                             {isLoading ? 'Loading...' : 'Load'}
                           </button>
