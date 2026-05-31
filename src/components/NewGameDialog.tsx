@@ -66,6 +66,13 @@ export function NewGameDialog({
 
     useEffect(() => {
         if (!open) return
+        setMode(initialMode)
+        setPlayerColor(initialPlayerColor)
+        setDifficulty(initialDifficulty)
+    }, [initialDifficulty, initialMode, initialPlayerColor, open])
+
+    useEffect(() => {
+        if (!open) return
 
         const previouslyFocused = document.activeElement as HTMLElement | null
         const panelEl = panelRef.current
