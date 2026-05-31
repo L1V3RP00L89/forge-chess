@@ -1,5 +1,5 @@
 import { Chess, type Move, type Square } from 'chess.js'
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type SyntheticEvent } from 'react'
 import { Chessboard } from 'react-chessboard'
 import {
   buildWdlSeries,
@@ -2284,8 +2284,23 @@ function App() {
   }, [pendingPromotion])
 
   // ── New game ──────────────────────────────────────────
-  const openNewGameDialog = () => setShowNewGameDialog(true)
-  const openPgnDialog = () => setShowPgnDialog(true)
+  const openNewGameDialog = () => {
+    setSettingsOpen(false)
+    setShowPgnDialog(false)
+    setShowNewGameDialog(true)
+  }
+  const openPgnDialog = () => {
+    setSettingsOpen(false)
+    setShowNewGameDialog(false)
+    setShowPgnDialog(true)
+  }
+  const handleSettingsToggle = (event: SyntheticEvent<HTMLDetailsElement>) => {
+    const nextOpen = event.currentTarget.open
+    setSettingsOpen(nextOpen)
+    if (!nextOpen) return
+    setShowNewGameDialog(false)
+    setShowPgnDialog(false)
+  }
 
   const abortSampleFetch = useCallback(() => {
     sampleFetchControllerRef.current?.abort()
@@ -2771,7 +2786,7 @@ function App() {
             <details
               className="settings-menu"
               open={settingsOpen}
-              onToggle={event => setSettingsOpen(event.currentTarget.open)}
+              onToggle={handleSettingsToggle}
             >
               <summary
                 role="button"
