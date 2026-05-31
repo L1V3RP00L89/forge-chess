@@ -2066,6 +2066,7 @@ function App() {
   const onPieceDrop = (sourceSquare: Square, targetSquare: Square, pieceType: string) => {
     if (pendingPromotion) return false
     if (sourceSquare === targetSquare) return false
+    if (workspaceMode === 'play' && gameMode === 'ai-vs-ai') return false
     if (gameMode === 'human-vs-ai' && isAiThinking) return false
     if (gameMode === 'human-vs-ai' && !paused && game.turn() !== playerColor[0]) return false
 
@@ -2079,6 +2080,7 @@ function App() {
 
   const onSquareClick = useCallback((square: Square) => {
     if (pendingPromotion) return
+    if (workspaceMode === 'play' && gameMode === 'ai-vs-ai') return
     if (gameMode === 'human-vs-ai' && isAiThinking) return
     if (gameMode === 'human-vs-ai' && !paused && game.turn() !== playerColor[0]) return
 
@@ -2124,6 +2126,7 @@ function App() {
     pendingPromotion,
     playerColor,
     selectedSquare,
+    workspaceMode,
   ])
 
   useEffect(() => {
@@ -2320,6 +2323,7 @@ function App() {
       setPendingShallowAnalyzeFen(null)
       setSampleLoadError(null)
       setPendingPromotion(null)
+      clearBoardSelection()
 
       const moves = loader.history({ verbose: true })
       const mainLineEntries: Array<{ move: (typeof moves)[number]; fen: string }> = []
@@ -2353,7 +2357,7 @@ function App() {
       setIsImportingGame(false)
       return { ok: false, error: 'Failed to parse PGN. Check the move text, headers, and move numbers.' }
     }
-  }, [cancelSampleLoad, clearImportSweep, engineEnabled, game, gameTree, newGame])
+  }, [cancelSampleLoad, clearBoardSelection, clearImportSweep, engineEnabled, game, gameTree, newGame])
 
   const handleFenLoad = useCallback((fenText: string, options?: FenLoadOptions) => {
     try {
@@ -2456,26 +2460,28 @@ function App() {
       setPendingShallowAnalyzeFen(null)
       setIsImportingGame(false)
       setPendingPromotion(null)
+      clearBoardSelection()
       pausedRef.current = false
       setPaused(false)
       gameTree.reset()
 
       setOrientation(mode === 'human-vs-ai' ? color : 'white')
     },
-    [aiPlayer, cancelSampleLoad, clearImportSweep, game, gameTree, newGame],
+    [aiPlayer, cancelSampleLoad, clearBoardSelection, clearImportSweep, game, gameTree, newGame],
   )
 
   // ── Mode switch mid-game ──────────────────────────────
   const handleModeChange = useCallback((mode: GameMode) => {
     setGameMode(mode)
     if (workspaceMode !== 'play') setWorkspaceMode('play')
+    if (mode === 'ai-vs-ai') clearBoardSelection()
     aiMoveScheduledRef.current = false
     if (pausedRef.current) {
       pausedRef.current = false
       setPaused(false)
     }
     setFen(f => f)
-  }, [workspaceMode])
+  }, [clearBoardSelection, workspaceMode])
 
   const navigateMoveListAndPause = useCallback((chess: Chess) => {
     navigateAndPause(chess)
@@ -3256,7 +3262,9 @@ function App() {
                     },
                     arrows,
                     allowDrawingArrows: false,
-                    allowDragging: !isAiThinking && !(gameMode === 'human-vs-ai' && !paused && game.turn() !== playerColor[0]),
+                    allowDragging: !(workspaceMode === 'play' && gameMode === 'ai-vs-ai')
+                      && !isAiThinking
+                      && !(gameMode === 'human-vs-ai' && !paused && game.turn() !== playerColor[0]),
                     darkSquareStyle: { backgroundColor: '#b58863' },
                     lightSquareStyle: { backgroundColor: '#f0d9b5' },
                     boardStyle: {
