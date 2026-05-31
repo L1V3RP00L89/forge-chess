@@ -3702,13 +3702,18 @@ function App() {
                       <span className="chip-blunder">Blunder {reviewSummary.blunder}</span>
                       <span className="chip-pending">Pending {reviewSummary.pending}</span>
                     </div>
-                    {visibleReviewRows.length > 0 && (
+                    {visibleReviewRows.length > 0 ? (
                       <ReviewMoveList
                         rows={visibleReviewRows}
                         nodes={mainLineNodes}
                         currentNodeId={gameTree.current.id}
                         onSelectNode={navigateReviewNode}
                       />
+                    ) : (
+                      <div className="empty-state review-empty-state">
+                        <span className="empty-state-icon"><IconSearch /></span>
+                        <p>Add moves or import a PGN, then run Review Game.</p>
+                      </div>
                     )}
                   </div>
                   <div className="critical-moments-card">

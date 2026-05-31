@@ -2844,6 +2844,10 @@ body.resizing * {
   max-width: 200px;
 }
 
+.review-empty-state {
+  padding: var(--space-lg) var(--space-sm);
+}
+
 /* ═══════════════════════════════════════════════════
    Analyzing bar (bottom progress)
    ═══════════════════════════════════════════════════ */
