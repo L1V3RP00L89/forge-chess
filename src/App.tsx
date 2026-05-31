@@ -2102,7 +2102,8 @@ function App() {
       if (!isBoardSquare(square)) return
 
       const isEmptyTarget = squareEl.getAttribute('data-webchess-a11y-target') === 'true'
-      if (event.key === ' ' && !isEmptyTarget) return
+      const isInteractiveSquare = Boolean(target?.closest('button, [role="button"]')) || isEmptyTarget
+      if (event.key === ' ' && !isInteractiveSquare) return
 
       event.preventDefault()
       onSquareClick(square)
