@@ -275,7 +275,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                 }}
                                 aria-pressed={tab === 'import'}
                             >
-                                <span className="mode-icon"><IconClipboard /></span>
+                                <span className="mode-icon"><IconUpload /></span>
                                 <strong>Import</strong>
                             </button>
                             <button
@@ -287,7 +287,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                 }}
                                 aria-pressed={tab === 'fen'}
                             >
-                                <span className="mode-icon"><IconDownload /></span>
+                                <span className="mode-icon"><IconClipboard /></span>
                                 <strong>FEN</strong>
                             </button>
                             <button
@@ -299,7 +299,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                 }}
                                 aria-pressed={tab === 'export'}
                             >
-                                <span className="mode-icon"><IconUpload /></span>
+                                <span className="mode-icon"><IconDownload /></span>
                                 <strong>Export</strong>
                             </button>
                         </div>
