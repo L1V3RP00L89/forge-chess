@@ -2131,13 +2131,52 @@ function App() {
     if (!pendingPromotion) return
 
     const previouslyFocused = document.activeElement as HTMLElement | null
-    const firstButton = promotionDialogRef.current?.querySelector<HTMLButtonElement>('button')
-    firstButton?.focus()
+    const dialogEl = promotionDialogRef.current
+    if (!dialogEl) return
+
+    const focusableSelector = [
+      'button:not([disabled])',
+      '[href]',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(', ')
+
+    const getFocusable = () =>
+      Array.from(dialogEl.querySelectorAll<HTMLElement>(focusableSelector))
+        .filter(el => !el.hasAttribute('disabled') && el.tabIndex !== -1)
+
+    const focusable = getFocusable()
+    focusable[0]?.focus()
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      event.preventDefault()
-      setPendingPromotion(null)
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setPendingPromotion(null)
+        return
+      }
+
+      if (event.key !== 'Tab') return
+      const currentFocusable = getFocusable()
+      if (!currentFocusable.length) return
+
+      const first = currentFocusable[0]
+      const last = currentFocusable[currentFocusable.length - 1]
+      const active = document.activeElement as HTMLElement | null
+
+      if (event.shiftKey) {
+        if (active === first || !dialogEl.contains(active)) {
+          event.preventDefault()
+          last.focus()
+        }
+        return
+      }
+
+      if (active === last || !dialogEl.contains(active)) {
+        event.preventDefault()
+        first.focus()
+      }
     }
 
     document.addEventListener('keydown', onKeyDown)
