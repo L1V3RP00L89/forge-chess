@@ -52,6 +52,7 @@
 .dialog-quick-actions .btn-cancel {
     padding: 0.42rem 0.7rem;
     font-size: 0.74rem;
+    min-height: 36px;
 }
 
 .pgn-dialog .btn-start:disabled {
@@ -322,6 +323,7 @@
 }
 
 .btn-cancel {
+    min-height: 36px;
     padding: 0.5rem 1rem;
     border-radius: 9px;
     border: 1px solid var(--border-default, rgba(240, 246, 252, 0.10));
@@ -340,6 +342,7 @@
 }
 
 .btn-start {
+    min-height: 36px;
     padding: 0.55rem 1.3rem;
     border-radius: 9px;
     border: 1px solid rgba(125, 239, 222, 0.58);
