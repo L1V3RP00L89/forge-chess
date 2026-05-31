@@ -149,10 +149,18 @@ type ChipProps = {
 
 function MoveChip({ node, isCurrent, onClick, compact }: ChipProps) {
     const q = node.quality
+    const labelParts = [
+        `Go to ${compact ? 'variation move' : 'move'} ${node.san}`,
+        isCurrent ? 'current position' : '',
+        q ? `review ${q}` : '',
+    ].filter(Boolean)
+
     return (
         <button
             data-node-id={node.id}
             type="button"
+            aria-label={labelParts.join(', ')}
+            aria-current={isCurrent ? 'step' : undefined}
             className={[
                 'mtree-chip',
                 isCurrent ? 'mtree-chip-active' : '',
@@ -164,7 +172,7 @@ function MoveChip({ node, isCurrent, onClick, compact }: ChipProps) {
         >
             {node.san}
             {q && q !== 'pending' && (
-                <span className="mtree-quality-dot" aria-label={q} />
+                <span className="mtree-quality-dot" aria-hidden="true" />
             )}
         </button>
     )

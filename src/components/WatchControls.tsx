@@ -52,7 +52,7 @@ export function WatchControls({
     return (
         <div className="watch-controls">
             {/* ── Navigation ── */}
-            <div className="wc-nav">
+            <div className="wc-nav" aria-label="Move navigation">
                 <button type="button" className="wc-btn" onClick={onFirst} disabled={!canGoBack} title="First position (⏮)" aria-label="Go to first position">
                     <IconSkipBack />
                 </button>
@@ -71,15 +71,15 @@ export function WatchControls({
             {aiActive && !isGameOver && (
                 <div className="wc-play">
                     {stepMode && paused ? (
-                        <button type="button" className="wc-btn wc-btn-step" onClick={onStep} title="Advance one AI move">
+                        <button type="button" className="wc-btn wc-btn-step" onClick={onStep} title="Advance one AI move" aria-label="Advance one AI move">
                             <IconStepForward /> Step
                         </button>
                     ) : paused ? (
-                        <button type="button" className="wc-btn wc-btn-resume" onClick={onResume} title="Resume AI">
+                        <button type="button" className="wc-btn wc-btn-resume" onClick={onResume} title="Resume AI" aria-label="Resume AI play">
                             <IconPlay /> Resume
                         </button>
                     ) : (
-                        <button type="button" className="wc-btn wc-btn-pause" onClick={onPause} title="Pause & analyze">
+                        <button type="button" className="wc-btn wc-btn-pause" onClick={onPause} title="Pause & analyze" aria-label="Pause AI and analyze">
                             <IconPause /> Pause
                         </button>
                     )}
@@ -88,13 +88,14 @@ export function WatchControls({
 
             {/* ── Speed selector (AI only) ── */}
             {aiActive && (
-                <div className="wc-speed">
+                <div className="wc-speed" aria-label="AI speed">
                     <span className="wc-speed-label">Speed</span>
                     {SPEEDS.map(({ id, label }) => (
                         <button
                             key={id}
                             type="button"
                             className={`wc-speed-pill ${aiSpeed === id ? 'wc-speed-active' : ''}`}
+                            aria-label={`Set AI speed to ${label}`}
                             aria-pressed={aiSpeed === id}
                             onClick={() => onSpeedChange(id)}
                         >
@@ -106,7 +107,7 @@ export function WatchControls({
 
             {/* ── Paused indicator ── */}
             {paused && aiActive && (
-                <span className="wc-paused-label"><IconPause /> Analyzing</span>
+                <span className="wc-paused-label" role="status"><IconPause /> Analyzing</span>
             )}
         </div>
     )
