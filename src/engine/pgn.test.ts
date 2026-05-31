@@ -445,6 +445,45 @@ describe('PGN export helpers', () => {
     expect(loader.history()).toEqual(['e4', 'e5'])
   })
 
+  it('keeps comments that appear before the game or before a variation move', () => {
+    const parsed = parsePgnMoveTree(`
+{Training chapter}
+1. e4 ({Sicilian idea} 1... c5) e5 *
+`)
+
+    const e4 = parsed.moves[0]!
+    const e5 = e4.children![0]!
+    const c5 = e4.children![1]!
+
+    expect(e4.comment).toBe('Training chapter')
+    expect(e5.move.san).toBe('e5')
+    expect(c5.move.san).toBe('c5')
+    expect(c5.comment).toBe('Sicilian idea')
+
+    const root = makeNode('root', new Chess().fen(), null, null, ['e4'])
+    const e4Node = makeNode('e4', e4.fen, e4.move, 'root', ['e5', 'c5'], undefined, {
+      comment: e4.comment,
+    })
+    const e5Node = makeNode('e5', e5.fen, e5.move, 'e4')
+    const c5Node = makeNode('c5', c5.fen, c5.move, 'e4', [], undefined, {
+      comment: c5.comment,
+    })
+    const nodes = new Map([
+      [root.id, root],
+      [e4Node.id, e4Node],
+      [e5Node.id, e5Node],
+      [c5Node.id, c5Node],
+    ])
+
+    const pgn = exportAnnotatedPgn([root, e4Node, e5Node], new Map(), { Result: '*' }, nodes)
+    const loader = new Chess()
+    loader.loadPgn(pgn)
+
+    expect(pgn).toContain('1. e4 { Training chapter }')
+    expect(pgn).toContain('(1... c5 { Sicilian idea })')
+    expect(loader.history()).toEqual(['e4', 'e5'])
+  })
+
   it('preserves imported PGN headers for export', () => {
     const parsed = parsePgnMoveTree(`
 [Event "Training Match"]

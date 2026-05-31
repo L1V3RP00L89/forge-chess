@@ -241,10 +241,29 @@ export function rootFenFromPgnHeaders(headers: Record<string, string>): string {
     return fen
 }
 
-function firstMoveNode(node: ParsedPgnNode): ParsedPgnNode | null {
-    if (node.move) return node
+type FirstMoveNode = {
+    node: ParsedPgnNode
+    leadingComment?: string
+}
+
+function joinPgnComments(parts: Array<string | undefined>): string | undefined {
+    return sanitizePgnCommentText(parts.filter(Boolean).join('; '))
+}
+
+function firstMoveNode(node: ParsedPgnNode, leadingComment?: string): FirstMoveNode | null {
+    const nextLeadingComment = !node.move
+        ? joinPgnComments([leadingComment, humanCommentFromPgnComment(node.comment)])
+        : leadingComment
+
+    if (node.move) {
+        return {
+            node,
+            leadingComment: nextLeadingComment,
+        }
+    }
+
     for (const variation of node.variations) {
-        const child = firstMoveNode(variation)
+        const child = firstMoveNode(variation, nextLeadingComment)
         if (child) return child
     }
     return null
@@ -254,13 +273,16 @@ function buildImportEntry(
     node: ParsedPgnNode,
     position: Chess,
     evaluations: Map<string, EvalSnapshot>,
+    leadingComment?: string,
 ): GameTreeImportEntry | null {
-    const moveNode = firstMoveNode(node)
-    if (!moveNode?.move) return null
+    const first = firstMoveNode(node, leadingComment)
+    const moveSan = first?.node.move
+    if (!moveSan) return null
+    const moveNode = first.node
 
     const nextPosition = new Chess(position.fen())
-    const move = nextPosition.move(moveNode.move)
-    if (!move) throw new Error(`Invalid move in PGN: ${moveNode.move}`)
+    const move = nextPosition.move(moveSan)
+    if (!move) throw new Error(`Invalid move in PGN: ${moveSan}`)
 
     const importedEvaluation = evaluationFromComment(nextPosition.fen(), moveNode.comment)
     if (importedEvaluation) {
@@ -270,7 +292,7 @@ function buildImportEntry(
     return {
         move,
         fen: nextPosition.fen(),
-        comment: humanCommentFromPgnComment(moveNode.comment),
+        comment: joinPgnComments([first.leadingComment, humanCommentFromPgnComment(moveNode.comment)]),
         suffix: normalizePgnSuffix(moveNode.suffix),
         nags: normalizePgnNags(moveNode.nag),
         children: buildImportEntries(moveNode.variations, nextPosition, evaluations),
@@ -281,10 +303,31 @@ function buildImportEntries(
     nodes: ParsedPgnNode[],
     position: Chess,
     evaluations: Map<string, EvalSnapshot>,
+    leadingComment?: string,
 ): GameTreeImportEntry[] {
-    return nodes
-        .map(node => buildImportEntry(node, position, evaluations))
-        .filter((entry): entry is GameTreeImportEntry => entry !== null)
+    const entries: GameTreeImportEntry[] = []
+
+    for (const node of nodes) {
+        try {
+            const entry = buildImportEntry(
+                node,
+                position,
+                evaluations,
+                entries.length === 0 ? leadingComment : undefined,
+            )
+            if (entry) entries.push(entry)
+            continue
+        } catch (error) {
+            const previous = entries[entries.length - 1]
+            if (!previous) throw error
+
+            const fallback = buildImportEntry(node, new Chess(previous.fen), evaluations)
+            if (!fallback) throw error
+            previous.children = [...(previous.children ?? []), fallback]
+        }
+    }
+
+    return entries
 }
 
 export function parsePgnMoveTree(pgnText: string): {
@@ -304,7 +347,12 @@ export function parsePgnMoveTree(pgnText: string): {
     return {
         headers,
         rootFen,
-        moves: buildImportEntries(parsed.root.variations, rootPosition, evaluations),
+        moves: buildImportEntries(
+            parsed.root.variations,
+            rootPosition,
+            evaluations,
+            humanCommentFromPgnComment(parsed.root.comment),
+        ),
         evaluations,
         result: parsed.result,
     }
