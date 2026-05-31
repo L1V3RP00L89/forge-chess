@@ -133,6 +133,10 @@ type AnalysisTarget = {
   pathMovesKey: string
 }
 
+type PgnImportOptions = {
+  analyzeAfterLoad?: boolean
+}
+
 function buildImportSweepTargets(
   entries: Array<{ move: { from: string; to: string; promotion?: string }; fen: string }>,
   rootFen: string,
@@ -1981,8 +1985,14 @@ function App() {
   const openNewGameDialog = () => setShowNewGameDialog(true)
   const openPgnDialog = () => setShowPgnDialog(true)
 
-  const handlePgnImport = useCallback((pgnText: string) => {
+  const handlePgnImport = useCallback((pgnText: string, options?: PgnImportOptions) => {
     try {
+      const shouldAnalyzeAfterLoad = options?.analyzeAfterLoad ?? engineEnabled
+      if (shouldAnalyzeAfterLoad) {
+        setWorkspaceMode('analysis')
+        setAnalysisTab('analyze')
+      }
+
       setIsImportingGame(true)
       clearImportSweep()
       const loader = new Chess()
@@ -2007,7 +2017,7 @@ function App() {
 
       const finalFen = game.fen()
       setFen(finalFen)
-      if (engineEnabled) {
+      if (shouldAnalyzeAfterLoad) {
         setPendingShallowAnalyzeFen(finalFen)
         const allSweepTargets = buildImportSweepTargets(mainLineEntries, rootFen)
         const sweepTargets = allSweepTargets.slice(0, -1)
@@ -2078,15 +2088,14 @@ function App() {
       setSampleLoadError(null)
       try {
         const pgnText = await fetchSamplePgn(sample)
-        handlePgnImport(pgnText)
-        if (workspaceMode === 'analysis') setAnalysisTab('analyze')
+        handlePgnImport(pgnText, { analyzeAfterLoad: true })
       } catch (error) {
         setSampleLoadError(error instanceof Error ? error.message : 'Failed to load sample game.')
       } finally {
         setSampleLoadingId(null)
       }
     },
-    [fetchSamplePgn, handlePgnImport, workspaceMode],
+    [fetchSamplePgn, handlePgnImport],
   )
 
   const handleNewGameStart = useCallback(
