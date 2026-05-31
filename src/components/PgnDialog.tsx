@@ -75,6 +75,18 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
         }
     }
 
+    const handleDownload = () => {
+        const blob = new Blob([exportText], { type: 'application/x-chess-pgn;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `web-chess-${new Date().toISOString().slice(0, 10)}.pgn`
+        document.body.append(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(url)
+    }
+
     const handleUseCurrentFen = () => {
         resetFeedback()
         setFenText(currentFen)
@@ -279,6 +291,9 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                             />
                             <div className="dialog-actions">
                                 <button type="button" className="btn-cancel" onClick={closeDialog}>Close</button>
+                                <button type="button" className="btn-cancel" onClick={handleDownload}>
+                                    Download PGN
+                                </button>
                                 <button type="button" className="btn-start" onClick={handleCopy}>
                                     {copyStatus === 'copied' ? 'Copied' : 'Copy PGN'}
                                 </button>
