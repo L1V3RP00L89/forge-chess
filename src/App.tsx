@@ -1,5 +1,5 @@
 import { Chess, type Move, type Square } from 'chess.js'
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type SyntheticEvent } from 'react'
+import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type SyntheticEvent } from 'react'
 import { Chessboard } from 'react-chessboard'
 import {
   buildWdlSeries,
@@ -50,8 +50,7 @@ import { useOpening } from './hooks/useOpening'
 import { useCloudEvaluation } from './hooks/useCloudEvaluation'
 import { useOpeningExplorer } from './hooks/useOpeningExplorer'
 import { useTablebase } from './hooks/useTablebase'
-import { NewGameDialog, type GameMode, type PlayerColor } from './components/NewGameDialog'
-import { PgnDialog } from './components/PgnDialog'
+import type { GameMode, PlayerColor } from './components/NewGameDialog'
 import { WatchControls } from './components/WatchControls'
 import { AI_SPEED_MS, type AiSpeed } from './components/aiSpeed'
 import { WdlBar } from './components/WdlBar'
@@ -59,6 +58,13 @@ import { HorizontalWdlBar } from './components/HorizontalWdlBar'
 import { MoveListTree } from './components/MoveListTree'
 import { IconBot, IconBarChart, IconSearch, IconSwords, IconAlert, IconKing, IconRefresh, IconFlip, IconDownload, IconUsers, IconZap, IconSettings, IconPlay, IconStop, IconTrendingUp } from './components/icons'
 import './App.css'
+
+const NewGameDialog = lazy(() =>
+  import('./components/NewGameDialog').then(module => ({ default: module.NewGameDialog })),
+)
+const PgnDialog = lazy(() =>
+  import('./components/PgnDialog').then(module => ({ default: module.PgnDialog })),
+)
 
 type Orientation = 'white' | 'black'
 type WorkspaceMode = 'play' | 'analysis'
@@ -3385,28 +3391,33 @@ function App() {
           </div>
         </section>
 
-        {/* ── New Game Dialog ── */}
-        <NewGameDialog
-          key={showNewGameDialog ? `${gameMode}-${playerColor}-${aiDifficulty}` : 'closed'}
-          open={showNewGameDialog}
-          initialMode={gameMode}
-          initialPlayerColor={playerColor}
-          initialDifficulty={aiDifficulty}
-          onStart={handleNewGameStart}
-          onCancel={() => setShowNewGameDialog(false)}
-        />
+        <Suspense fallback={null}>
+          {showNewGameDialog && (
+            <NewGameDialog
+              key={`${gameMode}-${playerColor}-${aiDifficulty}`}
+              open
+              initialMode={gameMode}
+              initialPlayerColor={playerColor}
+              initialDifficulty={aiDifficulty}
+              onStart={handleNewGameStart}
+              onCancel={() => setShowNewGameDialog(false)}
+            />
+          )}
 
-        <PgnDialog
-          open={showPgnDialog}
-          onClose={() => setShowPgnDialog(false)}
-          onImport={handlePgnImport}
-          onLoadFen={handleFenLoad}
-          currentFen={fen}
-          mainLineNodes={mainLineNodes}
-          gameNodes={gameTree.nodesSnapshot}
-          evaluations={evaluationsByFen}
-          pgnHeaders={pgnHeaders}
-        />
+          {showPgnDialog && (
+            <PgnDialog
+              open
+              onClose={() => setShowPgnDialog(false)}
+              onImport={handlePgnImport}
+              onLoadFen={handleFenLoad}
+              currentFen={fen}
+              mainLineNodes={mainLineNodes}
+              gameNodes={gameTree.nodesSnapshot}
+              evaluations={evaluationsByFen}
+              pgnHeaders={pgnHeaders}
+            />
+          )}
+        </Suspense>
 
         {/* ── Right panel ── */}
         <aside className="panel right" style={{ width: rightWidth }}>
