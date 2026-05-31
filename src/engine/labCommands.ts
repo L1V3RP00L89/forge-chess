@@ -3,7 +3,6 @@ const DIRECT_GO_LIMITS = new Set([
   'movetime',
   'nodes',
   'mate',
-  'movestogo',
   'wtime',
   'btime',
 ])
