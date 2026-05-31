@@ -143,7 +143,23 @@ function profileRuntimeMessage(
   return `Running ${activeProfile.name} instead of ${requested.name}.`
 }
 
-function parseInfoLine(line: string): EngineLine | null {
+function finiteNumber(value: string | undefined): number | undefined {
+  if (typeof value !== 'string') return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function nonNegativeNumber(value: string | undefined): number | undefined {
+  const parsed = finiteNumber(value)
+  return typeof parsed === 'number' && parsed >= 0 ? parsed : undefined
+}
+
+function positiveNumber(value: string | undefined): number | undefined {
+  const parsed = finiteNumber(value)
+  return typeof parsed === 'number' && parsed > 0 ? parsed : undefined
+}
+
+export function parseInfoLine(line: string): EngineLine | null {
   const parts = line.trim().split(/\s+/)
   if (parts[0] !== 'info') return null
 
@@ -161,16 +177,23 @@ function parseInfoLine(line: string): EngineLine | null {
   for (let i = 1; i < parts.length; i += 1) {
     const part = parts[i]
 
-    if (part === 'depth') depth = Number(parts[i + 1])
-    if (part === 'multipv') multipv = Number(parts[i + 1])
-    if (part === 'nodes') nodes = Number(parts[i + 1])
-    if (part === 'nps') nps = Number(parts[i + 1])
-    if (part === 'time') time = Number(parts[i + 1])
-    if (part === 'score' && parts[i + 1] === 'cp') cp = Number(parts[i + 2])
-    if (part === 'score' && parts[i + 1] === 'mate') mate = Number(parts[i + 2])
+    if (part === 'depth') depth = nonNegativeNumber(parts[i + 1]) ?? depth
+    if (part === 'multipv') multipv = positiveNumber(parts[i + 1]) ?? multipv
+    if (part === 'nodes') nodes = nonNegativeNumber(parts[i + 1])
+    if (part === 'nps') nps = nonNegativeNumber(parts[i + 1])
+    if (part === 'time') time = nonNegativeNumber(parts[i + 1])
+    if (part === 'score' && parts[i + 1] === 'cp') cp = finiteNumber(parts[i + 2])
+    if (part === 'score' && parts[i + 1] === 'mate') mate = finiteNumber(parts[i + 2])
     if (part === 'upperbound') scoreBound = 'upperbound'
     if (part === 'lowerbound') scoreBound = 'lowerbound'
-    if (part === 'wdl') wdl = { w: Number(parts[i + 1]), d: Number(parts[i + 2]), l: Number(parts[i + 3]) }
+    if (part === 'wdl') {
+      const w = nonNegativeNumber(parts[i + 1])
+      const d = nonNegativeNumber(parts[i + 2])
+      const l = nonNegativeNumber(parts[i + 3])
+      wdl = typeof w === 'number' && typeof d === 'number' && typeof l === 'number'
+        ? { w, d, l }
+        : undefined
+    }
     if (part === 'pv') {
       pv = parts.slice(i + 1)
       break
