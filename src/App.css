@@ -113,9 +113,17 @@ body.resizing * {
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 0.42rem 0.66rem;
   line-height: 1;
   position: relative;
   overflow: hidden;
+}
+
+.panel :is(input:not([type="range"]):not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  min-height: 32px;
+  box-sizing: border-box;
 }
 
 @media (hover: hover) and (pointer: fine) {
