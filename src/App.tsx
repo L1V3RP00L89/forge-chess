@@ -1822,6 +1822,16 @@ function App() {
   )
   const reviewSummary = useMemo(() => summarizeReview(visibleReviewRows), [visibleReviewRows])
   const reviewAccuracy = useMemo(() => summarizeAccuracy(visibleReviewRows), [visibleReviewRows])
+  const reviewGameDisabledReason = !engineEnabled
+    ? 'Enable Stockfish to review the game.'
+    : mainLineNodes.length <= 1
+      ? 'Add moves or import a PGN before running review.'
+      : null
+  const reviewGameButtonLabel = isBatchReviewing
+    ? `Stop game review. ${batchReviewProgress.done} of ${batchReviewProgress.total} positions reviewed.`
+    : reviewGameDisabledReason
+      ? `Review Game unavailable. ${reviewGameDisabledReason}`
+      : 'Review Game'
   const criticalReviewRows = useMemo(
     () => visibleReviewRows
       .filter(row => row.quality === 'inaccuracy' || row.quality === 'mistake' || row.quality === 'blunder')
@@ -3975,7 +3985,8 @@ function App() {
                       className={`batch-review-btn ${isBatchReviewing ? 'btn-primary pulsing' : ''}`}
                       onClick={isBatchReviewing ? stopBatchReview : startBatchReview}
                       disabled={!engineEnabled || mainLineNodes.length <= 1}
-                      title={!engineEnabled ? 'Enable Stockfish to review the game' : undefined}
+                      title={reviewGameDisabledReason ?? undefined}
+                      aria-label={reviewGameButtonLabel}
                     >
                       {isBatchReviewing ? (
                         <><IconStop /> Reviewing ({batchReviewProgress.done}/{batchReviewProgress.total})</>
