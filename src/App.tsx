@@ -3718,6 +3718,8 @@ function App() {
                         {criticalReviewRows.map(row => {
                           const node = mainLineNodes[row.ply]
                           const movePrefix = row.sideToMove === 'w' ? `${row.moveNumber}.` : `${row.moveNumber}...`
+                          const bestMoveHint =
+                            row.bestMove && row.bestMove !== row.uci ? `Best ${row.bestMoveSan ?? row.bestMove}` : null
                           return (
                             <button
                               key={`${row.ply}-${row.uci}`}
@@ -3736,6 +3738,11 @@ function App() {
                               <span className="critical-moment-impact">
                                 {reviewImpactLabel(row.deltaCp)}
                               </span>
+                              {bestMoveHint && (
+                                <span className="critical-moment-best">
+                                  {bestMoveHint}
+                                </span>
+                              )}
                             </button>
                           )
                         })}

@@ -2140,6 +2140,17 @@ body.resizing * {
   white-space: nowrap;
 }
 
+.critical-moment-best {
+  grid-column: 1 / -1;
+  min-width: 0;
+  color: var(--info);
+  font-size: 0.68rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .review-book-list {
   display: grid;
   gap: 0.28rem;
