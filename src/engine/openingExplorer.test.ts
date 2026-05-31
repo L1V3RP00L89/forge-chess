@@ -185,4 +185,26 @@ describe('opening explorer client', () => {
     await expect(fetchOpeningExplorer({ source: 'masters', moves: ['d2d4'] })).resolves.toEqual(payload)
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it('ignores malformed browser storage entries before auth gating', async () => {
+    const stored = {
+      'masters||h2h3||': {
+        expiresAt: Date.now() + 60_000,
+        payload: { moves: 'not-an-array' },
+      },
+    }
+    const fetchMock = vi.fn()
+    const localStorageMock = {
+      getItem: vi.fn(() => JSON.stringify(stored)),
+      setItem: vi.fn(),
+    }
+
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('window', { localStorage: localStorageMock })
+
+    await expect(fetchOpeningExplorer({ source: 'masters', moves: ['h2h3'] })).rejects.toThrow(
+      'Opening Explorer requires a Lichess API token.',
+    )
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 })

@@ -62,7 +62,7 @@ type CacheEntry = {
 
 const responseCache = new Map<string, CacheEntry>()
 
-function readStorageCache(): Record<string, CacheEntry> {
+function readStorageCache(): Record<string, unknown> {
   if (typeof window === 'undefined') return {}
   try {
     const raw = window.localStorage.getItem(CACHE_STORAGE_KEY)
@@ -92,7 +92,8 @@ function writeStorageCacheEntry(key: string, entry: CacheEntry) {
 
   const pruned = Object.fromEntries(
     Object.entries(stored)
-      .filter(([, value]) => value.expiresAt > now)
+      .map(([entryKey, value]) => [entryKey, parseCacheEntry(value)] as const)
+      .filter((entry): entry is readonly [string, CacheEntry] => entry[1] !== null && entry[1].expiresAt > now)
       .sort(([, a], [, b]) => b.expiresAt - a.expiresAt)
       .slice(0, CACHE_STORAGE_LIMIT),
   )
@@ -263,6 +264,22 @@ function parseResponse(raw: unknown): OpeningExplorerResponse {
   }
 }
 
+function parseCachedPayload(raw: unknown): OpeningExplorerResponse | null {
+  if (!raw || typeof raw !== 'object') return null
+  const payload = raw as Record<string, unknown>
+  if (!isFiniteNumber(payload.white) || !isFiniteNumber(payload.draws) || !isFiniteNumber(payload.black)) return null
+  if (!Array.isArray(payload.moves) || !Array.isArray(payload.topGames) || !Array.isArray(payload.recentGames)) return null
+  return parseResponse(raw)
+}
+
+function parseCacheEntry(raw: unknown): CacheEntry | null {
+  if (!raw || typeof raw !== 'object') return null
+  const entry = raw as Record<string, unknown>
+  if (!isFiniteNumber(entry.expiresAt)) return null
+  const payload = parseCachedPayload(entry.payload)
+  return payload ? { expiresAt: entry.expiresAt, payload } : null
+}
+
 function readCached(request: OpeningExplorerRequest): OpeningExplorerResponse | null {
   const key = requestCacheKey(request)
   const cached = responseCache.get(key)
@@ -272,7 +289,7 @@ function readCached(request: OpeningExplorerRequest): OpeningExplorerResponse | 
     responseCache.delete(key)
   }
 
-  const stored = readStorageCache()[key]
+  const stored = parseCacheEntry(readStorageCache()[key])
   if (!stored) return null
   if (stored.expiresAt <= now) return null
 
