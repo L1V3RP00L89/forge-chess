@@ -140,6 +140,16 @@ function isShallowEvaluation(snapshot: EvalSnapshot): boolean {
   return false
 }
 
+export function isReviewEvaluationSufficient(snapshot: EvalSnapshot | undefined, minDepth: number): boolean {
+  if (!snapshot) return false
+  if (!isFiniteNumber(scoreToCp(snapshot.cp, snapshot.mate))) return false
+  if (isShallowEvaluation(snapshot)) return false
+
+  const normalizedMinDepth = Number.isFinite(minDepth) ? Math.max(0, Math.round(minDepth)) : 0
+  if (normalizedMinDepth <= 0) return true
+  return isFiniteNumber(snapshot.depth) && snapshot.depth >= normalizedMinDepth
+}
+
 function minDepth(a: EvalSnapshot, b: EvalSnapshot): number | undefined {
   if (isFiniteNumber(a.depth) && isFiniteNumber(b.depth)) return Math.min(a.depth, b.depth)
   if (isFiniteNumber(a.depth)) return a.depth

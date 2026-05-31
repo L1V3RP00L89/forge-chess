@@ -7,6 +7,7 @@ import {
   buildReviewRows,
   filterReviewRowsBySide,
   formatWhitePovEvaluation,
+  isReviewEvaluationSufficient,
   pvToSan,
   scoreToCp,
   summarizeAccuracy,
@@ -1049,14 +1050,26 @@ function App() {
     if (nodes.length <= 1) return
 
     const rootFen = gameTreeRef.current.root.fen
-    const targets = buildBatchReviewTargets(nodes, rootFen)
+    const reviewTargets = buildBatchReviewTargets(nodes, rootFen)
+    const targets = reviewTargets.filter(target => !isReviewEvaluationSufficient(evaluationsByFen.get(target.fen), searchDepth))
     clearImportSweep()
+    setBatchReviewProgress({
+      done: reviewTargets.length - targets.length,
+      total: reviewTargets.length,
+    })
+    if (!targets.length) {
+      batchReviewQueueRef.current = []
+      activeBatchReviewRef.current = null
+      setIsBatchReviewing(false)
+      stop()
+      return
+    }
+
     batchReviewQueueRef.current = targets
     activeBatchReviewRef.current = null
-    setBatchReviewProgress({ done: 0, total: targets.length })
     setIsBatchReviewing(true)
     stop()
-  }, [clearImportSweep, engineEnabled, stop])
+  }, [clearImportSweep, engineEnabled, evaluationsByFen, searchDepth, stop])
 
   useEffect(() => {
     if (!isBatchReviewing) return
