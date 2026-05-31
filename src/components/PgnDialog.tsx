@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent } from 'react'
 import type { GameNode } from '../hooks/useGameTree'
 import type { EvalSnapshot } from '../engine/analysis'
 import { exportAnnotatedPgn, type PgnExportOptions } from '../engine/pgn'
@@ -42,6 +42,8 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
     const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
     const [exportOptions, setExportOptions] = useState(DEFAULT_EXPORT_OPTIONS)
     const panelRef = useRef<HTMLDivElement>(null)
+    const importFileInputRef = useRef<HTMLInputElement>(null)
+    const [importFileName, setImportFileName] = useState<string | null>(null)
     const titleId = useId()
     const importTextId = useId()
     const fenTextId = useId()
@@ -61,10 +63,34 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
         const result = onImport(importText)
         if (result.ok) {
             setImportText('')
+            setImportFileName(null)
             closeDialog()
             return
         }
         setError(result.error ?? 'Could not import that PGN.')
+    }
+
+    const handlePickImportFile = () => {
+        resetFeedback()
+        importFileInputRef.current?.click()
+    }
+
+    const handleImportFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+        const input = event.currentTarget
+        const file = input.files?.[0]
+        if (!file) return
+
+        resetFeedback()
+        try {
+            const text = await file.text()
+            setImportText(text)
+            setImportFileName(file.name)
+        } catch {
+            setImportFileName(null)
+            setError('Could not read that PGN file.')
+        } finally {
+            input.value = ''
+        }
     }
 
     const handleLoadFen = () => {
@@ -262,6 +288,21 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                     {tab === 'import' && (
                         <div className="dialog-section">
                             <label className="dialog-label" htmlFor={importTextId}>Paste Portable Game Notation</label>
+                            <div className="dialog-quick-actions">
+                                <input
+                                    ref={importFileInputRef}
+                                    className="dialog-file-input"
+                                    type="file"
+                                    accept=".pgn,.txt,application/x-chess-pgn,text/plain"
+                                    onChange={event => void handleImportFileChange(event)}
+                                />
+                                <button type="button" className="btn-cancel" onClick={handlePickImportFile}>
+                                    <IconUpload /> Open PGN File
+                                </button>
+                                {importFileName && (
+                                    <span className="dialog-file-name" title={importFileName}>{importFileName}</span>
+                                )}
+                            </div>
                             <textarea
                                 id={importTextId}
                                 className="input-textarea"
@@ -269,6 +310,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                 value={importText}
                                 onChange={e => {
                                     setImportText(e.target.value)
+                                    setImportFileName(null)
                                     setError(null)
                                 }}
                                 aria-invalid={Boolean(error)}
