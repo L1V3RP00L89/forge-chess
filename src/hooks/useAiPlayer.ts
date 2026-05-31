@@ -41,6 +41,24 @@ export const DIFFICULTY_LABELS: Record<AiDifficulty, string> = {
     8: 'Maximum',
 }
 
+export function aiDifficultyCommands(difficulty: AiDifficulty): string[] {
+    const skillLevel = Math.round(((difficulty - 1) / 7) * 20)
+
+    if (difficulty === 8) {
+        return [
+            'setoption name UCI_LimitStrength value false',
+            `setoption name Skill Level value ${skillLevel}`,
+        ]
+    }
+
+    const elo = DIFFICULTY_ELO[difficulty]
+    return [
+        'setoption name UCI_LimitStrength value true',
+        `setoption name UCI_Elo value ${elo}`,
+        `setoption name Skill Level value ${skillLevel}`,
+    ]
+}
+
 type AiStatus = 'loading' | 'ready' | 'thinking' | 'error' | 'disabled'
 
 export function useAiPlayer(enabled = true) {
@@ -71,14 +89,9 @@ export function useAiPlayer(enabled = true) {
     }, [settleRequest])
 
     const applyDifficulty = useCallback((worker: Worker, difficulty: AiDifficulty) => {
-        const elo = DIFFICULTY_ELO[difficulty]
-        // Per Stockfish.js docs (stockfishjs-research-2026-02-22.md):
-        // UCI_LimitStrength (check) + UCI_Elo (spin, 1320-3190)
-        worker.postMessage('setoption name UCI_LimitStrength value true')
-        worker.postMessage(`setoption name UCI_Elo value ${elo}`)
-        // Also set Skill Level for redundancy on lite builds that may use it
-        const skillLevel = Math.round(((difficulty - 1) / 7) * 20)
-        worker.postMessage(`setoption name Skill Level value ${skillLevel}`)
+        for (const command of aiDifficultyCommands(difficulty)) {
+            worker.postMessage(command)
+        }
     }, [])
 
     // Boot a fresh Stockfish worker for the AI player.
