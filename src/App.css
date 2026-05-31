@@ -1020,6 +1020,10 @@ body.resizing * {
   display: none;
 }
 
+.settings-menu:not([open]) .settings-body {
+  display: none;
+}
+
 .settings-menu[open] .settings-backdrop {
   display: block;
   position: fixed;

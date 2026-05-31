@@ -4032,7 +4032,7 @@ const GRAPH_PAD_LEFT = 52
 const GRAPH_PAD_RIGHT = 20
 const GRAPH_PAD_TOP = 16
 const GRAPH_PAD_BOTTOM = 34
-const GRAPH_BASE_WIDTH = 440
+const GRAPH_BASE_WIDTH = 300
 const GRAPH_PX_PER_PLY = 16
 
 function graphWidthForIndex(maxIndex: number): number {
