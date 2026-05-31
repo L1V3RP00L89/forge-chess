@@ -1290,6 +1290,8 @@ function App() {
         : '...'
   const coachBestMove = coachLine?.pv[0] ?? currentCloudEval?.pvs[0]?.moves[0] ?? currentLastBestMove ?? null
   const coachBestMoveText = bestMoveLabel(fen, coachBestMove)
+  const coachReplyMove = coachLine?.pv[1] ?? currentCloudEval?.pvs[0]?.moves[1] ?? currentLastPonderMove ?? null
+  const coachReplyMoveText = ponderMoveLabel(fen, coachBestMove, coachReplyMove)
   const coachDepth = coachLine?.depth ?? currentCloudEval?.depth
   const engineTelemetry = engineTelemetryLabel(coachLine)
   const coachLineSan = coachLine
@@ -3261,6 +3263,10 @@ function App() {
                       <div>
                         <span>Best move</span>
                         <strong title={coachBestMove ?? undefined}>{coachBestMoveText}</strong>
+                      </div>
+                      <div>
+                        <span>Reply</span>
+                        <strong title={coachReplyMove ?? undefined}>{coachReplyMoveText}</strong>
                       </div>
                       <div>
                         <span>Depth</span>
