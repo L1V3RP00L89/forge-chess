@@ -8,6 +8,7 @@ import {
   formatWhitePovEvaluation,
   pvToSan,
   scoreToCp,
+  summarizeAccuracy,
   summarizeReview,
   uciToSan,
   type EvalSnapshot,
@@ -339,6 +340,10 @@ function reviewConfidenceLabel(confidence: 'pending' | 'shallow' | 'standard' | 
   if (confidence === 'shallow') return depth ? `Shallow d${depth}` : 'Shallow'
   if (confidence === 'deep') return depth ? `Deep d${depth}` : 'Deep'
   return depth ? `D${depth}` : 'Evaluated'
+}
+
+function formatAccuracyValue(value: number | null): string {
+  return typeof value === 'number' ? value.toFixed(1) : '--'
 }
 
 function formatCloudNodes(knodes: number): string {
@@ -1614,6 +1619,7 @@ function App() {
     [currentRootFen, evaluationsByFen, mainLineMoves],
   )
   const reviewSummary = useMemo(() => summarizeReview(reviewRows), [reviewRows])
+  const reviewAccuracy = useMemo(() => summarizeAccuracy(reviewRows), [reviewRows])
   const criticalReviewRows = useMemo(
     () => reviewRows
       .filter(row => row.quality === 'inaccuracy' || row.quality === 'mistake' || row.quality === 'blunder')
@@ -3579,6 +3585,29 @@ function App() {
                   </div>
                   <div className="review-scaffold">
                     <h3><span className="section-icon"><IconBarChart /></span> Review</h3>
+                    <div className="accuracy-summary" aria-label="Accuracy summary">
+                      <div>
+                        <span>Overall</span>
+                        <strong>{formatAccuracyValue(reviewAccuracy.overall)}</strong>
+                      </div>
+                      <div>
+                        <span>White</span>
+                        <strong>{formatAccuracyValue(reviewAccuracy.white)}</strong>
+                      </div>
+                      <div>
+                        <span>Black</span>
+                        <strong>{formatAccuracyValue(reviewAccuracy.black)}</strong>
+                      </div>
+                      <div>
+                        <span>Evaluated</span>
+                        <strong>{reviewAccuracy.evaluatedMoves}/{reviewRows.length}</strong>
+                      </div>
+                    </div>
+                    {reviewAccuracy.pendingMoves > 0 && (
+                      <p className="panel-copy small command-summary">
+                        {reviewAccuracy.pendingMoves} move{reviewAccuracy.pendingMoves === 1 ? '' : 's'} still need deeper evaluation before accuracy is final.
+                      </p>
+                    )}
                     <div className="review-chips">
                       <span className="chip-best">Best {reviewSummary.best}</span>
                       <span className="chip-good">Good {reviewSummary.good}</span>

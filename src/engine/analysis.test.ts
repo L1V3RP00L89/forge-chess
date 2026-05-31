@@ -1,6 +1,16 @@
 import { Chess } from 'chess.js'
 import { describe, expect, it } from 'vitest'
-import { buildReviewRows, buildWdlSeries, buildWinrateSeries, formatWhitePovEvaluation, scoreToCp, summarizeReview, uciToSan } from './analysis'
+import {
+  accuracyFromCentipawnLoss,
+  buildReviewRows,
+  buildWdlSeries,
+  buildWinrateSeries,
+  formatWhitePovEvaluation,
+  scoreToCp,
+  summarizeAccuracy,
+  summarizeReview,
+  uciToSan,
+} from './analysis'
 
 describe('review analysis helpers', () => {
   it('labels reviewed moves from side-to-move centipawn deltas', () => {
@@ -68,6 +78,25 @@ describe('review analysis helpers', () => {
       confidence: 'shallow',
       quality: 'pending',
     })
+  })
+
+  it('summarizes player accuracy from evaluated centipawn loss', () => {
+    const rows = [
+      { ply: 1, moveNumber: 1, sideToMove: 'w' as const, san: 'e4', uci: 'e2e4', quality: 'best' as const, deltaCp: -10, confidence: 'standard' as const },
+      { ply: 2, moveNumber: 1, sideToMove: 'b' as const, san: 'e5', uci: 'e7e5', quality: 'mistake' as const, deltaCp: -220, confidence: 'standard' as const },
+      { ply: 3, moveNumber: 2, sideToMove: 'w' as const, san: 'Nf3', uci: 'g1f3', quality: 'pending' as const, confidence: 'pending' as const },
+    ]
+
+    expect(accuracyFromCentipawnLoss(40)).toBe(100)
+    expect(accuracyFromCentipawnLoss(-300)).toBeCloseTo(36.8, 1)
+    const summary = summarizeAccuracy(rows)
+    expect(summary).toMatchObject({
+      evaluatedMoves: 2,
+      pendingMoves: 1,
+    })
+    expect(summary.overall).toBeCloseTo(72.4, 1)
+    expect(summary.white).toBeCloseTo(96.7, 1)
+    expect(summary.black).toBeCloseTo(48.0, 1)
   })
 
   it('keeps review move numbering from a black-to-move root', () => {

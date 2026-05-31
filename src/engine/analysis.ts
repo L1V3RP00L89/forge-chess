@@ -30,6 +30,14 @@ export type ReviewRow = {
   confidence: 'pending' | 'shallow' | 'standard' | 'deep'
 }
 
+export type AccuracySummary = {
+  overall: number | null
+  white: number | null
+  black: number | null
+  evaluatedMoves: number
+  pendingMoves: number
+}
+
 export type WinratePoint = {
   index: number
   label: string
@@ -198,6 +206,45 @@ export function summarizeReview(rows: ReviewRow[]): Record<ReviewLabel, number> 
     },
     { best: 0, good: 0, inaccuracy: 0, mistake: 0, blunder: 0, pending: 0 },
   )
+}
+
+export function accuracyFromCentipawnLoss(deltaCp: number): number {
+  if (!isFiniteNumber(deltaCp)) return 0
+  const loss = Math.max(0, -deltaCp)
+  const accuracy = 100 * Math.exp(-loss / 300)
+  return Math.max(0, Math.min(100, accuracy))
+}
+
+function average(values: number[]): number | null {
+  if (!values.length) return null
+  return values.reduce((sum, value) => sum + value, 0) / values.length
+}
+
+export function summarizeAccuracy(rows: ReviewRow[]): AccuracySummary {
+  const white: number[] = []
+  const black: number[] = []
+  let pendingMoves = 0
+
+  for (const row of rows) {
+    if (!isFiniteNumber(row.deltaCp) || row.quality === 'pending') {
+      pendingMoves += 1
+      continue
+    }
+
+    const accuracy = accuracyFromCentipawnLoss(row.deltaCp)
+    if (row.sideToMove === 'w') white.push(accuracy)
+    else black.push(accuracy)
+  }
+
+  const values = [...white, ...black]
+
+  return {
+    overall: average(values),
+    white: average(white),
+    black: average(black),
+    evaluatedMoves: values.length,
+    pendingMoves,
+  }
 }
 
 export function normalizeWhitePovCp(fen: string, cp: number): number {

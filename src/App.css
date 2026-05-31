@@ -2149,6 +2149,46 @@ body.resizing * {
   opacity: 0.72;
 }
 
+.accuracy-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.38rem;
+  margin-bottom: 0.48rem;
+}
+
+.accuracy-summary div {
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(45, 212, 191, 0.08), rgba(13, 16, 23, 0.18)),
+    var(--bg-card);
+  padding: 0.48rem 0.5rem;
+}
+
+.accuracy-summary span {
+  display: block;
+  margin-bottom: 0.14rem;
+  color: var(--text-tertiary);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.accuracy-summary strong {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  line-height: 1.15;
+}
+
+@media (max-width: 520px) {
+  .accuracy-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .review-chips {
   display: flex;
   flex-wrap: wrap;
