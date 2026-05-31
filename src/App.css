@@ -64,6 +64,11 @@ body.resizing * {
   pointer-events: none;
 }
 
+.panel.panel-collapsed .panel-inner {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .panel-header {
   display: flex;
   align-items: center;
@@ -3035,6 +3040,10 @@ body.resizing * {
     width: 100% !important;
     height: auto;
     align-self: stretch;
+  }
+
+  .panel.panel-collapsed {
+    display: none !important;
   }
 
   .left .panel-inner,

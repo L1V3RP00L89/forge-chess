@@ -2699,8 +2699,8 @@ function App() {
     : gameMode === 'human-vs-ai'
       ? 'Human vs AI'
       : 'AI vs AI'
-  const leftPanelCollapsed = !isMobile && leftWidth === 0
-  const rightPanelCollapsed = !isMobile && rightWidth === 0
+  const leftPanelCollapsed = leftWidth === 0
+  const rightPanelCollapsed = rightWidth === 0
   const playEngineActive = workspaceMode === 'play' && gameMode !== 'human-vs-human'
   const playEngineStatus = isAiThinking ? 'thinking' : aiPlayer.status
   const bottomStatusTitle = engineEnabled
@@ -3137,7 +3137,7 @@ function App() {
 
       <div className="main-container">
         {/* ── Left panel (winrate graph) ── */}
-        <section className="panel left" style={{ width: leftWidth }}>
+        <section className={`panel left ${leftPanelCollapsed ? 'panel-collapsed' : ''}`} style={{ width: leftWidth }}>
           <div
             className="resize-handle resize-handle-right"
             role="separator"
@@ -3420,7 +3420,7 @@ function App() {
         </Suspense>
 
         {/* ── Right panel ── */}
-        <aside className="panel right" style={{ width: rightWidth }}>
+        <aside className={`panel right ${rightPanelCollapsed ? 'panel-collapsed' : ''}`} style={{ width: rightWidth }}>
           <div
             className="resize-handle resize-handle-left"
             role="separator"
