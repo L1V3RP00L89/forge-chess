@@ -3320,7 +3320,11 @@ function App() {
               )}
             </div>
             {opening && (
-              <div className="board-opening-label fade-in-slide">
+              <div
+                className="board-opening-label fade-in-slide"
+                aria-label={`Opening ${opening.eco}: ${opening.name}`}
+                title={`${opening.eco} ${opening.name}`}
+              >
                 <div className="opening-pill">
                   <strong>{opening.eco}</strong>
                   <span>{opening.name}</span>
