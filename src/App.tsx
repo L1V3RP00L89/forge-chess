@@ -30,6 +30,7 @@ import {
 } from './engine/openingExplorer'
 import type { AnalyzeMode, UciGoLimits } from './engine/uci'
 import { rootFenFromPgnHeaders } from './engine/pgn'
+import { hasLegalKingPlacement } from './engine/fen'
 import { normalizeSpinOptionInput } from './engine/options'
 import { engineProfiles, type EngineProfileId } from './engine/profiles'
 import { fetchSamplePgn } from './engine/samplePgn'
@@ -2200,6 +2201,9 @@ function App() {
       cancelSampleLoad()
       const loaded = new Chess(fenText.trim())
       const rootFen = loaded.fen()
+      if (!hasLegalKingPlacement(rootFen)) {
+        return { ok: false, error: 'Invalid FEN: kings cannot be adjacent or missing.' }
+      }
 
       newGame()
       game.load(rootFen)

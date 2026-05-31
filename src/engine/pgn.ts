@@ -1,6 +1,7 @@
 import { Chess } from 'chess.js'
 import type { GameNode } from '../hooks/useGameTree'
 import type { EvalSnapshot } from './analysis'
+import { hasLegalKingPlacement } from './fen'
 
 const INITIAL_FEN = new Chess().fen()
 const PGN_TAG_NAME_PATTERN = /^[A-Za-z0-9_]+$/
@@ -25,7 +26,9 @@ export function rootFenFromPgnHeaders(headers: Record<string, string>): string {
     const fenHeader = headers.FEN?.trim()
     if (!fenHeader) return INITIAL_FEN
 
-    return new Chess(fenHeader).fen()
+    const fen = new Chess(fenHeader).fen()
+    if (!hasLegalKingPlacement(fen)) throw new Error('Invalid FEN king placement.')
+    return fen
 }
 
 export function exportAnnotatedPgn(

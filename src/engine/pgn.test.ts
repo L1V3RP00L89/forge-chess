@@ -43,6 +43,12 @@ describe('PGN export helpers', () => {
     expect(loader.history()).toEqual(['c5'])
   })
 
+  it('rejects PGN FEN headers with impossible adjacent kings', () => {
+    expect(() => rootFenFromPgnHeaders({
+      FEN: '8/8/8/8/8/8/7K/6k1 w - - 0 1',
+    })).toThrow('Invalid FEN king placement')
+  })
+
   it('preserves mate distance from side-to-move engine scores', () => {
     const fenAfterWhiteMove = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'
     const mainLine = [
