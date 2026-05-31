@@ -89,6 +89,7 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
         controller.signal,
       )
         .then(payload => {
+          if (controller.signal.aborted) return
           setDataByKey(previous => {
             if (previous[requestKey]) return previous
             return { ...previous, [requestKey]: payload }

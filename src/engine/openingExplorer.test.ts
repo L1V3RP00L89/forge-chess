@@ -74,6 +74,63 @@ describe('opening explorer client', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('does not cache a response aborted during parsing', async () => {
+    let resolveJson: (payload: unknown) => void = () => {}
+    let resolveJsonStarted: () => void = () => {}
+    const jsonStarted = new Promise<void>(resolve => {
+      resolveJsonStarted = resolve
+    })
+    const abortedPayload = {
+      white: 99,
+      draws: 0,
+      black: 0,
+      moves: [],
+      topGames: [],
+      recentGames: [],
+      opening: null,
+    }
+    const freshPayload = {
+      white: 2,
+      draws: 1,
+      black: 3,
+      moves: [],
+      topGames: [],
+      recentGames: [],
+      opening: null,
+    }
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => {
+          resolveJsonStarted()
+          return new Promise(resolve => {
+            resolveJson = resolve
+          })
+        },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => freshPayload,
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const controller = new AbortController()
+    const request = {
+      source: 'masters' as const,
+      moves: ['g1f3'],
+      authToken: 'test-token',
+    }
+    const pending = fetchOpeningExplorer(request, controller.signal)
+    await jsonStarted
+
+    controller.abort()
+    resolveJson(abortedPayload)
+
+    await expect(pending).rejects.toThrow()
+    await expect(fetchOpeningExplorer(request)).resolves.toEqual(freshPayload)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
   it('hydrates valid responses from browser storage before requiring auth', async () => {
     const payload = {
       white: 1,

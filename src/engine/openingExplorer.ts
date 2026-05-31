@@ -290,6 +290,12 @@ function writeCached(request: OpeningExplorerRequest, payload: OpeningExplorerRe
   writeStorageCacheEntry(key, entry)
 }
 
+function throwIfAborted(signal: AbortSignal | undefined) {
+  if (!signal?.aborted) return
+  const reason = signal.reason
+  throw reason instanceof Error ? reason : new Error('Opening Explorer request aborted.')
+}
+
 export function getCachedOpeningExplorer(request: OpeningExplorerRequest): OpeningExplorerResponse | null {
   return readCached(request)
 }
@@ -309,6 +315,8 @@ export async function fetchOpeningExplorer(
     signal,
     headers: authHeaders(request.authToken),
   })
+  throwIfAborted(signal)
+
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
       throw new Error(AUTH_REJECTED_MESSAGE)
@@ -320,6 +328,8 @@ export async function fetchOpeningExplorer(
   }
 
   const raw = await response.json()
+  throwIfAborted(signal)
+
   const parsed = parseResponse(raw)
   writeCached(request, parsed)
   return parsed
