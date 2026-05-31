@@ -53,7 +53,7 @@ import { tablebaseMoveCategoryForPlayer } from './engine/tablebase'
 import { BOARD_SQUARES, describeBoardSquare, isBoardSquare } from './engine/boardAccessibility'
 import { isBoardInputLocked } from './engine/boardInput'
 import { selectCoachBestMove } from './engine/coach'
-import { isHeavyEngineLabCommand } from './engine/labCommands'
+import { engineLabCommandSafetyMessage } from './engine/labCommands'
 import { defaultOrientationForGameMode } from './engine/playMode'
 import { useStockfishEngine } from './hooks/useStockfishEngine'
 import { DIFFICULTY_LABELS, useAiPlayer, type AiDifficulty } from './hooks/useAiPlayer'
@@ -1694,8 +1694,9 @@ function App() {
         setEngineLabError('Stop the active analysis before sending Engine Lab commands.')
         return
       }
-      if (!expertModeEnabled && isHeavyEngineLabCommand(trimmed)) {
-        setEngineLabError('Enable expert mode before running heavy commands (bench/perft/unbounded go).')
+      const safetyMessage = !expertModeEnabled ? engineLabCommandSafetyMessage(trimmed) : null
+      if (safetyMessage) {
+        setEngineLabError(safetyMessage)
         return
       }
 

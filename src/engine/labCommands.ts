@@ -12,13 +12,35 @@ const INCREMENT_LIMITS = new Set([
   'binc',
 ])
 
+const SEARCHMOVES_TRAILING_LIMITS = new Set([
+  ...DIRECT_GO_LIMITS,
+  ...INCREMENT_LIMITS,
+  'movestogo',
+  'infinite',
+  'ponder',
+])
+
+const HEAVY_COMMAND_MESSAGE = 'Enable expert mode before running heavy commands (bench/perft/unbounded go).'
+const SEARCHMOVES_ORDER_MESSAGE =
+  'Stockfish treats searchmoves as the final go parameter. Put limits before searchmoves, for example: go depth 12 searchmoves e2e4.'
+
 function hasPositiveNumericValue(parts: string[], index: number): boolean {
   const value = Number(parts[index + 1])
   return Number.isFinite(value) && value > 0
 }
 
+function commandParts(command: string): string[] {
+  return command.trim().toLowerCase().split(/\s+/g).filter(Boolean)
+}
+
+function hasTrailingSearchMovesLimit(parts: string[]): boolean {
+  const searchMovesIndex = parts.indexOf('searchmoves')
+  if (searchMovesIndex < 0) return false
+  return parts.slice(searchMovesIndex + 1).some(part => SEARCHMOVES_TRAILING_LIMITS.has(part))
+}
+
 export function isHeavyEngineLabCommand(command: string): boolean {
-  const parts = command.trim().toLowerCase().split(/\s+/g).filter(Boolean)
+  const parts = commandParts(command)
   const verb = parts[0]
   if (!verb) return false
 
@@ -38,4 +60,13 @@ export function isHeavyEngineLabCommand(command: string): boolean {
     if (!INCREMENT_LIMITS.has(part)) return false
     return hasPositiveNumericValue(limitParts, index) && hasClockTime
   })
+}
+
+export function engineLabCommandSafetyMessage(command: string): string | null {
+  if (!isHeavyEngineLabCommand(command)) return null
+  const parts = commandParts(command)
+  if (parts[0] === 'go' && hasTrailingSearchMovesLimit(parts)) {
+    return SEARCHMOVES_ORDER_MESSAGE
+  }
+  return HEAVY_COMMAND_MESSAGE
 }

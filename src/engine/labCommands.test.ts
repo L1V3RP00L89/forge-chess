@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isHeavyEngineLabCommand } from './labCommands'
+import { engineLabCommandSafetyMessage, isHeavyEngineLabCommand } from './labCommands'
 
 describe('Engine Lab command safety', () => {
   it('locks heavy diagnostics and unbounded searches', () => {
@@ -32,5 +32,11 @@ describe('Engine Lab command safety', () => {
     expect(isHeavyEngineLabCommand('go wtime 60000 movestogo 20')).toBe(false)
     expect(isHeavyEngineLabCommand('d')).toBe(false)
     expect(isHeavyEngineLabCommand('eval')).toBe(false)
+  })
+
+  it('explains Stockfish searchmoves ordering separately from generic heavy commands', () => {
+    expect(engineLabCommandSafetyMessage('go searchmoves e2e4 depth 12')).toContain('Put limits before searchmoves')
+    expect(engineLabCommandSafetyMessage('go depth 12 searchmoves e2e4')).toBeNull()
+    expect(engineLabCommandSafetyMessage('bench')).toContain('Enable expert mode')
   })
 })
