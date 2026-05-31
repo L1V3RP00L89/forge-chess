@@ -684,11 +684,8 @@ function App() {
   const aiMoveScheduledRef = useRef(false)
   const gameModeRef = useRef<GameMode>('human-vs-human')
   const playerColorRef = useRef<PlayerColor>('white')
-
-  useEffect(() => {
-    gameModeRef.current = gameMode
-    playerColorRef.current = playerColor
-  }, [gameMode, playerColor])
+  gameModeRef.current = gameMode
+  playerColorRef.current = playerColor
 
   // ── Click-to-move (tap support) ───────────────────────
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
@@ -728,10 +725,7 @@ function App() {
   // Stable ref so the AI-loop effect can call addMove without
   // including the (ever-changing) gameTree object in its dep array.
   const gameTreeRef = useRef(gameTree)
-
-  useEffect(() => {
-    gameTreeRef.current = gameTree
-  }, [gameTree])
+  gameTreeRef.current = gameTree
 
   const clearImportSweep = useCallback(() => {
     importSweepQueueRef.current = []
