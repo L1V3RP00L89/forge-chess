@@ -1181,7 +1181,6 @@ function App() {
     stop()
     clearImportSweep()
     setPendingShallowAnalyzeFen(null)
-    setEvaluationsByFen(new Map())
     setIsBatchReviewing(false)
     batchReviewQueueRef.current = []
     activeBatchReviewRef.current = null
