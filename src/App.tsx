@@ -2292,7 +2292,6 @@ function App() {
       handleFenLoad(sharedFen, { forceAnalysis: true })
     }
 
-    loadSharedHash()
     window.addEventListener('hashchange', loadSharedHash)
     return () => window.removeEventListener('hashchange', loadSharedHash)
   }, [game, handleFenLoad])
