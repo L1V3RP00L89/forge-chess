@@ -37,6 +37,13 @@ import {
 import type { AnalyzeMode, UciGoLimits } from './engine/uci'
 import { flattenPgnMainLine, parsePgnMoveTree } from './engine/pgn'
 import { hasLegalKingPlacement } from './engine/fen'
+import {
+  normalizeOptionalIntegerInput,
+  normalizeRequiredIntegerInput,
+  optionalIntegerInputToNullable,
+  parseIntegerInputValue,
+  type NumericInputValue,
+} from './engine/numericInput'
 import { normalizeSpinOptionInput } from './engine/options'
 import { engineProfiles, type EngineProfileId } from './engine/profiles'
 import { fetchSamplePgn } from './engine/samplePgn'
@@ -280,6 +287,13 @@ const DEFAULT_PERSISTED_SETTINGS: PersistedAppSettings = {
   showTopMoveArrows: true,
   topMoveArrowCount: 3,
 }
+
+const QUICK_MOVETIME_BOUNDS = { min: 50, max: 30_000, fallback: DEFAULT_PERSISTED_SETTINGS.quickMovetimeMs }
+const MATE_TARGET_BOUNDS = { min: 1, max: 30, fallback: DEFAULT_PERSISTED_SETTINGS.mateTarget }
+const LIMIT_NODES_BOUNDS = { min: 1, max: 1_000_000_000 }
+const CLOCK_TIME_BOUNDS = { min: 0, max: 86_400_000, fallback: DEFAULT_PERSISTED_SETTINGS.whiteTimeMs }
+const CLOCK_INCREMENT_BOUNDS = { min: 0, max: 60_000, fallback: DEFAULT_PERSISTED_SETTINGS.whiteIncMs }
+const MOVES_TO_GO_BOUNDS = { min: 1, max: 500 }
 
 function isAnalyzePresetId(value: unknown): value is AnalyzePresetId {
   return typeof value === 'string' && analyzePresets.some(preset => preset.id === value)
@@ -600,19 +614,24 @@ function loadPersistedSettings(): PersistedAppSettings {
         ? parsed.showAdvancedAnalyze
         : DEFAULT_PERSISTED_SETTINGS.showAdvancedAnalyze,
       searchDepth: normalizeInteger(parsed.searchDepth, 6, 32, DEFAULT_PERSISTED_SETTINGS.searchDepth),
-      quickMovetimeMs: normalizeInteger(parsed.quickMovetimeMs, 50, 30_000, DEFAULT_PERSISTED_SETTINGS.quickMovetimeMs),
-      mateTarget: normalizeInteger(parsed.mateTarget, 1, 30, DEFAULT_PERSISTED_SETTINGS.mateTarget),
+      quickMovetimeMs: normalizeInteger(
+        parsed.quickMovetimeMs,
+        QUICK_MOVETIME_BOUNDS.min,
+        QUICK_MOVETIME_BOUNDS.max,
+        QUICK_MOVETIME_BOUNDS.fallback,
+      ),
+      mateTarget: normalizeInteger(parsed.mateTarget, MATE_TARGET_BOUNDS.min, MATE_TARGET_BOUNDS.max, MATE_TARGET_BOUNDS.fallback),
       multiPv: normalizeInteger(parsed.multiPv, 1, 5, DEFAULT_PERSISTED_SETTINGS.multiPv),
       hashMb: normalizeInteger(parsed.hashMb, 16, 512, DEFAULT_PERSISTED_SETTINGS.hashMb),
       showWdl: typeof parsed.showWdl === 'boolean' ? parsed.showWdl : DEFAULT_PERSISTED_SETTINGS.showWdl,
-      limitNodes: normalizeOptionalPositiveInteger(parsed.limitNodes, 1_000_000_000),
+      limitNodes: normalizeOptionalPositiveInteger(parsed.limitNodes, LIMIT_NODES_BOUNDS.max),
       searchMovesInput: typeof parsed.searchMovesInput === 'string' ? parsed.searchMovesInput : DEFAULT_PERSISTED_SETTINGS.searchMovesInput,
       useClockLimits: typeof parsed.useClockLimits === 'boolean' ? parsed.useClockLimits : DEFAULT_PERSISTED_SETTINGS.useClockLimits,
-      whiteTimeMs: normalizeInteger(parsed.whiteTimeMs, 0, 86_400_000, DEFAULT_PERSISTED_SETTINGS.whiteTimeMs),
-      blackTimeMs: normalizeInteger(parsed.blackTimeMs, 0, 86_400_000, DEFAULT_PERSISTED_SETTINGS.blackTimeMs),
-      whiteIncMs: normalizeInteger(parsed.whiteIncMs, 0, 60_000, DEFAULT_PERSISTED_SETTINGS.whiteIncMs),
-      blackIncMs: normalizeInteger(parsed.blackIncMs, 0, 60_000, DEFAULT_PERSISTED_SETTINGS.blackIncMs),
-      movesToGo: normalizeOptionalPositiveInteger(parsed.movesToGo, 500),
+      whiteTimeMs: normalizeInteger(parsed.whiteTimeMs, CLOCK_TIME_BOUNDS.min, CLOCK_TIME_BOUNDS.max, DEFAULT_PERSISTED_SETTINGS.whiteTimeMs),
+      blackTimeMs: normalizeInteger(parsed.blackTimeMs, CLOCK_TIME_BOUNDS.min, CLOCK_TIME_BOUNDS.max, DEFAULT_PERSISTED_SETTINGS.blackTimeMs),
+      whiteIncMs: normalizeInteger(parsed.whiteIncMs, CLOCK_INCREMENT_BOUNDS.min, CLOCK_INCREMENT_BOUNDS.max, DEFAULT_PERSISTED_SETTINGS.whiteIncMs),
+      blackIncMs: normalizeInteger(parsed.blackIncMs, CLOCK_INCREMENT_BOUNDS.min, CLOCK_INCREMENT_BOUNDS.max, DEFAULT_PERSISTED_SETTINGS.blackIncMs),
+      movesToGo: normalizeOptionalPositiveInteger(parsed.movesToGo, MOVES_TO_GO_BOUNDS.max),
       expertModeEnabled: typeof parsed.expertModeEnabled === 'boolean'
         ? parsed.expertModeEnabled
         : DEFAULT_PERSISTED_SETTINGS.expertModeEnabled,
@@ -691,16 +710,16 @@ function App() {
   const [activePreset, setActivePreset] = useState<AnalyzePresetId | null>(persistedSettings.activePreset)
   const [analyzeMode, setAnalyzeMode] = useState<AnalyzeMode>(persistedSettings.analyzeMode)
   const [showAdvancedAnalyze, setShowAdvancedAnalyze] = useState(persistedSettings.showAdvancedAnalyze)
-  const [quickMovetimeMs, setQuickMovetimeMs] = useState(persistedSettings.quickMovetimeMs)
-  const [mateTarget, setMateTarget] = useState(persistedSettings.mateTarget)
-  const [limitNodes, setLimitNodes] = useState<number | ''>(persistedSettings.limitNodes ?? '')
+  const [quickMovetimeMs, setQuickMovetimeMs] = useState<NumericInputValue>(persistedSettings.quickMovetimeMs)
+  const [mateTarget, setMateTarget] = useState<NumericInputValue>(persistedSettings.mateTarget)
+  const [limitNodes, setLimitNodes] = useState<NumericInputValue>(persistedSettings.limitNodes ?? '')
   const [searchMovesInput, setSearchMovesInput] = useState(persistedSettings.searchMovesInput)
   const [useClockLimits, setUseClockLimits] = useState(persistedSettings.useClockLimits)
-  const [whiteTimeMs, setWhiteTimeMs] = useState(persistedSettings.whiteTimeMs)
-  const [blackTimeMs, setBlackTimeMs] = useState(persistedSettings.blackTimeMs)
-  const [whiteIncMs, setWhiteIncMs] = useState(persistedSettings.whiteIncMs)
-  const [blackIncMs, setBlackIncMs] = useState(persistedSettings.blackIncMs)
-  const [movesToGo, setMovesToGo] = useState<number | ''>(persistedSettings.movesToGo ?? '')
+  const [whiteTimeMs, setWhiteTimeMs] = useState<NumericInputValue>(persistedSettings.whiteTimeMs)
+  const [blackTimeMs, setBlackTimeMs] = useState<NumericInputValue>(persistedSettings.blackTimeMs)
+  const [whiteIncMs, setWhiteIncMs] = useState<NumericInputValue>(persistedSettings.whiteIncMs)
+  const [blackIncMs, setBlackIncMs] = useState<NumericInputValue>(persistedSettings.blackIncMs)
+  const [movesToGo, setMovesToGo] = useState<NumericInputValue>(persistedSettings.movesToGo ?? '')
   const [engineLabCommand, setEngineLabCommand] = useState('')
   const [engineLabError, setEngineLabError] = useState<string | null>(null)
   const [engineLabOutputLines, setEngineLabOutputLines] = useState<string[]>([])
@@ -1590,20 +1609,26 @@ function App() {
     if (!engineEnabled) return
     clearImportSweep()
     const limits: UciGoLimits = {}
-    if (analyzeMode === 'quick') limits.movetime = quickMovetimeMs
+    if (analyzeMode === 'quick') {
+      limits.movetime = normalizeRequiredIntegerInput(quickMovetimeMs, QUICK_MOVETIME_BOUNDS)
+    }
     if (analyzeMode === 'deep' || analyzeMode === 'review') limits.depth = searchDepth
-    if (analyzeMode === 'mate') limits.mate = mateTarget
+    if (analyzeMode === 'mate') {
+      limits.mate = normalizeRequiredIntegerInput(mateTarget, MATE_TARGET_BOUNDS)
+    }
     if (analyzeMode === 'infinite') limits.infinite = true
 
-    if (showAdvancedAnalyze && typeof limitNodes === 'number' && limitNodes > 0) {
-      limits.nodes = limitNodes
+    const normalizedLimitNodes = normalizeOptionalIntegerInput(limitNodes, LIMIT_NODES_BOUNDS)
+    if (showAdvancedAnalyze && typeof normalizedLimitNodes === 'number') {
+      limits.nodes = normalizedLimitNodes
     }
     if (showAdvancedAnalyze && useClockLimits) {
-      limits.wtime = whiteTimeMs
-      limits.btime = blackTimeMs
-      limits.winc = whiteIncMs
-      limits.binc = blackIncMs
-      if (typeof movesToGo === 'number' && movesToGo > 0) limits.movestogo = movesToGo
+      limits.wtime = normalizeRequiredIntegerInput(whiteTimeMs, CLOCK_TIME_BOUNDS)
+      limits.btime = normalizeRequiredIntegerInput(blackTimeMs, CLOCK_TIME_BOUNDS)
+      limits.winc = normalizeRequiredIntegerInput(whiteIncMs, CLOCK_INCREMENT_BOUNDS)
+      limits.binc = normalizeRequiredIntegerInput(blackIncMs, CLOCK_INCREMENT_BOUNDS)
+      const normalizedMovesToGo = normalizeOptionalIntegerInput(movesToGo, MOVES_TO_GO_BOUNDS)
+      if (typeof normalizedMovesToGo === 'number') limits.movestogo = normalizedMovesToGo
     }
 
     analyze({
@@ -1722,19 +1747,19 @@ function App() {
       analyzeMode,
       showAdvancedAnalyze,
       searchDepth,
-      quickMovetimeMs,
-      mateTarget,
+      quickMovetimeMs: normalizeRequiredIntegerInput(quickMovetimeMs, QUICK_MOVETIME_BOUNDS),
+      mateTarget: normalizeRequiredIntegerInput(mateTarget, MATE_TARGET_BOUNDS),
       multiPv,
       hashMb,
       showWdl,
-      limitNodes: typeof limitNodes === 'number' ? limitNodes : null,
+      limitNodes: optionalIntegerInputToNullable(limitNodes, LIMIT_NODES_BOUNDS),
       searchMovesInput,
       useClockLimits,
-      whiteTimeMs,
-      blackTimeMs,
-      whiteIncMs,
-      blackIncMs,
-      movesToGo: typeof movesToGo === 'number' ? movesToGo : null,
+      whiteTimeMs: normalizeRequiredIntegerInput(whiteTimeMs, CLOCK_TIME_BOUNDS),
+      blackTimeMs: normalizeRequiredIntegerInput(blackTimeMs, CLOCK_TIME_BOUNDS),
+      whiteIncMs: normalizeRequiredIntegerInput(whiteIncMs, CLOCK_INCREMENT_BOUNDS),
+      blackIncMs: normalizeRequiredIntegerInput(blackIncMs, CLOCK_INCREMENT_BOUNDS),
+      movesToGo: optionalIntegerInputToNullable(movesToGo, MOVES_TO_GO_BOUNDS),
       expertModeEnabled,
       labCommandHistory,
       openingSource,
@@ -2968,8 +2993,9 @@ function App() {
                             value={quickMovetimeMs}
                             onChange={e => {
                               setActivePreset(null)
-                              setQuickMovetimeMs(Number(e.target.value))
+                              setQuickMovetimeMs(parseIntegerInputValue(e.target.value))
                             }}
+                            onBlur={() => setQuickMovetimeMs(value => normalizeRequiredIntegerInput(value, QUICK_MOVETIME_BOUNDS))}
                           />
                         </label>
                       )}
@@ -2984,8 +3010,9 @@ function App() {
                             value={mateTarget}
                             onChange={e => {
                               setActivePreset(null)
-                              setMateTarget(Number(e.target.value))
+                              setMateTarget(parseIntegerInputValue(e.target.value))
                             }}
+                            onBlur={() => setMateTarget(value => normalizeRequiredIntegerInput(value, MATE_TARGET_BOUNDS))}
                           />
                         </label>
                       )}
@@ -3050,9 +3077,11 @@ function App() {
                             <input
                               type="number"
                               min={1}
+                              max={LIMIT_NODES_BOUNDS.max}
                               step={1000}
                               value={limitNodes}
-                              onChange={e => setLimitNodes(e.target.value ? Number(e.target.value) : '')}
+                              onChange={e => setLimitNodes(parseIntegerInputValue(e.target.value))}
+                              onBlur={() => setLimitNodes(value => normalizeOptionalIntegerInput(value, LIMIT_NODES_BOUNDS))}
                             />
                           </label>
                           <label className="engine-option-row">
@@ -3076,32 +3105,38 @@ function App() {
                             <>
                               <label className="engine-option-row">
                                 <span>White time (ms)</span>
-                                <input type="number" min={0} step={100} value={whiteTimeMs}
-                                  onChange={e => setWhiteTimeMs(Number(e.target.value))} />
+                                <input type="number" min={0} max={CLOCK_TIME_BOUNDS.max} step={100} value={whiteTimeMs}
+                                  onChange={e => setWhiteTimeMs(parseIntegerInputValue(e.target.value))}
+                                  onBlur={() => setWhiteTimeMs(value => normalizeRequiredIntegerInput(value, CLOCK_TIME_BOUNDS))} />
                               </label>
                               <label className="engine-option-row">
                                 <span>Black time (ms)</span>
-                                <input type="number" min={0} step={100} value={blackTimeMs}
-                                  onChange={e => setBlackTimeMs(Number(e.target.value))} />
+                                <input type="number" min={0} max={CLOCK_TIME_BOUNDS.max} step={100} value={blackTimeMs}
+                                  onChange={e => setBlackTimeMs(parseIntegerInputValue(e.target.value))}
+                                  onBlur={() => setBlackTimeMs(value => normalizeRequiredIntegerInput(value, CLOCK_TIME_BOUNDS))} />
                               </label>
                               <label className="engine-option-row">
                                 <span>White increment (ms)</span>
-                                <input type="number" min={0} step={50} value={whiteIncMs}
-                                  onChange={e => setWhiteIncMs(Number(e.target.value))} />
+                                <input type="number" min={0} max={CLOCK_INCREMENT_BOUNDS.max} step={50} value={whiteIncMs}
+                                  onChange={e => setWhiteIncMs(parseIntegerInputValue(e.target.value))}
+                                  onBlur={() => setWhiteIncMs(value => normalizeRequiredIntegerInput(value, CLOCK_INCREMENT_BOUNDS))} />
                               </label>
                               <label className="engine-option-row">
                                 <span>Black increment (ms)</span>
-                                <input type="number" min={0} step={50} value={blackIncMs}
-                                  onChange={e => setBlackIncMs(Number(e.target.value))} />
+                                <input type="number" min={0} max={CLOCK_INCREMENT_BOUNDS.max} step={50} value={blackIncMs}
+                                  onChange={e => setBlackIncMs(parseIntegerInputValue(e.target.value))}
+                                  onBlur={() => setBlackIncMs(value => normalizeRequiredIntegerInput(value, CLOCK_INCREMENT_BOUNDS))} />
                               </label>
                               <label className="engine-option-row">
                                 <span>Moves to go</span>
                                 <input
                                   type="number"
                                   min={1}
+                                  max={MOVES_TO_GO_BOUNDS.max}
                                   step={1}
                                   value={movesToGo}
-                                  onChange={e => setMovesToGo(e.target.value ? Number(e.target.value) : '')}
+                                  onChange={e => setMovesToGo(parseIntegerInputValue(e.target.value))}
+                                  onBlur={() => setMovesToGo(value => normalizeOptionalIntegerInput(value, MOVES_TO_GO_BOUNDS))}
                                 />
                               </label>
                             </>
