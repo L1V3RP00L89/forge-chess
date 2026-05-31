@@ -2867,6 +2867,61 @@ body.resizing * {
     padding: 0.35rem 0.5rem;
   }
 
+  .top .compact-grid {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand actions settings"
+      "modes modes modes";
+    align-items: center;
+    gap: 0.4rem;
+    overflow-x: visible;
+  }
+
+  .app-brand {
+    grid-area: brand;
+    margin-right: 0;
+    padding-right: 0.6rem;
+  }
+
+  .mobile-actions {
+    grid-area: actions;
+    justify-self: center;
+    min-width: 0;
+  }
+
+  .mobile-modes-wrapper {
+    grid-area: modes;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .top .settings-menu {
+    grid-area: settings;
+    justify-self: end;
+  }
+
+  .top .settings-menu>summary {
+    width: 2.5rem;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .top .settings-menu>summary .btn-icon {
+    font-size: 1rem;
+  }
+
+  .top-mode-pills {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .top-mode-pills[aria-label="Game mode"] .gc-pill {
+    flex: 1 1 0;
+  }
+
 
 
   /* Mobile settings backdrop */
