@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { parseInfoLine } from './useStockfishEngine'
+import { profileById } from '../engine/profiles'
+import { parseInfoLine, recommendedThreadCount } from './useStockfishEngine'
 
 describe('Stockfish engine output parsing', () => {
   it('parses finite score, telemetry, WDL, and PV values from info lines', () => {
@@ -30,5 +31,29 @@ describe('Stockfish engine output parsing', () => {
 
   it('ignores lines without principal variations', () => {
     expect(parseInfoLine('info depth 20 score cp 12 nodes 5000')).toBeNull()
+  })
+})
+
+describe('Stockfish thread recommendations', () => {
+  const desktopCapabilities = {
+    sharedArrayBuffer: true,
+    crossOriginIsolated: true,
+    hardwareConcurrency: 16,
+    deviceMemoryGb: 32,
+    isMobile: false,
+  }
+
+  it('uses more threads on isolated desktop hardware without saturating every core', () => {
+    expect(recommendedThreadCount(profileById('lite-multi-local'), desktopCapabilities)).toBe(8)
+  })
+
+  it('keeps constrained and non-isolated environments on safer thread counts', () => {
+    const threadedProfile = profileById('lite-multi-local')
+
+    expect(recommendedThreadCount(threadedProfile, { ...desktopCapabilities, hardwareConcurrency: 8, deviceMemoryGb: 4 })).toBe(4)
+    expect(recommendedThreadCount(threadedProfile, { ...desktopCapabilities, isMobile: true })).toBe(1)
+    expect(recommendedThreadCount(threadedProfile, { ...desktopCapabilities, hardwareConcurrency: 2 })).toBe(1)
+    expect(recommendedThreadCount(threadedProfile, { ...desktopCapabilities, crossOriginIsolated: false })).toBe(1)
+    expect(recommendedThreadCount(profileById('lite-single-local'), desktopCapabilities)).toBe(1)
   })
 })

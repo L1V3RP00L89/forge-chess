@@ -3931,6 +3931,7 @@ type EngineOptionControlProps = {
     name: string
     type: 'check' | 'spin' | 'string' | 'button'
     defaultValue?: string
+    currentValue?: string
     min?: number
     max?: number
   }
@@ -3939,7 +3940,12 @@ type EngineOptionControlProps = {
 }
 
 function EngineOptionControl({ option, onSetOption, disabled = false }: EngineOptionControlProps) {
-  const [value, setValue] = useState(option.defaultValue ?? '')
+  const optionValue = option.currentValue ?? option.defaultValue ?? ''
+  const [value, setValue] = useState(optionValue)
+
+  useEffect(() => {
+    setValue(optionValue)
+  }, [optionValue])
 
   if (option.type === 'button') {
     return (

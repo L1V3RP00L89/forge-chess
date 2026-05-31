@@ -36,6 +36,7 @@ type EngineOption = {
   name: string
   type: EngineOptionType
   defaultValue?: string
+  currentValue?: string
   min?: number
   max?: number
 }
@@ -72,13 +73,18 @@ const RAW_LINE_LIMIT = 800
 const ENGINE_STATE_FLUSH_INTERVAL_MS = 100
 const NO_REPLY_COMMANDS = new Set(['ucinewgame', 'position', 'setoption', 'stop', 'ponderhit', 'quit'])
 
-function recommendedThreadCount(profile: EngineProfile, capabilities: EngineCapabilities): number {
+export function recommendedThreadCount(profile: EngineProfile, capabilities: EngineCapabilities): number {
   if (!profile.requiresIsolation) return 1
   if (!capabilities.sharedArrayBuffer || !capabilities.crossOriginIsolated) return 1
   if (capabilities.isMobile) return 1
 
-  const usableCores = Math.max(1, capabilities.hardwareConcurrency || 1)
-  return Math.max(1, Math.min(4, Math.floor(usableCores / 2)))
+  const usableCores = Math.max(1, Math.floor(capabilities.hardwareConcurrency || 1))
+  if (usableCores <= 2) return 1
+
+  const memoryAwareCap =
+    typeof capabilities.deviceMemoryGb === 'number' && capabilities.deviceMemoryGb <= 8 ? 4 : 8
+
+  return Math.max(2, Math.min(memoryAwareCap, Math.floor(usableCores * 0.75)))
 }
 
 function firstWord(input: string): string {
@@ -227,6 +233,7 @@ function parseOptionLine(line: string): EngineOption | null {
     name,
     type,
     defaultValue,
+    currentValue: defaultValue,
     min: min ? Number(min) : undefined,
     max: max ? Number(max) : undefined,
   }
@@ -452,7 +459,13 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
         return
       }
 
-      send(`setoption name ${name} value ${withUciValue(value)}`)
+      const normalized = withUciValue(value)
+      setOptions((previous) =>
+        previous.map((option) =>
+          option.name === name ? { ...option, currentValue: normalized } : option,
+        ),
+      )
+      send(`setoption name ${name} value ${normalized}`)
     },
     [send],
   )
@@ -688,7 +701,7 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
           isReadyRef.current = true
           const threads = recommendedThreadCount(profile, capabilities)
           if (threads > 1) {
-            send(`setoption name Threads value ${threads}`)
+            setOption('Threads', threads)
           }
           setStatus((value) => (value === 'error' ? value : 'ready'))
           flushPendingAnalyze()
@@ -790,6 +803,7 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
     scheduleLinesMapFlush,
     selectedProfile,
     send,
+    setOption,
   ])
 
   const lines = useMemo(
