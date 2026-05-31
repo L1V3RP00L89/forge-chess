@@ -671,7 +671,6 @@ function App() {
   const skipFullAnalyzeFenRef = useRef<string | null>(null)
   const importSweepQueueRef = useRef<ImportSweepTarget[]>([])
   const activeImportSweepRef = useRef<ImportSweepTarget | null>(null)
-  const activeImportSweepStartedRef = useRef(false)
   const samplePgnCacheRef = useRef<Map<string, string>>(new Map())
   const sampleFetchControllerRef = useRef<AbortController | null>(null)
   const sampleLoadSeqRef = useRef(0)
@@ -735,7 +734,6 @@ function App() {
   const clearImportSweep = useCallback(() => {
     importSweepQueueRef.current = []
     activeImportSweepRef.current = null
-    activeImportSweepStartedRef.current = false
     setImportSweepProgress({ done: 0, total: 0 })
     setPendingPonderFen(null)
   }, [])
@@ -1214,14 +1212,8 @@ function App() {
     if (isImportingGame) return
     if (isBatchReviewing) return
 
-    if (activeImportSweepRef.current && !activeImportSweepStartedRef.current && status === 'analyzing') {
-      activeImportSweepStartedRef.current = true
-      return
-    }
-
-    if (activeImportSweepRef.current && activeImportSweepStartedRef.current && status === 'ready') {
+    if (activeImportSweepRef.current && status === 'ready') {
       activeImportSweepRef.current = null
-      activeImportSweepStartedRef.current = false
       setImportSweepProgress(previous => ({
         total: previous.total,
         done: Math.min(previous.total, previous.done + 1),
@@ -1237,7 +1229,6 @@ function App() {
     if (!nextTarget) return
 
     activeImportSweepRef.current = nextTarget
-    activeImportSweepStartedRef.current = false
     analyze({
       fen: nextTarget.fen,
       purpose: 'import-sweep',
