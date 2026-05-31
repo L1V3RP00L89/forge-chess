@@ -681,6 +681,10 @@ function App() {
   const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>(4)
   const [isAiThinking, setIsAiThinking] = useState(false)
   const aiMoveScheduledRef = useRef(false)
+  const gameModeRef = useRef<GameMode>('human-vs-human')
+  const playerColorRef = useRef<PlayerColor>('white')
+  gameModeRef.current = gameMode
+  playerColorRef.current = playerColor
 
   // ── Click-to-move (tap support) ───────────────────────
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
@@ -1829,23 +1833,31 @@ function App() {
 
     const stepModeMove = aiSpeedRef.current === 'step'
     const delayMs = AI_SPEED_MS[aiSpeedRef.current]
+    const requestFen = fen
 
     const doMove = () => {
       aiPlayer.requestMove(fen, aiDifficulty).then(uciMove => {
         aiMoveScheduledRef.current = false
         setIsAiThinking(false)
 
-        if (uciMove && !game.isGameOver() && !pausedRef.current) {
-          const from = uciMove.slice(0, 2) as Square
-          const to = uciMove.slice(2, 4) as Square
-          const promo = uciMove[4] as 'q' | 'r' | 'b' | 'n' | undefined
+        const liveGameMode = gameModeRef.current
+        const livePlayerColor = playerColorRef.current
+        const stillAiTurn =
+          liveGameMode === 'ai-vs-ai' ||
+          (liveGameMode === 'human-vs-ai' && game.turn() !== livePlayerColor[0])
+        if (!uciMove || game.isGameOver() || pausedRef.current || game.fen() !== requestFen || !stillAiTurn) {
+          return
+        }
 
-          const move = game.move({ from, to, promotion: promo })
-          if (move) {
-            const newFen = game.fen()
-            setFen(newFen)
-            gameTreeRef.current.addMove(move, newFen)
-          }
+        const from = uciMove.slice(0, 2) as Square
+        const to = uciMove.slice(2, 4) as Square
+        const promo = uciMove[4] as 'q' | 'r' | 'b' | 'n' | undefined
+
+        const move = game.move({ from, to, promotion: promo })
+        if (move) {
+          const newFen = game.fen()
+          setFen(newFen)
+          gameTreeRef.current.addMove(move, newFen)
         }
 
         if (stepModeMove && aiSpeedRef.current === 'step') {
