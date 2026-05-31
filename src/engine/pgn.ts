@@ -36,7 +36,7 @@ export function exportAnnotatedPgn(
     // Set headers (Event, Site, Date, Round, White, Black, Result)
     const defaultHeaders: Record<string, string> = {
         Event: 'Web Chess Game',
-        Site: 'Localhost',
+        Site: 'Web Chess',
         Date: new Date().toISOString().split('T')[0]!.replace(/-/g, '.'),
         Round: '1',
         White: 'Player 1',

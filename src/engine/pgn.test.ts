@@ -35,6 +35,7 @@ describe('PGN export helpers', () => {
     const loader = new Chess()
     loader.loadPgn(pgn)
 
+    expect(pgn).toContain('[Site "Web Chess"]')
     expect(pgn).toContain('[SetUp "1"]')
     expect(pgn).toContain(`[FEN "${rootFen}"]`)
     expect(pgn).toContain('1... c5')
