@@ -1125,8 +1125,15 @@ function App() {
   const aiPlayerStatus = aiPlayer.status
   const cancelAiRequest = aiPlayer.cancelRequest
   const requestAiMove = aiPlayer.requestMove
+  const setAiPlayerDifficulty = aiPlayer.setDifficulty
   const aiPlayerStatusRef = useRef(aiPlayerStatus)
   const [aiReadyTick, setAiReadyTick] = useState(0)
+
+  const cancelPendingAiMove = useCallback(() => {
+    cancelAiRequest()
+    aiMoveScheduledRef.current = false
+    setIsAiThinking(false)
+  }, [cancelAiRequest])
 
   useEffect(() => {
     aiPlayerStatusRef.current = aiPlayerStatus
@@ -1613,10 +1620,11 @@ function App() {
   ])
 
   const handleWorkspaceModeChange = useCallback((mode: WorkspaceMode) => {
+    if (mode !== 'play') cancelPendingAiMove()
     if (mode === 'analysis') pause()
     setSettingsOpen(false)
     setWorkspaceMode(mode)
-  }, [pause])
+  }, [cancelPendingAiMove, pause])
 
   const handleAnalysisTabChange = useCallback((tab: AnalysisTab) => {
     pause()
@@ -1990,6 +1998,7 @@ function App() {
 
   // ── AI move loop (with speed throttle) ───────────────
   useEffect(() => {
+    if (workspaceMode !== 'play') return
     if (game.isGameOver()) return
     void aiReadyTick
     if (aiPlayerStatusRef.current !== 'ready') return
@@ -2072,7 +2081,7 @@ function App() {
       cancelAiRequest()
       finishAiMove()
     }
-  }, [aiDifficulty, aiReadyTick, cancelAiRequest, fen, game, gameMode, paused, playerColor, requestAiMove])
+  }, [aiDifficulty, aiReadyTick, cancelAiRequest, fen, game, gameMode, paused, playerColor, requestAiMove, workspaceMode])
 
   // ── Human move ────────────────────────────────────────
   const clearBoardSelection = useCallback(() => {
@@ -2385,6 +2394,7 @@ function App() {
       setIsImportingGame(true)
       clearImportSweep()
       const importedGame = parsePgnMoveTree(pgnText)
+      cancelPendingAiMove()
       const rootFen = importedGame.rootFen
       newGame()
       game.load(rootFen)
@@ -2416,15 +2426,14 @@ function App() {
 
       setPaused(true)
       pausedRef.current = true
-      setIsAiThinking(false)
-      aiMoveScheduledRef.current = false
+      cancelPendingAiMove()
       setIsImportingGame(false)
       return { ok: true }
     } catch {
       setIsImportingGame(false)
       return { ok: false, error: 'Failed to parse PGN. Check the move text, headers, and move numbers.' }
     }
-  }, [cancelSampleLoad, clearBoardSelection, clearImportSweep, engineEnabled, game, gameTree, newGame, setPgnHeaders])
+  }, [cancelPendingAiMove, cancelSampleLoad, clearBoardSelection, clearImportSweep, engineEnabled, game, gameTree, newGame, setPgnHeaders])
 
   const handleFenLoad = useCallback((fenText: string, options?: FenLoadOptions) => {
     try {
@@ -2441,6 +2450,7 @@ function App() {
         setAnalysisTab('analyze')
       }
 
+      cancelPendingAiMove()
       newGame()
       game.load(rootFen)
       setFen(rootFen)
@@ -2457,13 +2467,12 @@ function App() {
       setIsBatchReviewing(false)
       pausedRef.current = true
       setPaused(true)
-      setIsAiThinking(false)
-      aiMoveScheduledRef.current = false
+      cancelPendingAiMove()
       return { ok: true }
     } catch {
       return { ok: false, error: 'Failed to parse FEN. Check piece placement, side to move, castling rights, and counters.' }
     }
-  }, [cancelSampleLoad, clearImportSweep, engineEnabled, game, gameTree, newGame, setPgnHeaders])
+  }, [cancelPendingAiMove, cancelSampleLoad, clearImportSweep, engineEnabled, game, gameTree, newGame, setPgnHeaders])
 
   useEffect(() => {
     const loadSharedHash = () => {
@@ -2511,18 +2520,18 @@ function App() {
     ({ mode, playerColor: color, difficulty }: { mode: GameMode; playerColor: PlayerColor; difficulty: AiDifficulty }) => {
       cancelSampleLoad()
       setShowNewGameDialog(false)
+      cancelPendingAiMove()
       setWorkspaceMode('play')
       setGameMode(mode)
       setPlayerColor(color)
       setAiDifficulty(difficulty)
-      aiPlayer.setDifficulty(difficulty)
+      setAiPlayerDifficulty(difficulty)
 
       newGame()
       game.reset()
       const startFen = game.fen()
       setFen(startFen)
-      setIsAiThinking(false)
-      aiMoveScheduledRef.current = false
+      cancelPendingAiMove()
       setEvaluationsByFen(new Map())
       setPgnHeaders({})
       clearImportSweep()
@@ -2536,21 +2545,21 @@ function App() {
 
       setOrientation(mode === 'human-vs-ai' ? color : 'white')
     },
-    [aiPlayer, cancelSampleLoad, clearBoardSelection, clearImportSweep, game, gameTree, newGame, setPgnHeaders],
+    [cancelPendingAiMove, cancelSampleLoad, clearBoardSelection, clearImportSweep, game, gameTree, newGame, setAiPlayerDifficulty, setPgnHeaders],
   )
 
   // ── Mode switch mid-game ──────────────────────────────
   const handleModeChange = useCallback((mode: GameMode) => {
+    cancelPendingAiMove()
     setGameMode(mode)
     if (workspaceMode !== 'play') setWorkspaceMode('play')
     if (mode === 'ai-vs-ai') clearBoardSelection()
-    aiMoveScheduledRef.current = false
     if (pausedRef.current) {
       pausedRef.current = false
       setPaused(false)
     }
     setFen(f => f)
-  }, [clearBoardSelection, workspaceMode])
+  }, [cancelPendingAiMove, clearBoardSelection, workspaceMode])
 
   const navigateMoveListAndPause = useCallback((chess: Chess) => {
     navigateAndPause(chess)
