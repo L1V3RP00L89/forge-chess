@@ -73,6 +73,7 @@ type PendingPromotion = { from: Square; to: Square }
 const ANALYSIS_SETTINGS_STORAGE_KEY = 'webchess:analysis-settings:v1'
 const LICHESS_TOKEN_PAGE_URL = 'https://lichess.org/account/oauth/token'
 const SAMPLE_PGN_CACHE_LIMIT = 12
+const DEFAULT_LEFT_PANEL_WIDTH = 320
 const ANALYZE_MODE_IDS: AnalyzeMode[] = ['quick', 'deep', 'infinite', 'mate', 'review']
 const ANALYSIS_TAB_IDS: AnalysisTab[] = ['analyze', 'review', 'engine-lab']
 const ANALYSIS_EXPERIENCE_IDS: AnalysisExperience[] = ['beginner', 'pro']
@@ -650,17 +651,19 @@ function App() {
   const [fen, setFen] = useState(game.fen())
   const [orientation, setOrientation] = useState<Orientation>('white')
   const persistedSettings = useMemo(() => loadPersistedSettings(), [])
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(sharedInitialFen ? 'analysis' : persistedSettings.workspaceMode)
+  const initialWorkspaceMode: WorkspaceMode = sharedInitialFen ? 'analysis' : persistedSettings.workspaceMode
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(initialWorkspaceMode)
   const engineEnabled = workspaceMode === 'analysis'
 
   // ── Layout ───────────────────────────────────────────
   const [topPanelOpen, setTopPanelOpen] = useState(true)
-  const [leftWidth, setLeftWidth] = useState(320)
+  const [leftWidth, setLeftWidth] = useState(initialWorkspaceMode === 'play' ? 0 : DEFAULT_LEFT_PANEL_WIDTH)
   const [rightWidth, setRightWidth] = useState(320)
   const [bottomPanelOpen, setBottomPanelOpen] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const settingsBodyRef = useRef<HTMLDivElement>(null)
   const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight })
+  const hasAutoOpenedAnalysisLeftRef = useRef(initialWorkspaceMode === 'analysis')
 
   // ── Engine settings ──────────────────────────────────
   const [searchDepth, setSearchDepth] = useState(persistedSettings.searchDepth)
@@ -848,6 +851,13 @@ function App() {
   const canGoForward = gameTree.current.children.length > 0
   const shortcutsSuspended =
     showNewGameDialog || showPgnDialog || settingsOpen || pendingPromotion !== null
+
+  useEffect(() => {
+    if (workspaceMode !== 'analysis') return
+    if (hasAutoOpenedAnalysisLeftRef.current) return
+    hasAutoOpenedAnalysisLeftRef.current = true
+    setLeftWidth(width => width === 0 ? DEFAULT_LEFT_PANEL_WIDTH : width)
+  }, [workspaceMode])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -1451,6 +1461,8 @@ function App() {
     }
 
     setWorkspaceMode(DEFAULT_PERSISTED_SETTINGS.workspaceMode)
+    hasAutoOpenedAnalysisLeftRef.current = false
+    setLeftWidth(0)
     setSearchDepth(DEFAULT_PERSISTED_SETTINGS.searchDepth)
     setMultiPv(DEFAULT_PERSISTED_SETTINGS.multiPv)
     setHashMb(DEFAULT_PERSISTED_SETTINGS.hashMb)
@@ -2555,7 +2567,7 @@ function App() {
   // ── Resize ────────────────────────────────────────────
   const MIN_WIDTH = 60
   const MAX_SIDE_PANEL_WIDTH = 600
-  const DEFAULT_LEFT = 320
+  const DEFAULT_LEFT = DEFAULT_LEFT_PANEL_WIDTH
   const DEFAULT_RIGHT = 320
   const keyboardResizeStep = 40
 
