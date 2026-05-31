@@ -751,6 +751,7 @@ function App() {
   const [aiSpeed, setAiSpeed] = useState<AiSpeed>('normal')
   const aiSpeedRef = useRef<AiSpeed>('normal')
   const stepPendingRef = useRef(false) // for Step mode: advance one move on demand
+  const [stepRequestTick, setStepRequestTick] = useState(0)
 
   const handleSpeedChange = useCallback((s: AiSpeed) => {
     setAiSpeed(s)
@@ -2002,6 +2003,7 @@ function App() {
     if (workspaceMode !== 'play') return
     if (game.isGameOver()) return
     void aiReadyTick
+    void stepRequestTick
     if (aiPlayerStatusRef.current !== 'ready') return
     if (aiMoveScheduledRef.current) return
     if (pausedRef.current) return
@@ -2082,7 +2084,7 @@ function App() {
       cancelAiRequest()
       finishAiMove()
     }
-  }, [aiDifficulty, aiReadyTick, cancelAiRequest, fen, game, gameMode, paused, playerColor, requestAiMove, workspaceMode])
+  }, [aiDifficulty, aiReadyTick, cancelAiRequest, fen, game, gameMode, paused, playerColor, requestAiMove, stepRequestTick, workspaceMode])
 
   // ── Human move ────────────────────────────────────────
   const clearBoardSelection = useCallback(() => {
@@ -2588,7 +2590,7 @@ function App() {
     pausedRef.current = false
     setPaused(false)
     aiMoveScheduledRef.current = false
-    setFen(f => f) // nudge loop
+    setStepRequestTick(tick => tick + 1)
   }, [game, gameMode, playerColor])
 
   // ── Flip ──────────────────────────────────────────────
