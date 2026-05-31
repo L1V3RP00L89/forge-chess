@@ -147,12 +147,14 @@ export function buildGoCommand(
 
 export function buildAnalyzeCommand(request: AnalyzeRequest): BuiltAnalyzeCommand {
   const setOptions: BuiltAnalyzeCommand['setOptions'] = []
+  const hashMb = toPositiveInt(request.hashMb)
+  const multiPv = toPositiveInt(request.multiPv)
 
-  if (typeof request.hashMb === 'number') {
-    setOptions.push({ name: 'Hash', value: request.hashMb })
+  if (hashMb) {
+    setOptions.push({ name: 'Hash', value: hashMb })
   }
-  if (typeof request.multiPv === 'number') {
-    setOptions.push({ name: 'MultiPV', value: request.multiPv })
+  if (multiPv) {
+    setOptions.push({ name: 'MultiPV', value: multiPv })
   }
   if (typeof request.showWdl === 'boolean') {
     setOptions.push({ name: 'UCI_ShowWDL', value: request.showWdl })

@@ -30,6 +30,27 @@ describe('UCI helpers', () => {
     expect(built.go).toBe('go depth 16 searchmoves c7c5')
   })
 
+  it('sanitizes hash and multipv setoptions before sending them to Stockfish', () => {
+    const built = buildAnalyzeCommand({
+      fen: '8/8/8/8/8/8/8/8 w - - 0 1',
+      hashMb: Number.NaN,
+      multiPv: Number.POSITIVE_INFINITY,
+      showWdl: false,
+      limits: { depth: 4 },
+    })
+
+    expect(built.setOptions).toEqual([{ name: 'UCI_ShowWDL', value: false }])
+
+    expect(buildAnalyzeCommand({
+      fen: '8/8/8/8/8/8/8/8 w - - 0 1',
+      hashMb: 16.9,
+      multiPv: 2.8,
+    }).setOptions).toEqual([
+      { name: 'Hash', value: 16 },
+      { name: 'MultiPV', value: 2 },
+    ])
+  })
+
   it('does not append move history to the current FEN without a root FEN', () => {
     const built = buildAnalyzeCommand({
       fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
