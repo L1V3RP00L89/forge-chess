@@ -33,6 +33,7 @@ import { rootFenFromPgnHeaders } from './engine/pgn'
 import { engineProfiles, type EngineProfileId } from './engine/profiles'
 import type { TablebaseCategory, TablebaseMove, TablebaseResult } from './engine/tablebase'
 import { BOARD_SQUARES, describeBoardSquare, isBoardSquare } from './engine/boardAccessibility'
+import { isHeavyEngineLabCommand } from './engine/labCommands'
 import { useStockfishEngine } from './hooks/useStockfishEngine'
 import { DIFFICULTY_LABELS, useAiPlayer, type AiDifficulty } from './hooks/useAiPlayer'
 import { useGameTree, type GameNode } from './hooks/useGameTree'
@@ -595,15 +596,6 @@ function persistSettings(settings: PersistedAppSettings) {
   } catch {
     // Ignore localStorage failures (private mode / quota).
   }
-}
-
-function isHeavyCommand(command: string): boolean {
-  const normalized = command.trim().toLowerCase()
-  if (!normalized) return false
-  if (normalized === 'bench') return true
-  if (normalized.startsWith('perft')) return true
-  if (normalized.startsWith('go infinite')) return true
-  return false
 }
 
 function App() {
@@ -1482,8 +1474,8 @@ function App() {
         setEngineLabError('Stop the active analysis before sending Engine Lab commands.')
         return
       }
-      if (!expertModeEnabled && isHeavyCommand(trimmed)) {
-        setEngineLabError('Enable expert mode before running heavy commands (bench/perft/go infinite).')
+      if (!expertModeEnabled && isHeavyEngineLabCommand(trimmed)) {
+        setEngineLabError('Enable expert mode before running heavy commands (bench/perft/unbounded go).')
         return
       }
 
@@ -3494,7 +3486,7 @@ function App() {
                         checked={expertModeEnabled}
                         onChange={e => setExpertModeEnabled(e.target.checked)}
                       />
-                      <span>Enable expert commands (bench/perft/infinite)</span>
+                      <span>Enable expert commands (bench/perft/unbounded go)</span>
                     </label>
                     {!expertModeEnabled && (
                       <p className="panel-copy small warning-copy">
