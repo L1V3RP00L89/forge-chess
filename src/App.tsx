@@ -1043,6 +1043,7 @@ function App() {
   }, [clearImportSweep, stop, workspaceMode])
 
   const primaryLine = lines.find(l => l.multipv === 1) ?? lines[0]
+  const primaryBestMove = primaryLine?.pv[0]
   const currentLastBestMove = lastBestMoveFen === fen ? lastBestMove : null
   const currentLastPonderMove = lastPonderMoveFen === fen ? lastPonderMove : null
 
@@ -1051,6 +1052,7 @@ function App() {
     if (!engineEnabled) return
     const cp = scoreToCp(primaryLine?.cp, primaryLine?.mate)
     if (typeof cp !== 'number') return
+    const bestMove = primaryBestMove
     const evaluationFen = primaryLine?.fen ?? fen
     setEvaluationsByFen(prev => {
       const cur = prev.get(evaluationFen)
@@ -1082,12 +1084,14 @@ function App() {
       const sameSearch = cur?.searchId === primaryLine?.searchId
       const sameDepth = cur?.depth === primaryLine?.depth
       const samePurpose = cur?.purpose === primaryLine?.purpose
-      if (sameCp && sameMate && sameWdl && sameSearch && sameDepth && samePurpose) return prev
+      const sameBestMove = cur?.bestMove === bestMove
+      if (sameCp && sameMate && sameWdl && sameSearch && sameDepth && samePurpose && sameBestMove) return prev
 
       const next = new Map(prev)
       next.set(evaluationFen, {
         cp,
         mate: primaryLine?.mate,
+        bestMove,
         wdl: primaryLine?.wdl,
         depth: primaryLine?.depth,
         nodes: primaryLine?.nodes,
@@ -1110,6 +1114,7 @@ function App() {
     primaryLine?.mode,
     primaryLine?.nodes,
     primaryLine?.nps,
+    primaryBestMove,
     primaryLine?.purpose,
     primaryLine?.searchId,
     primaryLine?.time,
@@ -1130,6 +1135,7 @@ function App() {
         current?.purpose === 'cloud-eval'
         && current.cp === snapshot.cp
         && current.mate === snapshot.mate
+        && current.bestMove === snapshot.bestMove
         && current.depth === snapshot.depth
         && current.nodes === snapshot.nodes
       ) {
@@ -4024,6 +4030,9 @@ const ReviewMoveList = memo(function ReviewMoveList({ rows, nodes, currentNodeId
         const qualityLabel = REVIEW_LABELS[row.quality]
         const impactLabel = reviewImpactLabel(row.deltaCp)
         const confidenceLabel = reviewConfidenceLabel(row.confidence, row.evalDepth)
+        const bestMoveHint =
+          row.bestMove && row.bestMove !== row.uci ? `Best ${row.bestMoveSan ?? row.bestMove}` : null
+        const ariaDetails = [qualityLabel, impactLabel, confidenceLabel, bestMoveHint].filter(Boolean).join(', ')
 
         return (
           <li key={`${row.ply}-${row.uci}`} className={`quality-${row.quality}`}>
@@ -4032,7 +4041,7 @@ const ReviewMoveList = memo(function ReviewMoveList({ rows, nodes, currentNodeId
               className={`review-move-row ${isCurrentReviewMove ? 'active' : ''}`}
               disabled={!node}
               aria-current={isCurrentReviewMove ? 'true' : undefined}
-              aria-label={`Go to ${movePrefix} ${row.san}: ${qualityLabel}, ${impactLabel}, ${confidenceLabel}`}
+              aria-label={`Go to ${movePrefix} ${row.san}: ${ariaDetails}`}
               onClick={() => {
                 if (node) onSelectNode(node)
               }}
@@ -4040,6 +4049,7 @@ const ReviewMoveList = memo(function ReviewMoveList({ rows, nodes, currentNodeId
               <span className="move-index">{movePrefix}</span>
               <strong>{row.san}</strong>
               <span className="move-uci">{row.uci}</span>
+              <span className="move-best">{bestMoveHint ?? ''}</span>
               <span className="move-impact">{impactLabel}</span>
               <span className={`move-confidence confidence-${row.confidence}`}>
                 {confidenceLabel}

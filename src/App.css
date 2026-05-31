@@ -2325,7 +2325,7 @@ body.resizing * {
 .review-move-row {
   width: 100%;
   display: grid !important;
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
+  grid-template-columns: auto auto minmax(0, 1fr) minmax(4.6rem, auto) auto auto auto;
   gap: 0.32rem;
   align-items: center;
   padding: 0.32rem 0.48rem;
@@ -2344,6 +2344,16 @@ body.resizing * {
 .review-move-row:disabled {
   cursor: default;
   opacity: 0.65;
+}
+
+.move-best {
+  min-width: 0;
+  color: var(--info);
+  font-size: 0.66rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @keyframes move-fade-in {

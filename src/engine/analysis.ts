@@ -5,6 +5,7 @@ import type { AnalyzeMode, AnalyzePurpose } from './uci'
 export type EvalSnapshot = {
   cp: number
   mate?: number
+  bestMove?: string
   wdl?: { w: number; d: number; l: number }
   depth?: number
   nodes?: number
@@ -26,6 +27,8 @@ export type ReviewRow = {
   san: string
   uci: string
   quality: ReviewLabel
+  bestMove?: string
+  bestMoveSan?: string
   deltaCp?: number
   evalDepth?: number
   confidence: 'pending' | 'shallow' | 'standard' | 'deep'
@@ -166,6 +169,8 @@ export function buildReviewRows(
     const afterSnapshot = evaluationsByFen.get(afterFen)
     const before = beforeSnapshot ? scoreToCp(beforeSnapshot.cp, beforeSnapshot.mate) : undefined
     const after = afterSnapshot ? scoreToCp(afterSnapshot.cp, afterSnapshot.mate) : undefined
+    const bestMove = beforeSnapshot?.bestMove
+    const bestMoveSan = bestMove ? uciToSan(beforeFen, bestMove) ?? bestMove : undefined
     if (!beforeSnapshot || !afterSnapshot || !isFiniteNumber(before) || !isFiniteNumber(after)) {
       return {
         ply: index + 1,
@@ -173,6 +178,8 @@ export function buildReviewRows(
         sideToMove,
         san: move.san,
         uci: toUci(move),
+        bestMove,
+        bestMoveSan,
         quality: 'pending',
         confidence: 'pending',
       }
@@ -194,6 +201,8 @@ export function buildReviewRows(
       sideToMove,
       san: move.san,
       uci: toUci(move),
+      bestMove,
+      bestMoveSan,
       deltaCp,
       evalDepth,
       confidence,

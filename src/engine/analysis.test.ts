@@ -90,6 +90,29 @@ describe('review analysis helpers', () => {
     })
   })
 
+  it('adds best-move hints to review rows', () => {
+    const game = new Chess()
+    const rootFen = game.fen()
+    const move = game.move('d4')
+    const afterFen = game.fen()
+
+    const rows = buildReviewRows(
+      [move],
+      new Map([
+        [rootFen, { cp: 0, bestMove: 'e2e4' }],
+        [afterFen, { cp: 100 }],
+      ]),
+      rootFen,
+    )
+
+    expect(rows[0]).toMatchObject({
+      san: 'd4',
+      bestMove: 'e2e4',
+      bestMoveSan: 'e4',
+      quality: 'inaccuracy',
+    })
+  })
+
   it('does not assign a final quality label from shallow import scans', () => {
     const game = new Chess()
     const rootFen = game.fen()

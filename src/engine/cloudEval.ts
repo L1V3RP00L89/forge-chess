@@ -277,6 +277,7 @@ export function cloudEvalToSnapshot(fen: string, result: CloudEvalResult): EvalS
   return {
     cp,
     mate: score.mate,
+    bestMove: topLine.moves[0],
     depth: result.depth,
     nodes: result.knodes * 1000,
     mode: 'custom',
