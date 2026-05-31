@@ -1781,13 +1781,15 @@ body.resizing * {
 
 .engine-lab-console {
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.35rem;
   margin-bottom: 0.5rem;
 }
 
 .engine-lab-console input {
+  grid-column: 1 / -1;
   min-width: 0;
+  width: 100%;
   font-family: var(--font-mono);
   font-size: 0.72rem;
 }
