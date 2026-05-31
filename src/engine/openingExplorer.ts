@@ -335,11 +335,11 @@ export async function fetchOpeningExplorer(
   return parsed
 }
 
-export async function prefetchOpeningExplorer(request: OpeningExplorerRequest): Promise<void> {
+export async function prefetchOpeningExplorer(request: OpeningExplorerRequest, signal?: AbortSignal): Promise<void> {
   if (readCached(request)) return
   if (!normalizeAuthToken(request.authToken)) return
   try {
-    await fetchOpeningExplorer(request)
+    await fetchOpeningExplorer(request, signal)
   } catch {
     // Ignore prefetch errors; live views will show fetch status as needed.
   }

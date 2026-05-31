@@ -74,6 +74,32 @@ describe('opening explorer client', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('passes abort signals through prefetch requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        white: 1,
+        draws: 0,
+        black: 0,
+        moves: [],
+        topGames: [],
+        recentGames: [],
+        opening: null,
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const controller = new AbortController()
+    await prefetchOpeningExplorer(
+      { source: 'masters', moves: ['c2c4'], authToken: 'test-token' },
+      controller.signal,
+    )
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [, options] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(options.signal).toBe(controller.signal)
+  })
+
   it('does not cache a response aborted during parsing', async () => {
     let resolveJson: (payload: unknown) => void = () => {}
     let resolveJsonStarted: () => void = () => {}

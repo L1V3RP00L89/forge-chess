@@ -1608,6 +1608,7 @@ function App() {
     if (!mainLineUciMoves.length) return
 
     let cancelled = false
+    const controller = new AbortController()
     const maxPlyToPrefetch = Math.min(mainLineUciMoves.length, 30)
 
     const run = async () => {
@@ -1620,7 +1621,7 @@ function App() {
           speeds: openingSource === 'lichess' ? openingSpeeds : undefined,
           ratings: openingSource === 'lichess' ? openingRatings : undefined,
           authToken: openingAuthToken,
-        })
+        }, controller.signal)
         if (cancelled) return
         setOpeningPrefetchTick(tick => tick + 1)
       }
@@ -1629,6 +1630,7 @@ function App() {
     void run()
     return () => {
       cancelled = true
+      controller.abort()
     }
   }, [analysisTab, currentRootFen, mainLineUciMoves, openingAuthToken, openingRatings, openingSource, openingSpeeds, workspaceMode])
 
