@@ -2652,6 +2652,35 @@ function App() {
     navigateAndPonder(gameTreeRef.current.navigateTo(node.id))
   }, [navigateAndPonder])
 
+  const tryReviewBestMove = useCallback((beforeNode: GameNode, bestMove?: string) => {
+    const chess = gameTreeRef.current.navigateTo(beforeNode.id)
+    if (!bestMove || bestMove.length < 4) {
+      navigateAndPonder(chess)
+      return
+    }
+
+    let move: Move | null
+    try {
+      move = chess.move({
+        from: bestMove.slice(0, 2) as Square,
+        to: bestMove.slice(2, 4) as Square,
+        promotion: bestMove[4] as PromotionPiece | undefined,
+      })
+    } catch {
+      navigateAndPonder(chess)
+      return
+    }
+
+    if (!move) {
+      navigateAndPonder(chess)
+      return
+    }
+
+    clearImportSweep()
+    gameTreeRef.current.addMove(move, chess.fen())
+    navigateAndPonder(chess)
+  }, [clearImportSweep, navigateAndPonder])
+
   // ── Step: advance one AI move ─────────────────────────
   const handleStep = useCallback(() => {
     if (game.isGameOver() || aiMoveScheduledRef.current) return
@@ -4069,32 +4098,51 @@ function App() {
                           const movePrefix = row.sideToMove === 'w' ? `${row.moveNumber}.` : `${row.moveNumber}...`
                           const bestMoveHint =
                             row.bestMove && row.bestMove !== row.uci ? `Best ${row.bestMoveSan ?? row.bestMove}` : null
+                          const bestMoveLabel = row.bestMoveSan ?? row.bestMove
                           return (
-                            <button
+                            <div
                               key={`${row.ply}-${row.uci}`}
-                              type="button"
                               className={`critical-moment-row quality-${row.quality}`}
-                              disabled={!beforeNode}
-                              aria-label={`Review position before ${movePrefix} ${row.san}`}
-                              title={bestMoveHint ?? undefined}
-                              onClick={() => {
-                                if (!beforeNode) return
-                                navigateAndPonder(gameTree.navigateTo(beforeNode.id))
-                              }}
+                              role="group"
+                              aria-label={`Critical moment before ${movePrefix} ${row.san}`}
                             >
-                              <span className="critical-moment-move">
-                                <strong>{movePrefix} {row.san}</strong>
-                                <span>{REVIEW_LABELS[row.quality]}</span>
-                              </span>
-                              <span className="critical-moment-impact">
-                                {reviewImpactLabel(row.deltaCp)}
-                              </span>
-                              {bestMoveHint && (
-                                <span className="critical-moment-best">
-                                  {bestMoveHint}
+                              <button
+                                type="button"
+                                className="critical-moment-main"
+                                disabled={!beforeNode}
+                                aria-label={`Review position before ${movePrefix} ${row.san}`}
+                                title={bestMoveHint ?? undefined}
+                                onClick={() => {
+                                  if (!beforeNode) return
+                                  navigateAndPonder(gameTree.navigateTo(beforeNode.id))
+                                }}
+                              >
+                                <span className="critical-moment-move">
+                                  <strong>{movePrefix} {row.san}</strong>
+                                  <span>{REVIEW_LABELS[row.quality]}</span>
                                 </span>
+                                <span className="critical-moment-impact">
+                                  {reviewImpactLabel(row.deltaCp)}
+                                </span>
+                                {bestMoveHint && (
+                                  <span className="critical-moment-best">
+                                    {bestMoveHint}
+                                  </span>
+                                )}
+                              </button>
+                              {bestMoveHint && beforeNode && (
+                                <button
+                                  type="button"
+                                  className="critical-moment-best-action"
+                                  aria-label={`Try best move ${bestMoveLabel} before ${movePrefix} ${row.san}`}
+                                  title={`Try ${bestMoveLabel}`}
+                                  onClick={() => tryReviewBestMove(beforeNode, row.bestMove)}
+                                >
+                                  <IconPlay aria-hidden="true" />
+                                  Try best
+                                </button>
                               )}
-                            </button>
+                            </div>
                           )
                         })}
                       </div>
