@@ -69,6 +69,27 @@ describe('cloud eval parsing', () => {
     })
   })
 
+  it('drops non-finite cloud scores before creating eval snapshots', () => {
+    const fen = '8/8/8/8/8/8/4k3/4K3 b - - 0 1'
+    const result = {
+      fen: normalizeCloudEvalFen(fen),
+      depth: 20,
+      knodes: 10,
+      fetchedAt: 1_700_000_000_000,
+      pvs: [{ moves: ['e2d2'], cp: Number.NaN }],
+    }
+
+    expect(cloudLineToSideToMoveScore(fen, result.pvs[0]!)).toEqual({
+      cp: undefined,
+      mate: undefined,
+    })
+    expect(cloudEvalToSnapshot(fen, result)).toBeNull()
+    expect(cloudEvalToSnapshot(fen, {
+      ...result,
+      pvs: [{ moves: ['e2d2'], mate: Number.POSITIVE_INFINITY }],
+    })).toBeNull()
+  })
+
   it('does not cache a response aborted during parsing', async () => {
     let resolveJson: (payload: unknown) => void = () => {}
     let resolveJsonStarted: () => void = () => {}

@@ -252,18 +252,18 @@ export function cloudLineToSideToMoveScore(
   const turn = fen.split(/\s+/g)[1]
   const factor = turn === 'b' ? -1 : 1
   return {
-    cp: typeof line.cp === 'number' ? line.cp * factor : undefined,
-    mate: typeof line.mate === 'number' ? line.mate * factor : undefined,
+    cp: isFiniteNumber(line.cp) ? line.cp * factor : undefined,
+    mate: isFiniteNumber(line.mate) ? line.mate * factor : undefined,
   }
 }
 
 function scoreToRequiredCp(cp?: number, mate?: number): number | null {
-  if (typeof mate === 'number') {
+  if (isFiniteNumber(mate)) {
     if (mate > 0) return 10000
     if (mate < 0) return -10000
     return null
   }
-  return typeof cp === 'number' ? cp : null
+  return isFiniteNumber(cp) ? cp : null
 }
 
 export function cloudEvalToSnapshot(fen: string, result: CloudEvalResult): EvalSnapshot | null {
