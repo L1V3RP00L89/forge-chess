@@ -1700,7 +1700,7 @@ function App() {
         ratings: openingSource === 'lichess' ? openingRatings : undefined,
       })
       const san = mainLineNodes[index + 1]?.san ?? uci
-      const sideToMove = reviewRows[index]?.sideToMove ?? 'w'
+      const sideToMove = mainLineNodes[index]?.fen.split(/\s+/g)[1] === 'b' ? 'b' : 'w'
 
       if (!fromCache) {
         return {
@@ -1750,7 +1750,6 @@ function App() {
   }, [
     mainLineUciMoves,
     mainLineNodes,
-    reviewRows,
     currentRootFen,
     openingAuthToken,
     openingPrefetchTick,
