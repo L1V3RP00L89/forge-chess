@@ -10,6 +10,11 @@ describe('Engine Lab command safety', () => {
     expect(isHeavyEngineLabCommand('go searchmoves e2e4')).toBe(true)
     expect(isHeavyEngineLabCommand('go infinite')).toBe(true)
     expect(isHeavyEngineLabCommand('go ponder')).toBe(true)
+    expect(isHeavyEngineLabCommand('go depth')).toBe(true)
+    expect(isHeavyEngineLabCommand('go depth nope')).toBe(true)
+    expect(isHeavyEngineLabCommand('go movetime -1')).toBe(true)
+    expect(isHeavyEngineLabCommand('go winc 1000')).toBe(true)
+    expect(isHeavyEngineLabCommand('go winc 1000 wtime nope')).toBe(true)
   })
 
   it('allows bounded search commands outside expert mode', () => {
@@ -17,6 +22,8 @@ describe('Engine Lab command safety', () => {
     expect(isHeavyEngineLabCommand('go movetime 500')).toBe(false)
     expect(isHeavyEngineLabCommand('go nodes 10000')).toBe(false)
     expect(isHeavyEngineLabCommand('go wtime 60000 btime 60000')).toBe(false)
+    expect(isHeavyEngineLabCommand('go searchmoves e2e4 depth 12')).toBe(false)
+    expect(isHeavyEngineLabCommand('go wtime 60000 winc 1000')).toBe(false)
     expect(isHeavyEngineLabCommand('d')).toBe(false)
     expect(isHeavyEngineLabCommand('eval')).toBe(false)
   })
