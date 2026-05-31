@@ -1739,34 +1739,31 @@ function App() {
     return nodes
   }, [currentPathNodes, gameTree.nodesSnapshot])
 
+  const currentLineMoves = useMemo(
+    () => currentLineNodes.slice(1).map(n => n.move!).filter(Boolean),
+    [currentLineNodes],
+  )
+
   const winratePoints = useMemo(
-    () => {
-      const moves = currentLineNodes.slice(1).map(n => n.move!).filter(Boolean)
-      return buildWinrateSeries(moves, evaluationsByFen, currentRootFen)
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentRootFen, evaluationsByFen, currentLineNodes.length, currentLineNodes[currentLineNodes.length - 1]?.id],
+    () => buildWinrateSeries(currentLineMoves, evaluationsByFen, currentRootFen),
+    [currentLineMoves, currentRootFen, evaluationsByFen],
   )
 
   const wdlPoints = useMemo(
-    () => {
-      const moves = currentLineNodes.slice(1).map(n => n.move!).filter(Boolean)
-      return buildWdlSeries(moves, evaluationsByFen, currentRootFen)
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentRootFen, evaluationsByFen, currentLineNodes.length, currentLineNodes[currentLineNodes.length - 1]?.id],
+    () => buildWdlSeries(currentLineMoves, evaluationsByFen, currentRootFen),
+    [currentLineMoves, currentRootFen, evaluationsByFen],
   )
 
   // ── Move quality → annotate tree nodes ───────────────
+  const setTreeNodeQualities = gameTree.setNodeQualities
   useEffect(() => {
     const qualityUpdates = reviewRows.flatMap((row, idx) => {
       const node = mainLineNodes[idx + 1]
       if (!node || row.quality === 'pending') return []
       return [{ id: node.id, quality: row.quality }]
     })
-    gameTree.setNodeQualities(qualityUpdates)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reviewRows])
+    setTreeNodeQualities(qualityUpdates)
+  }, [mainLineNodes, reviewRows, setTreeNodeQualities])
 
   // ── Engine arrows ────────────────────────────────────
   const currentBoardMove = gameTree.current.move
