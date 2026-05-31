@@ -315,4 +315,38 @@ describe('PGN export helpers', () => {
     for (const entry of mainLine) replay.move(entry.move)
     expect(mainLine.at(-1)?.fen).toBe(replay.fen())
   })
+
+  it('imports PGN eval comments as side-to-move evaluation snapshots', () => {
+    const parsed = parsePgnMoveTree(`
+[Event "Annotated study"]
+[Result "*"]
+
+1. e4 { [%eval 0.34] } (1. d4 { [%eval -0.20] }) e5 { [%eval #-3] } *
+`)
+
+    const e4 = parsed.moves[0]!
+    const d4 = parsed.moves[1]!
+    const e5 = e4.children![0]!
+    const e4Eval = parsed.evaluations.get(e4.fen)
+    const d4Eval = parsed.evaluations.get(d4.fen)
+    const e5Eval = parsed.evaluations.get(e5.fen)
+
+    expect(e4Eval?.cp).toBe(-34)
+    expect(d4Eval?.cp).toBe(20)
+    expect(e5Eval?.mate).toBe(-3)
+    expect(e5Eval?.cp).toBe(-10000)
+
+    const pgn = exportAnnotatedPgn(
+      [
+        makeNode('root', new Chess().fen(), null, null, ['e4']),
+        makeNode('e4', e4.fen, e4.move, 'root', ['e5']),
+        makeNode('e5', e5.fen, e5.move, 'e4'),
+      ],
+      parsed.evaluations,
+      { Result: '*' },
+    )
+
+    expect(pgn).toContain('{ [%eval 0.34] }')
+    expect(pgn).toContain('{ [%eval #-3] }')
+  })
 })

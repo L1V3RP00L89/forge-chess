@@ -2354,6 +2354,7 @@ function App() {
       const finalFen = mainLineEntries.at(-1)?.fen ?? rootFen
       game.load(finalFen)
       setFen(finalFen)
+      setEvaluationsByFen(importedGame.evaluations)
       if (shouldAnalyzeAfterLoad) {
         setPendingShallowAnalyzeFen(finalFen)
         const allSweepTargets = buildImportSweepTargets(mainLineEntries, rootFen)

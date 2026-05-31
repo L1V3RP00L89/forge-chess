@@ -32,6 +32,50 @@ function isFiniteNumber(value: unknown): value is number {
     return typeof value === 'number' && Number.isFinite(value)
 }
 
+function sideToMoveScoreFromWhitePov(
+    fen: string,
+    score: { cp?: number; mate?: number },
+): EvalSnapshot {
+    const turn = fen.split(' ')[1]
+
+    if (isFiniteNumber(score.mate)) {
+        const mate = turn === 'w' ? score.mate : -score.mate
+        return {
+            cp: mate > 0 ? 10000 : -10000,
+            mate,
+            purpose: 'import-load',
+            mode: 'review',
+            searchedAt: Date.now(),
+        }
+    }
+
+    const whitePovCp = score.cp ?? 0
+    return {
+        cp: turn === 'w' ? whitePovCp : -whitePovCp,
+        purpose: 'import-load',
+        mode: 'review',
+        searchedAt: Date.now(),
+    }
+}
+
+function evaluationFromComment(fen: string, comment: string | undefined): EvalSnapshot | null {
+    if (!comment) return null
+
+    const match = comment.match(/\[%eval\s+([^\]\s]+)\s*\]/i)
+    const rawScore = match?.[1]?.trim()
+    if (!rawScore) return null
+
+    if (rawScore.startsWith('#')) {
+        const mate = Number(rawScore.slice(1))
+        if (!Number.isFinite(mate)) return null
+        return sideToMoveScoreFromWhitePov(fen, { mate })
+    }
+
+    const pawnScore = Number(rawScore)
+    if (!Number.isFinite(pawnScore)) return null
+    return sideToMoveScoreFromWhitePov(fen, { cp: Math.round(pawnScore * 100) })
+}
+
 function bestMoveSanFromFen(fen: string, bestMove: string): string {
     if (bestMove.length < 4) return bestMove
 
@@ -136,7 +180,11 @@ function firstMoveNode(node: ParsedPgnNode): ParsedPgnNode | null {
     return null
 }
 
-function buildImportEntry(node: ParsedPgnNode, position: Chess): GameTreeImportEntry | null {
+function buildImportEntry(
+    node: ParsedPgnNode,
+    position: Chess,
+    evaluations: Map<string, EvalSnapshot>,
+): GameTreeImportEntry | null {
     const moveNode = firstMoveNode(node)
     if (!moveNode?.move) return null
 
@@ -144,16 +192,25 @@ function buildImportEntry(node: ParsedPgnNode, position: Chess): GameTreeImportE
     const move = nextPosition.move(moveNode.move)
     if (!move) throw new Error(`Invalid move in PGN: ${moveNode.move}`)
 
+    const importedEvaluation = evaluationFromComment(nextPosition.fen(), moveNode.comment)
+    if (importedEvaluation) {
+        evaluations.set(nextPosition.fen(), importedEvaluation)
+    }
+
     return {
         move,
         fen: nextPosition.fen(),
-        children: buildImportEntries(moveNode.variations, nextPosition),
+        children: buildImportEntries(moveNode.variations, nextPosition, evaluations),
     }
 }
 
-function buildImportEntries(nodes: ParsedPgnNode[], position: Chess): GameTreeImportEntry[] {
+function buildImportEntries(
+    nodes: ParsedPgnNode[],
+    position: Chess,
+    evaluations: Map<string, EvalSnapshot>,
+): GameTreeImportEntry[] {
     return nodes
-        .map(node => buildImportEntry(node, position))
+        .map(node => buildImportEntry(node, position, evaluations))
         .filter((entry): entry is GameTreeImportEntry => entry !== null)
 }
 
@@ -161,16 +218,19 @@ export function parsePgnMoveTree(pgnText: string): {
     headers: Record<string, string>
     rootFen: string
     moves: GameTreeImportEntry[]
+    evaluations: Map<string, EvalSnapshot>
     result?: string
 } {
     const parsed = parsePgn(pgnText)
     const rootFen = rootFenFromPgnHeaders(parsed.headers)
     const rootPosition = new Chess(rootFen)
+    const evaluations = new Map<string, EvalSnapshot>()
 
     return {
         headers: parsed.headers,
         rootFen,
-        moves: buildImportEntries(parsed.root.variations, rootPosition),
+        moves: buildImportEntries(parsed.root.variations, rootPosition, evaluations),
+        evaluations,
         result: parsed.result,
     }
 }
