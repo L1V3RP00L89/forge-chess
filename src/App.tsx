@@ -140,9 +140,7 @@ type ImportSweepTarget = {
   historyMoves: string[]
 }
 
-type BatchReviewTarget = ImportSweepTarget & {
-  nodeId: string
-}
+type BatchReviewTarget = ImportSweepTarget
 
 type AnalysisTarget = {
   fen: string
@@ -185,7 +183,7 @@ function buildImportSweepTargets(
 }
 
 function buildBatchReviewTargets(
-  nodes: Array<{ id: string; fen: string; uci: string }>,
+  nodes: Array<{ fen: string; uci: string }>,
   rootFen: string,
 ): BatchReviewTarget[] {
   if (!nodes.length) return []
@@ -194,7 +192,6 @@ function buildBatchReviewTargets(
   return nodes.map((node, index) => {
     if (index > 0 && node.uci) historyMoves.push(node.uci)
     return {
-      nodeId: node.id,
       fen: node.fen,
       rootFen,
       historyMoves: [...historyMoves],
@@ -992,7 +989,6 @@ function App() {
     }
 
     activeBatchReviewRef.current = nextTarget
-    navigateAndPause(gameTreeRef.current.navigateTo(nextTarget.nodeId))
     analyze({
       fen: nextTarget.fen,
       purpose: 'batch-review',
@@ -1009,7 +1005,6 @@ function App() {
     engineEnabled,
     hashMb,
     isBatchReviewing,
-    navigateAndPause,
     searchDepth,
     showWdl,
     status,
