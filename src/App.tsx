@@ -35,6 +35,7 @@ import { hasLegalKingPlacement } from './engine/fen'
 import { normalizeSpinOptionInput } from './engine/options'
 import { engineProfiles, type EngineProfileId } from './engine/profiles'
 import { fetchSamplePgn } from './engine/samplePgn'
+import { parseFenShareHash } from './engine/shareLink'
 import type { TablebaseCategory, TablebaseMove, TablebaseResult } from './engine/tablebase'
 import { BOARD_SQUARES, describeBoardSquare, isBoardSquare } from './engine/boardAccessibility'
 import { isHeavyEngineLabCommand } from './engine/labCommands'
@@ -612,13 +613,27 @@ function persistSettings(settings: PersistedAppSettings) {
   }
 }
 
+function loadSharedFenFromUrl(): string | null {
+  if (typeof window === 'undefined') return null
+  const sharedFen = parseFenShareHash(window.location.hash)
+  if (!sharedFen) return null
+
+  try {
+    const fen = new Chess(sharedFen).fen()
+    return hasLegalKingPlacement(fen) ? fen : null
+  } catch {
+    return null
+  }
+}
+
 function App() {
   // ── Chess game instance ──────────────────────────────
-  const game = useMemo(() => new Chess(), [])
+  const sharedInitialFen = useMemo(() => loadSharedFenFromUrl(), [])
+  const game = useMemo(() => sharedInitialFen ? new Chess(sharedInitialFen) : new Chess(), [sharedInitialFen])
   const [fen, setFen] = useState(game.fen())
   const [orientation, setOrientation] = useState<Orientation>('white')
   const persistedSettings = useMemo(() => loadPersistedSettings(), [])
-  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(persistedSettings.workspaceMode)
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(sharedInitialFen ? 'analysis' : persistedSettings.workspaceMode)
   const engineEnabled = workspaceMode === 'analysis'
 
   // ── Layout ───────────────────────────────────────────
@@ -729,7 +744,7 @@ function App() {
   }, [])
 
   // ── Game tree ────────────────────────────────────────
-  const gameTree = useGameTree()
+  const gameTree = useGameTree(sharedInitialFen ?? undefined)
   // Stable ref so the AI-loop effect can call addMove without
   // including the (ever-changing) gameTree object in its dep array.
   const gameTreeRef = useRef(gameTree)

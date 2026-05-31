@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { GameNode } from '../hooks/useGameTree'
 import type { EvalSnapshot } from '../engine/analysis'
 import { exportAnnotatedPgn } from '../engine/pgn'
+import { buildFenShareUrl } from '../engine/shareLink'
 import { IconDownload, IconClipboard, IconUpload } from './icons'
 
 // Using existing styles from NewGameDialog to maintain design consistency
@@ -22,12 +23,14 @@ type ImportResult = {
     error?: string
 }
 
+type CopyStatus = 'idle' | 'fen-copied' | 'link-copied' | 'pgn-copied' | 'failed'
+
 export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, mainLineNodes, evaluations }: PgnDialogProps) {
     const [tab, setTab] = useState<'import' | 'fen' | 'export'>('import')
     const [importText, setImportText] = useState('')
     const [fenText, setFenText] = useState('')
     const [error, setError] = useState<string | null>(null)
-    const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
+    const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
     const panelRef = useRef<HTMLDivElement>(null)
     const titleId = useId()
     const importTextId = useId()
@@ -69,7 +72,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
     const handleCopy = async () => {
         try {
             await navigator.clipboard.writeText(exportText)
-            setCopyStatus('copied')
+            setCopyStatus('pgn-copied')
         } catch {
             setCopyStatus('failed')
         }
@@ -96,9 +99,21 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
         setFenText(currentFen)
         try {
             await navigator.clipboard.writeText(currentFen)
-            setCopyStatus('copied')
+            setCopyStatus('fen-copied')
         } catch {
             setCopyStatus('failed')
+        }
+    }
+
+    const handleCopyShareLink = async () => {
+        resetFeedback()
+        setFenText(currentFen)
+        try {
+            await navigator.clipboard.writeText(buildFenShareUrl(currentFen, window.location.href))
+            setCopyStatus('link-copied')
+        } catch {
+            setCopyStatus('failed')
+            setError('Clipboard access failed. The current FEN is in the text box.')
         }
     }
 
@@ -252,7 +267,10 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                     Use Current Position
                                 </button>
                                 <button type="button" className="btn-cancel" onClick={handleCopyCurrentFen}>
-                                    {copyStatus === 'copied' ? 'Copied FEN' : 'Copy Current FEN'}
+                                    {copyStatus === 'fen-copied' ? 'Copied FEN' : 'Copy Current FEN'}
+                                </button>
+                                <button type="button" className="btn-cancel" onClick={handleCopyShareLink}>
+                                    <IconClipboard /> {copyStatus === 'link-copied' ? 'Copied Link' : 'Copy Share Link'}
                                 </button>
                             </div>
                             <textarea
@@ -295,7 +313,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                     Download PGN
                                 </button>
                                 <button type="button" className="btn-start" onClick={handleCopy}>
-                                    {copyStatus === 'copied' ? 'Copied' : 'Copy PGN'}
+                                    {copyStatus === 'pgn-copied' ? 'Copied' : 'Copy PGN'}
                                 </button>
                             </div>
                             {copyStatus === 'failed' && (
