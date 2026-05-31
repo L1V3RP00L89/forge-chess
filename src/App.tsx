@@ -136,6 +136,7 @@ type AnalysisTarget = {
 
 type PgnImportOptions = {
   analyzeAfterLoad?: boolean
+  fromSample?: boolean
 }
 
 function buildImportSweepTargets(
@@ -2058,6 +2059,9 @@ function App() {
 
   const handlePgnImport = useCallback((pgnText: string, options?: PgnImportOptions) => {
     try {
+      if (!options?.fromSample) {
+        sampleLoadSeqRef.current += 1
+      }
       const shouldAnalyzeAfterLoad = options?.analyzeAfterLoad ?? engineEnabled
       if (shouldAnalyzeAfterLoad) {
         setWorkspaceMode('analysis')
@@ -2113,6 +2117,7 @@ function App() {
 
   const handleFenLoad = useCallback((fenText: string) => {
     try {
+      sampleLoadSeqRef.current += 1
       const loaded = new Chess(fenText.trim())
       const rootFen = loaded.fen()
 
@@ -2162,7 +2167,7 @@ function App() {
       try {
         const pgnText = await fetchSamplePgn(sample)
         if (requestId !== sampleLoadSeqRef.current) return
-        handlePgnImport(pgnText, { analyzeAfterLoad: true })
+        handlePgnImport(pgnText, { analyzeAfterLoad: true, fromSample: true })
       } catch (error) {
         if (requestId !== sampleLoadSeqRef.current) return
         setSampleLoadError(error instanceof Error ? error.message : 'Failed to load sample game.')
@@ -2177,6 +2182,7 @@ function App() {
 
   const handleNewGameStart = useCallback(
     ({ mode, playerColor: color, difficulty }: { mode: GameMode; playerColor: PlayerColor; difficulty: AiDifficulty }) => {
+      sampleLoadSeqRef.current += 1
       setShowNewGameDialog(false)
       setWorkspaceMode('play')
       setGameMode(mode)
