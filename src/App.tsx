@@ -3276,6 +3276,15 @@ function App() {
                       </p>
                     )}
                   </div>
+                  {mainLineNodes.length > 1 && (
+                    <div className="right-section analyze-move-card">
+                      <h3><span className="section-icon"><IconSwords /></span> Moves</h3>
+                      <MoveListTree
+                        tree={gameTree}
+                        onNavigate={navigateMoveListAndPonder}
+                      />
+                    </div>
+                  )}
                   {tablebase.eligible && (
                     <div className="tablebase-card">
                       <h3><span className="section-icon"><IconKing /></span> Endgame Tablebase</h3>

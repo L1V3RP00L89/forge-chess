@@ -1916,6 +1916,10 @@ body.resizing * {
   line-height: 1;
 }
 
+.analyze-move-card .mtree-scroll {
+  height: 180px;
+}
+
 /* ═══════════════════════════════════════════════════
    Engine PV lines
    ═══════════════════════════════════════════════════ */
