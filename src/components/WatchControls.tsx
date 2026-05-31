@@ -50,16 +50,16 @@ export function WatchControls({
         <div className="watch-controls">
             {/* ── Navigation ── */}
             <div className="wc-nav" aria-label="Move navigation">
-                <button type="button" className="wc-btn" onClick={onFirst} disabled={!canGoBack} title="First position (⏮)" aria-label="Go to first position">
+                <button type="button" className="wc-btn" onClick={onFirst} disabled={!canGoBack} title="First position (⏮)" aria-label="Go to first position" aria-keyshortcuts="Home">
                     <IconSkipBack />
                 </button>
-                <button type="button" className="wc-btn" onClick={onPrev} disabled={!canGoBack} title="Previous move (←)" aria-label="Go to previous move">
+                <button type="button" className="wc-btn" onClick={onPrev} disabled={!canGoBack} title="Previous move (←)" aria-label="Go to previous move" aria-keyshortcuts="ArrowLeft">
                     <IconChevronLeft />
                 </button>
-                <button type="button" className="wc-btn" onClick={onNext} disabled={!canGoForward} title="Next move (→)" aria-label="Go to next move">
+                <button type="button" className="wc-btn" onClick={onNext} disabled={!canGoForward} title="Next move (→)" aria-label="Go to next move" aria-keyshortcuts="ArrowRight">
                     <IconChevronRight />
                 </button>
-                <button type="button" className="wc-btn" onClick={onLast} disabled={!canGoForward} title="Last position (⏭)" aria-label="Go to last position">
+                <button type="button" className="wc-btn" onClick={onLast} disabled={!canGoForward} title="Last position (⏭)" aria-label="Go to last position" aria-keyshortcuts="End">
                     <IconSkipForward />
                 </button>
             </div>
@@ -72,11 +72,11 @@ export function WatchControls({
                             <IconStepForward /> Step
                         </button>
                     ) : paused ? (
-                        <button type="button" className="wc-btn wc-btn-resume" onClick={onResume} title="Resume AI" aria-label="Resume AI play">
+                        <button type="button" className="wc-btn wc-btn-resume" onClick={onResume} title="Resume AI" aria-label="Resume AI play" aria-keyshortcuts="Space">
                             <IconPlay /> Resume
                         </button>
                     ) : (
-                        <button type="button" className="wc-btn wc-btn-pause" onClick={onPause} title="Pause & analyze" aria-label="Pause AI and analyze">
+                        <button type="button" className="wc-btn wc-btn-pause" onClick={onPause} title="Pause & analyze" aria-label="Pause AI and analyze" aria-keyshortcuts="Space">
                             <IconPause /> Pause
                         </button>
                     )}

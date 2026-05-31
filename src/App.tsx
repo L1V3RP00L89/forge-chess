@@ -2769,7 +2769,7 @@ function App() {
               <button type="button" onClick={openNewGameDialog} aria-label="Start new game" title="New game">
                 <span className="btn-icon"><IconRefresh /></span> <span className="btn-label">New game</span>
               </button>
-              <button type="button" onClick={flipBoard} aria-label="Flip board" title="Flip board">
+              <button type="button" onClick={flipBoard} aria-label="Flip board" aria-keyshortcuts="F" title="Flip board">
                 <span className="btn-icon"><IconFlip /></span> <span className="btn-label">Flip</span>
               </button>
               <button type="button" onClick={openPgnDialog} aria-label="Open PGN and FEN dialog" title="PGN and FEN">
