@@ -8,7 +8,7 @@ import {
   type EngineProfileId,
 } from '../engine/profiles'
 import { createStockfishWorker } from '../engine/stockfishWorker'
-import { buildAnalyzeCommand, parseBestMoveLine, type AnalyzeMode, type AnalyzePurpose, type AnalyzeRequest, type UciGoLimits } from '../engine/uci'
+import { buildAnalyzeCommand, buildNewGameCommands, parseBestMoveLine, type AnalyzeMode, type AnalyzePurpose, type AnalyzeRequest, type UciGoLimits } from '../engine/uci'
 
 type EngineStatus = 'loading' | 'ready' | 'analyzing' | 'error' | 'disabled'
 
@@ -255,6 +255,7 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
   const currentAnalysisModeRef = useRef<AnalyzeMode | undefined>(undefined)
   const currentAnalysisLimitsRef = useRef<UciGoLimits | undefined>(undefined)
   const currentSearchIdRef = useRef<number>(0)
+  const newGamePendingRef = useRef(false)
   const commandQueueRef = useRef<QueuedCommand[]>([])
   const nextCommandIdRef = useRef(0)
   const bootSessionRef = useRef(0)
@@ -408,6 +409,14 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
     [send],
   )
 
+  const sendNewGameSync = useCallback(() => {
+    isReadyRef.current = false
+    setStatus((value) => (value === 'error' ? value : 'loading'))
+    for (const command of buildNewGameCommands()) {
+      sendRaw(command)
+    }
+  }, [sendRaw])
+
   const sendCommand = useCallback(
     (command: string, options?: SendCommandOptions): Promise<string[]> => {
       const trimmed = command.trim()
@@ -560,13 +569,30 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
   }, [enabled, send])
 
   const newGame = useCallback(() => {
-    sendRaw('ucinewgame')
+    pendingAnalyzeRef.current = null
     resetLinesMap()
     setLastBestMove(null)
     setLastBestMoveFen(null)
     setLastPonderMove(null)
     setLastPonderMoveFen(null)
-  }, [resetLinesMap, sendRaw])
+
+    if (!enabled) {
+      newGamePendingRef.current = false
+      setStatus('disabled')
+      return
+    }
+
+    if (isSearchingRef.current) {
+      newGamePendingRef.current = true
+      if (!stopRequestedRef.current) {
+        sendRaw('stop')
+        stopRequestedRef.current = true
+      }
+      return
+    }
+
+    sendNewGameSync()
+  }, [enabled, resetLinesMap, sendNewGameSync, sendRaw])
 
   const ponderHit = useCallback(() => {
     sendRaw('ponderhit')
@@ -585,6 +611,7 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
       isSearchingRef.current = false
       stopRequestedRef.current = false
       pendingAnalyzeRef.current = null
+      newGamePendingRef.current = false
       commandQueueRef.current = []
       queueMicrotask(() => {
         if (currentSession !== bootSessionRef.current) return
@@ -736,6 +763,17 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
           isSearchingRef.current = false
           stopRequestedRef.current = false
 
+          const sentNewGameSync = newGamePendingRef.current
+          if (sentNewGameSync) {
+            newGamePendingRef.current = false
+            sendNewGameSync()
+          }
+
+          if (sentNewGameSync) {
+            setActiveGoCommand('')
+            continue
+          }
+
           if (pendingAnalyzeRef.current) {
             setActiveGoCommand('')
             flushPendingAnalyze()
@@ -781,6 +819,7 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
       isSearchingRef.current = false
       stopRequestedRef.current = false
       pendingAnalyzeRef.current = null
+      newGamePendingRef.current = false
       clearLinesMapFlushTimer()
       clearRawLinesFlushTimer()
       rejectQueuedCommands('Engine worker terminated.')
@@ -803,6 +842,7 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
     scheduleLinesMapFlush,
     selectedProfile,
     send,
+    sendNewGameSync,
     setOption,
   ])
 

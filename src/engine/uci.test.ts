@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildAnalyzeCommand, normalizeUciMoves, parseBestMoveLine } from './uci'
+import { buildAnalyzeCommand, buildNewGameCommands, normalizeUciMoves, parseBestMoveLine } from './uci'
 
 describe('UCI helpers', () => {
   it('normalizes UCI moves and keeps promotions', () => {
@@ -81,5 +81,9 @@ describe('UCI helpers', () => {
       bestMove: null,
       ponderMove: null,
     })
+  })
+
+  it('builds a synchronized new-game reset sequence', () => {
+    expect(buildNewGameCommands()).toEqual(['ucinewgame', 'isready'])
   })
 })

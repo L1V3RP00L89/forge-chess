@@ -167,6 +167,10 @@ export function buildAnalyzeCommand(request: AnalyzeRequest): BuiltAnalyzeComman
   }
 }
 
+export function buildNewGameCommands(): string[] {
+  return ['ucinewgame', 'isready']
+}
+
 export function parseBestMoveLine(line: string): ParsedBestMove | null {
   if (!line.startsWith('bestmove ')) return null
 
