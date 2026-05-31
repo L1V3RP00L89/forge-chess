@@ -31,6 +31,7 @@ import {
 import type { AnalyzeMode, UciGoLimits } from './engine/uci'
 import { rootFenFromPgnHeaders } from './engine/pgn'
 import { engineProfiles, type EngineProfileId } from './engine/profiles'
+import { fetchSamplePgn } from './engine/samplePgn'
 import type { TablebaseCategory, TablebaseMove, TablebaseResult } from './engine/tablebase'
 import { BOARD_SQUARES, describeBoardSquare, isBoardSquare } from './engine/boardAccessibility'
 import { isHeavyEngineLabCommand } from './engine/labCommands'
@@ -62,6 +63,7 @@ type PromotionPiece = 'q' | 'r' | 'b' | 'n'
 type PendingPromotion = { from: Square; to: Square }
 
 const ANALYSIS_SETTINGS_STORAGE_KEY = 'webchess:analysis-settings:v1'
+const SAMPLE_PGN_CACHE_LIMIT = 12
 const ANALYZE_MODE_IDS: AnalyzeMode[] = ['quick', 'deep', 'infinite', 'mate', 'review']
 const ANALYSIS_TAB_IDS: AnalysisTab[] = ['analyze', 'review', 'engine-lab']
 const ANALYSIS_EXPERIENCE_IDS: AnalysisExperience[] = ['beginner', 'pro']
@@ -663,6 +665,7 @@ function App() {
   const activeImportSweepRef = useRef<ImportSweepTarget | null>(null)
   const activeImportSweepStartedRef = useRef(false)
   const samplePgnCacheRef = useRef<Map<string, string>>(new Map())
+  const sampleFetchControllerRef = useRef<AbortController | null>(null)
   const sampleLoadSeqRef = useRef(0)
 
   // ── Evaluations ──────────────────────────────────────
@@ -2051,10 +2054,48 @@ function App() {
   const openNewGameDialog = () => setShowNewGameDialog(true)
   const openPgnDialog = () => setShowPgnDialog(true)
 
+  const abortSampleFetch = useCallback(() => {
+    sampleFetchControllerRef.current?.abort()
+    sampleFetchControllerRef.current = null
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      sampleLoadSeqRef.current += 1
+      abortSampleFetch()
+    }
+  }, [abortSampleFetch])
+
+  const cancelSampleLoad = useCallback(() => {
+    sampleLoadSeqRef.current += 1
+    abortSampleFetch()
+    setSampleLoadingId(null)
+  }, [abortSampleFetch])
+
+  const readCachedSamplePgn = useCallback((sampleId: string): string | null => {
+    const cached = samplePgnCacheRef.current.get(sampleId)
+    if (!cached) return null
+    samplePgnCacheRef.current.delete(sampleId)
+    samplePgnCacheRef.current.set(sampleId, cached)
+    return cached
+  }, [])
+
+  const writeCachedSamplePgn = useCallback((sampleId: string, pgnText: string) => {
+    const cache = samplePgnCacheRef.current
+    cache.delete(sampleId)
+    cache.set(sampleId, pgnText)
+
+    while (cache.size > SAMPLE_PGN_CACHE_LIMIT) {
+      const oldestKey = cache.keys().next().value
+      if (typeof oldestKey !== 'string') break
+      cache.delete(oldestKey)
+    }
+  }, [])
+
   const handlePgnImport = useCallback((pgnText: string, options?: PgnImportOptions) => {
     try {
       if (!options?.fromSample) {
-        sampleLoadSeqRef.current += 1
+        cancelSampleLoad()
       }
       const shouldAnalyzeAfterLoad = options?.analyzeAfterLoad ?? engineEnabled
       if (shouldAnalyzeAfterLoad) {
@@ -2107,11 +2148,11 @@ function App() {
       setIsImportingGame(false)
       return { ok: false, error: 'Failed to parse PGN. Check the move text, headers, and move numbers.' }
     }
-  }, [clearImportSweep, engineEnabled, game, gameTree, newGame])
+  }, [cancelSampleLoad, clearImportSweep, engineEnabled, game, gameTree, newGame])
 
   const handleFenLoad = useCallback((fenText: string) => {
     try {
-      sampleLoadSeqRef.current += 1
+      cancelSampleLoad()
       const loaded = new Chess(fenText.trim())
       const rootFen = loaded.fen()
 
@@ -2136,30 +2177,24 @@ function App() {
     } catch {
       return { ok: false, error: 'Failed to parse FEN. Check piece placement, side to move, castling rights, and counters.' }
     }
-  }, [clearImportSweep, engineEnabled, game, gameTree, newGame])
-
-  const fetchSamplePgn = useCallback(async (sample: HistoricalSampleGame): Promise<string> => {
-    const cached = samplePgnCacheRef.current.get(sample.id)
-    if (cached) return cached
-
-    const response = await fetch(`https://lichess.org/game/export/${sample.lichessGameId}`)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch sample PGN (${response.status}).`)
-    }
-
-    const pgnText = await response.text()
-    samplePgnCacheRef.current.set(sample.id, pgnText)
-    return pgnText
-  }, [])
+  }, [cancelSampleLoad, clearImportSweep, engineEnabled, game, gameTree, newGame])
 
   const loadHistoricalSample = useCallback(
     async (sample: HistoricalSampleGame) => {
+      abortSampleFetch()
       const requestId = sampleLoadSeqRef.current + 1
       sampleLoadSeqRef.current = requestId
+      const controller = new AbortController()
+      sampleFetchControllerRef.current = controller
       setSampleLoadingId(sample.id)
       setSampleLoadError(null)
       try {
-        const pgnText = await fetchSamplePgn(sample)
+        let pgnText = readCachedSamplePgn(sample.id)
+        if (!pgnText) {
+          pgnText = await fetchSamplePgn(sample, controller.signal)
+          if (controller.signal.aborted || requestId !== sampleLoadSeqRef.current) return
+          writeCachedSamplePgn(sample.id, pgnText)
+        }
         if (requestId !== sampleLoadSeqRef.current) return
         handlePgnImport(pgnText, { analyzeAfterLoad: true, fromSample: true })
       } catch (error) {
@@ -2167,16 +2202,17 @@ function App() {
         setSampleLoadError(error instanceof Error ? error.message : 'Failed to load sample game.')
       } finally {
         if (requestId === sampleLoadSeqRef.current) {
+          sampleFetchControllerRef.current = null
           setSampleLoadingId(null)
         }
       }
     },
-    [fetchSamplePgn, handlePgnImport],
+    [abortSampleFetch, handlePgnImport, readCachedSamplePgn, writeCachedSamplePgn],
   )
 
   const handleNewGameStart = useCallback(
     ({ mode, playerColor: color, difficulty }: { mode: GameMode; playerColor: PlayerColor; difficulty: AiDifficulty }) => {
-      sampleLoadSeqRef.current += 1
+      cancelSampleLoad()
       setShowNewGameDialog(false)
       setWorkspaceMode('play')
       setGameMode(mode)
@@ -2201,7 +2237,7 @@ function App() {
 
       setOrientation(mode === 'human-vs-ai' ? color : 'white')
     },
-    [aiPlayer, clearImportSweep, game, gameTree, newGame],
+    [aiPlayer, cancelSampleLoad, clearImportSweep, game, gameTree, newGame],
   )
 
   // ── Mode switch mid-game ──────────────────────────────
