@@ -5,6 +5,7 @@ import {
   cloudLineToSideToMoveScore,
   fetchCloudEvaluation,
   normalizeCloudEvalFen,
+  normalizeCloudEvalMultiPv,
   parseCloudEvalResponse,
 } from './cloudEval'
 
@@ -19,6 +20,14 @@ describe('cloud eval parsing', () => {
 
     expect(normalizeCloudEvalFen(fenA)).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -')
     expect(cloudEvalRequestKey({ fen: fenA, multiPv: 9 })).toBe(cloudEvalRequestKey({ fen: fenB, multiPv: 5 }))
+  })
+
+  it('normalizes cloud MultiPV requests to finite Lichess-supported values', () => {
+    expect(normalizeCloudEvalMultiPv(Number.NaN)).toBe(1)
+    expect(normalizeCloudEvalMultiPv(Number.POSITIVE_INFINITY)).toBe(1)
+    expect(normalizeCloudEvalMultiPv(0)).toBe(1)
+    expect(normalizeCloudEvalMultiPv(2.6)).toBe(3)
+    expect(normalizeCloudEvalMultiPv(99)).toBe(5)
   })
 
   it('parses centipawn and mate PVs from Lichess responses', () => {

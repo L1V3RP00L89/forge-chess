@@ -42,7 +42,7 @@ function positiveInt(value: unknown, fallback = 0): number {
   return rounded > 0 ? rounded : fallback
 }
 
-function normalizeMultiPv(value: number | undefined): number {
+export function normalizeCloudEvalMultiPv(value: number | undefined): number {
   if (!isFiniteNumber(value)) return 1
   return Math.max(1, Math.min(5, Math.round(value)))
 }
@@ -53,7 +53,7 @@ export function normalizeCloudEvalFen(fen: string): string {
 }
 
 export function cloudEvalRequestKey(request: CloudEvalRequest): string {
-  return `${normalizeCloudEvalFen(request.fen)}|${normalizeMultiPv(request.multiPv)}`
+  return `${normalizeCloudEvalFen(request.fen)}|${normalizeCloudEvalMultiPv(request.multiPv)}`
 }
 
 function readStorageCache(): Record<string, unknown> {
@@ -171,7 +171,7 @@ function throwIfAborted(signal: AbortSignal | undefined) {
 function buildUrl(request: CloudEvalRequest): string {
   const url = new URL(CLOUD_EVAL_URL)
   url.searchParams.set('fen', normalizeCloudEvalFen(request.fen))
-  url.searchParams.set('multiPv', String(normalizeMultiPv(request.multiPv)))
+  url.searchParams.set('multiPv', String(normalizeCloudEvalMultiPv(request.multiPv)))
   return url.toString()
 }
 

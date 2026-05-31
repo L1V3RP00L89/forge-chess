@@ -3,6 +3,7 @@ import {
   cloudEvalRequestKey,
   fetchCloudEvaluation,
   getCachedCloudEvaluation,
+  normalizeCloudEvalMultiPv,
   type CloudEvalResult,
 } from '../engine/cloudEval'
 import { withBoundedMapEntry } from './cacheLimit'
@@ -19,7 +20,7 @@ const CLOUD_EVAL_DEBOUNCE_MS = 320
 const LOCAL_CLOUD_EVAL_LIMIT = 120
 
 export function useCloudEvaluation({ fen, multiPv, enabled }: UseCloudEvaluationOptions) {
-  const normalizedMultiPv = Math.max(1, Math.min(5, multiPv))
+  const normalizedMultiPv = normalizeCloudEvalMultiPv(multiPv)
   const currentKey = useMemo(
     () => cloudEvalRequestKey({ fen, multiPv: normalizedMultiPv }),
     [fen, normalizedMultiPv],
