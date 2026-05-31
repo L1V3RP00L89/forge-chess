@@ -29,6 +29,9 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, e
     const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
     const panelRef = useRef<HTMLDivElement>(null)
     const titleId = useId()
+    const importTextId = useId()
+    const fenTextId = useId()
+    const exportTextId = useId()
 
     const resetFeedback = useCallback(() => {
         setError(null)
@@ -191,8 +194,9 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, e
 
                     {tab === 'import' && (
                         <div className="dialog-section">
-                            <label className="dialog-label">Paste Portable Game Notation</label>
+                            <label className="dialog-label" htmlFor={importTextId}>Paste Portable Game Notation</label>
                             <textarea
+                                id={importTextId}
                                 className="input-textarea"
                                 placeholder="[Event &quot;FIDE World Cup 2023&quot;]..."
                                 value={importText}
@@ -214,8 +218,9 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, e
 
                     {tab === 'fen' && (
                         <div className="dialog-section">
-                            <label className="dialog-label">Paste Forsyth-Edwards Notation</label>
+                            <label className="dialog-label" htmlFor={fenTextId}>Paste Forsyth-Edwards Notation</label>
                             <textarea
+                                id={fenTextId}
                                 className="input-textarea"
                                 placeholder="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
                                 value={fenText}
@@ -237,8 +242,9 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, mainLineNodes, e
 
                     {tab === 'export' && (
                         <div className="dialog-section">
-                            <label className="dialog-label">Annotated Output</label>
+                            <label className="dialog-label" htmlFor={exportTextId}>Annotated Output</label>
                             <textarea
+                                id={exportTextId}
                                 className="input-textarea"
                                 readOnly
                                 value={exportText}

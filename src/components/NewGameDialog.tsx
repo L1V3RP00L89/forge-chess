@@ -55,6 +55,7 @@ export function NewGameDialog({
     const [difficulty, setDifficulty] = useState<AiDifficulty>(initialDifficulty)
     const panelRef = useRef<HTMLDivElement>(null)
     const titleId = useId()
+    const difficultyLabelId = useId()
 
     const handleStart = () => {
         onStart({ mode, playerColor, difficulty })
@@ -191,7 +192,7 @@ export function NewGameDialog({
                 {/* Difficulty slider */}
                 {showDifficulty && (
                     <div className="dialog-section">
-                        <p className="dialog-label">
+                        <p className="dialog-label" id={difficultyLabelId}>
                             Difficulty —{' '}
                             <strong className="difficulty-label-value">{DIFFICULTY_LABELS[difficulty]}</strong>
                         </p>
@@ -202,6 +203,8 @@ export function NewGameDialog({
                             step={1}
                             value={difficulty}
                             className="difficulty-slider"
+                            aria-labelledby={difficultyLabelId}
+                            aria-valuetext={DIFFICULTY_LABELS[difficulty]}
                             onChange={(e) => setDifficulty(Number(e.target.value) as AiDifficulty)}
                         />
                         <div className="difficulty-ticks">
