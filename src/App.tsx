@@ -4311,6 +4311,39 @@ function formatMoveAxisLabel(index: number): string {
   return Number.isInteger(moveNumber) ? String(moveNumber) : moveNumber.toFixed(1)
 }
 
+function clampGraphIndex(index: number, maxIndex: number): number {
+  return Math.min(Math.max(index, 0), maxIndex)
+}
+
+function formatGraphPositionLabel(index: number): string {
+  if (index <= 0) return 'Start position'
+
+  const moveNumber = Math.ceil(index / 2)
+  const side = index % 2 === 1 ? "White's" : "Black's"
+  return `After ${side} move ${moveNumber}`
+}
+
+function graphKeyboardTarget(key: string, currentIndex: number, maxIndex: number): number | null {
+  switch (key) {
+    case 'ArrowLeft':
+    case 'ArrowDown':
+      return clampGraphIndex(currentIndex - 1, maxIndex)
+    case 'ArrowRight':
+    case 'ArrowUp':
+      return clampGraphIndex(currentIndex + 1, maxIndex)
+    case 'Home':
+      return 0
+    case 'End':
+      return maxIndex
+    case 'PageDown':
+      return clampGraphIndex(currentIndex - 10, maxIndex)
+    case 'PageUp':
+      return clampGraphIndex(currentIndex + 10, maxIndex)
+    default:
+      return null
+  }
+}
+
 type WinrateGraphProps = {
   points: WinratePoint[]
   currentIndex?: number
@@ -4347,9 +4380,11 @@ const WinrateGraph = memo(function WinrateGraph({ points, currentIndex, onNaviga
   const area = `${path} L ${toX(maxIndex).toFixed(2)} ${(height - padBottom).toFixed(2)} L ${toX(points[0]?.index ?? 0).toFixed(2)} ${(height - padBottom).toFixed(2)} Z`
   const markers = [0, 25, 50, 75, 100]
   const xTickStep = graphTickStep(maxIndex)
+  const isNavigable = Boolean(onNavigate && maxIndex > 0)
+  const selectedIndex = clampGraphIndex(currentIndex ?? maxIndex, maxIndex)
 
   const handleClick = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (!onNavigate || maxIndex === 0) return
+    if (!isNavigable || !onNavigate) return
     const rect = e.currentTarget.getBoundingClientRect()
     const scaleX = width / rect.width
     const xInsideSvg = (e.clientX - rect.left) * scaleX
@@ -4361,8 +4396,20 @@ const WinrateGraph = memo(function WinrateGraph({ points, currentIndex, onNaviga
     onNavigate(targetIdx)
   }
 
+  const handleKeyDown = (e: ReactKeyboardEvent<SVGSVGElement>) => {
+    if (!isNavigable || !onNavigate) return
+
+    const targetIdx = graphKeyboardTarget(e.key, selectedIndex, maxIndex)
+    if (targetIdx === null) return
+
+    e.preventDefault()
+    if (targetIdx !== selectedIndex) {
+      onNavigate(targetIdx)
+    }
+  }
+
   const currentLineX = currentIndex !== undefined && maxIndex > 0
-    ? toX(Math.min(currentIndex, maxIndex))
+    ? toX(selectedIndex)
     : null
 
   return (
@@ -4372,8 +4419,16 @@ const WinrateGraph = memo(function WinrateGraph({ points, currentIndex, onNaviga
           className="winrate-graph"
           width={width}
           viewBox={`0 0 ${width} ${height}`}
+          role={isNavigable ? 'slider' : 'img'}
+          tabIndex={isNavigable ? 0 : undefined}
+          aria-label={isNavigable ? 'White winrate move navigator' : 'White winrate graph'}
+          aria-valuemin={isNavigable ? 0 : undefined}
+          aria-valuemax={isNavigable ? maxIndex : undefined}
+          aria-valuenow={isNavigable ? selectedIndex : undefined}
+          aria-valuetext={isNavigable ? formatGraphPositionLabel(selectedIndex) : undefined}
           onClick={handleClick}
-          style={{ cursor: onNavigate ? 'pointer' : 'default' }}
+          onKeyDown={handleKeyDown}
+          style={{ cursor: isNavigable ? 'pointer' : 'default' }}
         >
           <defs>
             <linearGradient id="graph-gradient" x1="0" y1="0" x2="0" y2="1">
@@ -4470,9 +4525,11 @@ const WdlProgressGraph = memo(function WdlProgressGraph({ points, currentIndex, 
   const whitePath = buildPath((p) => p.white)
   const drawPath = buildPath((p) => p.draw)
   const blackPath = buildPath((p) => p.black)
+  const isNavigable = Boolean(onNavigate && maxIndex > 0)
+  const selectedIndex = clampGraphIndex(currentIndex ?? maxIndex, maxIndex)
 
   const handleClick = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (!onNavigate || maxIndex === 0) return
+    if (!isNavigable || !onNavigate) return
     const rect = e.currentTarget.getBoundingClientRect()
     const scaleX = width / rect.width
     const xInsideSvg = (e.clientX - rect.left) * scaleX
@@ -4484,8 +4541,20 @@ const WdlProgressGraph = memo(function WdlProgressGraph({ points, currentIndex, 
     onNavigate(targetIdx)
   }
 
+  const handleKeyDown = (e: ReactKeyboardEvent<SVGSVGElement>) => {
+    if (!isNavigable || !onNavigate) return
+
+    const targetIdx = graphKeyboardTarget(e.key, selectedIndex, maxIndex)
+    if (targetIdx === null) return
+
+    e.preventDefault()
+    if (targetIdx !== selectedIndex) {
+      onNavigate(targetIdx)
+    }
+  }
+
   const currentLineX = currentIndex !== undefined && maxIndex > 0
-    ? toX(Math.min(currentIndex, maxIndex))
+    ? toX(selectedIndex)
     : null
 
   return (
@@ -4495,8 +4564,16 @@ const WdlProgressGraph = memo(function WdlProgressGraph({ points, currentIndex, 
           className="winrate-graph"
           width={width}
           viewBox={`0 0 ${width} ${height}`}
+          role={isNavigable ? 'slider' : 'img'}
+          tabIndex={isNavigable ? 0 : undefined}
+          aria-label={isNavigable ? 'WDL trend move navigator' : 'WDL progression graph'}
+          aria-valuemin={isNavigable ? 0 : undefined}
+          aria-valuemax={isNavigable ? maxIndex : undefined}
+          aria-valuenow={isNavigable ? selectedIndex : undefined}
+          aria-valuetext={isNavigable ? formatGraphPositionLabel(selectedIndex) : undefined}
           onClick={handleClick}
-          style={{ cursor: onNavigate ? 'pointer' : 'default' }}
+          onKeyDown={handleKeyDown}
+          style={{ cursor: isNavigable ? 'pointer' : 'default' }}
         >
           {markers.map(v => {
             const y = toY(v)

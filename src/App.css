@@ -146,12 +146,13 @@ body.resizing * {
   textarea,
   a,
   [role="button"],
+  [role="slider"],
   [role="separator"]):focus-visible {
   outline: 2px solid var(--info);
   outline-offset: 2px;
 }
 
-.app-shell :is(button, summary, input, select, textarea, a, [role="button"], [role="separator"]):focus:not(:focus-visible) {
+.app-shell :is(button, summary, input, select, textarea, a, [role="button"], [role="slider"], [role="separator"]):focus:not(:focus-visible) {
   outline: none;
 }
 
@@ -2616,6 +2617,10 @@ body.resizing * {
   min-width: 100%;
   height: 220px;
   display: block;
+}
+
+.winrate-graph[role="slider"]:focus-visible {
+  outline-offset: -3px;
 }
 
 .graph-grid-line {
