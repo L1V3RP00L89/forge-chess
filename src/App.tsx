@@ -147,6 +147,10 @@ type PgnImportOptions = {
   fromSample?: boolean
 }
 
+type FenLoadOptions = {
+  forceAnalysis?: boolean
+}
+
 function buildImportSweepTargets(
   entries: Array<{ move: { from: string; to: string; promotion?: string }; fen: string }>,
   rootFen: string,
@@ -2214,7 +2218,7 @@ function App() {
     }
   }, [cancelSampleLoad, clearImportSweep, engineEnabled, game, gameTree, newGame])
 
-  const handleFenLoad = useCallback((fenText: string) => {
+  const handleFenLoad = useCallback((fenText: string, options?: FenLoadOptions) => {
     try {
       cancelSampleLoad()
       const loaded = new Chess(fenText.trim())
@@ -2223,13 +2227,19 @@ function App() {
         return { ok: false, error: 'Invalid FEN: kings cannot be adjacent or missing.' }
       }
 
+      const shouldAnalyzeAfterLoad = options?.forceAnalysis ?? engineEnabled
+      if (options?.forceAnalysis) {
+        setWorkspaceMode('analysis')
+        setAnalysisTab('analyze')
+      }
+
       newGame()
       game.load(rootFen)
       setFen(rootFen)
       gameTree.reset(rootFen)
       setEvaluationsByFen(new Map())
       clearImportSweep()
-      setPendingShallowAnalyzeFen(engineEnabled ? rootFen : null)
+      setPendingShallowAnalyzeFen(shouldAnalyzeAfterLoad ? rootFen : null)
       setSampleLoadError(null)
       setPendingPromotion(null)
       setSelectedSquare(null)
@@ -2245,6 +2255,18 @@ function App() {
       return { ok: false, error: 'Failed to parse FEN. Check piece placement, side to move, castling rights, and counters.' }
     }
   }, [cancelSampleLoad, clearImportSweep, engineEnabled, game, gameTree, newGame])
+
+  useEffect(() => {
+    const loadSharedHash = () => {
+      const sharedFen = loadSharedFenFromUrl()
+      if (!sharedFen || sharedFen === game.fen()) return
+      handleFenLoad(sharedFen, { forceAnalysis: true })
+    }
+
+    loadSharedHash()
+    window.addEventListener('hashchange', loadSharedHash)
+    return () => window.removeEventListener('hashchange', loadSharedHash)
+  }, [game, handleFenLoad])
 
   const loadHistoricalSample = useCallback(
     async (sample: HistoricalSampleGame) => {
