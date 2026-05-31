@@ -100,6 +100,8 @@ const MOVE_PONDER_MIN_DEPTH = 20
 const IMPORT_SWEEP_MOVETIME_MS = 70
 const IMPORT_SWEEP_MULTIPV = 1
 const AUTO_ANALYZE_DEBOUNCE_MS = 140
+const REVIEW_BOOK_PREFETCH_LIMIT = 30
+const REVIEW_BOOK_VISIBLE_LIMIT = 14
 
 const analyzePresets: Array<{ id: AnalyzePresetId; label: string; summary: string }> = [
   { id: 'blunder-check', label: 'Fast Blunder Check', summary: 'Quick scan after each move.' },
@@ -1743,7 +1745,7 @@ function App() {
 
     let cancelled = false
     const controller = new AbortController()
-    const maxPlyToPrefetch = Math.min(mainLineUciMoves.length, 30)
+    const maxPlyToPrefetch = Math.min(mainLineUciMoves.length, REVIEW_BOOK_PREFETCH_LIMIT)
 
     const run = async () => {
       for (let idx = 0; idx < maxPlyToPrefetch; idx += 1) {
@@ -1770,7 +1772,8 @@ function App() {
 
   const reviewBookRows = useMemo(() => {
     void openingPrefetchTick
-    return mainLineUciMoves.map((uci, index) => {
+    const maxRows = Math.min(mainLineUciMoves.length, REVIEW_BOOK_PREFETCH_LIMIT)
+    return mainLineUciMoves.slice(0, maxRows).map((uci, index) => {
       const beforeMoves = mainLineUciMoves.slice(0, index)
       const fromCache = getCachedOpeningExplorer({
         source: openingSource,
@@ -3911,7 +3914,7 @@ function App() {
                   <div className="opening-intel-card review-book-card">
                     <h3><span className="section-icon"><IconSearch /></span> Book vs Engine</h3>
                     <p className="panel-copy small command-summary">
-                      In book {reviewBookSummary.inBook} · Out of book {reviewBookSummary.outOfBook}
+                      First {Math.min(mainLineUciMoves.length, REVIEW_BOOK_PREFETCH_LIMIT)} plies · In book {reviewBookSummary.inBook} · Out of book {reviewBookSummary.outOfBook}
                       {reviewBookSummary.loading > 0 ? ` · checking ${reviewBookSummary.loading}` : ''}
                       {reviewBookSummary.authRequired > 0 ? ' · token needed' : ''}
                     </p>
@@ -3926,7 +3929,7 @@ function App() {
                       </p>
                     )}
                     <div className="review-book-list">
-                      {visibleReviewBookRows.slice(0, 14).map(row => (
+                      {visibleReviewBookRows.slice(0, REVIEW_BOOK_VISIBLE_LIMIT).map(row => (
                         <div key={`${row.ply}-${row.uci}`} className={`review-book-row ${row.status}`}>
                           <span>#{row.ply}</span>
                           <strong>{row.san}</strong>
