@@ -21,7 +21,8 @@ A browser chess app for playing, importing, and reviewing games with Stockfish-p
 - **Build Tool**: Vite
 - **Chess Logic**: `chess.js`
 - **Chess Engine**: `stockfish.js`
-- **UI Components**: `react-chessboard` and `lucide-react`
+- **UI Components**: `react-chessboard` plus local SVG icon components
+- **Engine Profiles**: local Stockfish 18 lite assets with optional full-strength CDN profiles
 
 ## Quality Gates
 
