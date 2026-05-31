@@ -239,7 +239,7 @@ const DEFAULT_PERSISTED_SETTINGS: PersistedAppSettings = {
   analysisTab: 'analyze',
   analysisExperience: 'beginner',
   activePreset: 'game-review',
-  analyzeMode: 'deep',
+  analyzeMode: 'review',
   showAdvancedAnalyze: false,
   searchDepth: 16,
   quickMovetimeMs: 500,
