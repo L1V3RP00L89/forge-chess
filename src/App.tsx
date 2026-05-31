@@ -44,6 +44,7 @@ import type { TablebaseCategory, TablebaseMove, TablebaseResult } from './engine
 import { BOARD_SQUARES, describeBoardSquare, isBoardSquare } from './engine/boardAccessibility'
 import { isBoardInputLocked } from './engine/boardInput'
 import { isHeavyEngineLabCommand } from './engine/labCommands'
+import { defaultOrientationForGameMode } from './engine/playMode'
 import { useStockfishEngine } from './hooks/useStockfishEngine'
 import { DIFFICULTY_LABELS, useAiPlayer, type AiDifficulty } from './hooks/useAiPlayer'
 import { useGameTree, type GameNode } from './hooks/useGameTree'
@@ -2543,7 +2544,7 @@ function App() {
       setPaused(false)
       gameTree.reset()
 
-      setOrientation(mode === 'human-vs-ai' ? color : 'white')
+      setOrientation(defaultOrientationForGameMode(mode, color))
     },
     [cancelPendingAiMove, cancelSampleLoad, clearBoardSelection, clearImportSweep, game, gameTree, newGame, setAiPlayerDifficulty, setPgnHeaders],
   )
@@ -2552,6 +2553,7 @@ function App() {
   const handleModeChange = useCallback((mode: GameMode) => {
     cancelPendingAiMove()
     setGameMode(mode)
+    setOrientation(defaultOrientationForGameMode(mode, playerColor))
     if (workspaceMode !== 'play') setWorkspaceMode('play')
     if (mode === 'ai-vs-ai') clearBoardSelection()
     if (pausedRef.current) {
@@ -2559,7 +2561,7 @@ function App() {
       setPaused(false)
     }
     setFen(f => f)
-  }, [cancelPendingAiMove, clearBoardSelection, workspaceMode])
+  }, [cancelPendingAiMove, clearBoardSelection, playerColor, workspaceMode])
 
   const navigateMoveListAndPause = useCallback((chess: Chess) => {
     navigateAndPause(chess)
