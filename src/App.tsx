@@ -30,6 +30,7 @@ import {
 } from './engine/openingExplorer'
 import type { AnalyzeMode, UciGoLimits } from './engine/uci'
 import { rootFenFromPgnHeaders } from './engine/pgn'
+import { normalizeSpinOptionInput } from './engine/options'
 import { engineProfiles, type EngineProfileId } from './engine/profiles'
 import { fetchSamplePgn } from './engine/samplePgn'
 import type { TablebaseCategory, TablebaseMove, TablebaseResult } from './engine/tablebase'
@@ -3969,7 +3970,11 @@ function EngineOptionControl({ option, onSetOption, disabled = false }: EngineOp
         <span>{option.name}</span>
         <input type="number" min={option.min} max={option.max} value={value} disabled={disabled}
           onChange={e => setValue(e.target.value)}
-          onBlur={() => onSetOption(option.name, Number(value))} />
+          onBlur={() => {
+            const normalized = normalizeSpinOptionInput(option, value)
+            setValue(String(normalized))
+            onSetOption(option.name, normalized)
+          }} />
       </label>
     )
   }
