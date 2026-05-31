@@ -3520,6 +3520,7 @@ function App() {
                     >
                       <input
                         type="text"
+                        aria-label="UCI command"
                         value={engineLabCommand}
                         onChange={e => setEngineLabCommand(e.target.value)}
                         placeholder="go depth 16"
@@ -3534,8 +3535,22 @@ function App() {
                       </p>
                     )}
                     <div className="inline-actions diagnostics-actions">
-                      <button type="button" disabled={status === 'analyzing'} onClick={() => void runLabCommand('d')}>d</button>
-                      <button type="button" disabled={status === 'analyzing'} onClick={() => void runLabCommand('eval')}>eval</button>
+                      <button
+                        type="button"
+                        aria-label="Run display board command"
+                        disabled={status === 'analyzing'}
+                        onClick={() => void runLabCommand('d')}
+                      >
+                        d
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Run static evaluation command"
+                        disabled={status === 'analyzing'}
+                        onClick={() => void runLabCommand('eval')}
+                      >
+                        eval
+                      </button>
                       <button
                         type="button"
                         className="danger-lite"
@@ -3566,7 +3581,7 @@ function App() {
                       </div>
                     )}
                     {engineLabError && <p className="panel-copy small error-copy">{engineLabError}</p>}
-                    <pre className="engine-lab-output">
+                    <pre className="engine-lab-output" aria-label="UCI console output" aria-live="polite">
                       {(engineLabOutputLines.join('\n')) || 'No command output yet.'}
                     </pre>
                   </div>
