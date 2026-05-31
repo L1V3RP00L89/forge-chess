@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import type { GameNode } from '../hooks/useGameTree'
 import type { EvalSnapshot } from '../engine/analysis'
 import { exportAnnotatedPgn, type PgnExportOptions } from '../engine/pgn'
@@ -33,6 +33,9 @@ const DEFAULT_EXPORT_OPTIONS: Required<PgnExportOptions> = {
     includeEngineAnnotations: true,
     includeGlyphs: true,
 }
+const MAX_PGN_IMPORT_BYTES = 5 * 1024 * 1024
+const MAX_PGN_IMPORT_CHARS = 5_000_000
+const PGN_IMPORT_LIMIT_MESSAGE = 'PGN import supports one game up to 5 MB. Choose a smaller file or paste a single game.'
 
 export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, mainLineNodes, gameNodes, evaluations, pgnHeaders }: PgnDialogProps) {
     const [tab, setTab] = useState<'import' | 'fen' | 'export'>('import')
@@ -60,6 +63,11 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
     }, [onClose, resetFeedback])
 
     const handleImport = () => {
+        if (importText.length > MAX_PGN_IMPORT_CHARS) {
+            setError(PGN_IMPORT_LIMIT_MESSAGE)
+            return
+        }
+
         const result = onImport(importText)
         if (result.ok) {
             setImportText('')
@@ -81,6 +89,13 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
         if (!file) return
 
         resetFeedback()
+        if (file.size > MAX_PGN_IMPORT_BYTES) {
+            setImportFileName(null)
+            setError(PGN_IMPORT_LIMIT_MESSAGE)
+            input.value = ''
+            return
+        }
+
         try {
             const text = await file.text()
             setImportText(text)
@@ -108,15 +123,18 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
         setCopyStatus('idle')
     }
 
-    const exportText = tab === 'export'
-        ? exportAnnotatedPgn(
-            mainLineNodes,
-            evaluations,
-            pgnHeaders,
-            exportOptions.includeVariations ? gameNodes : undefined,
-            exportOptions,
-        )
-        : ''
+    const exportText = useMemo(
+        () => tab === 'export'
+            ? exportAnnotatedPgn(
+                mainLineNodes,
+                evaluations,
+                pgnHeaders,
+                exportOptions.includeVariations ? gameNodes : undefined,
+                exportOptions,
+            )
+            : '',
+        [evaluations, exportOptions, gameNodes, mainLineNodes, pgnHeaders, tab],
+    )
 
     const handleCopy = async () => {
         try {
