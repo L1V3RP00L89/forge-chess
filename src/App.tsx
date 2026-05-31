@@ -670,6 +670,7 @@ function App() {
   const activeImportSweepRef = useRef<ImportSweepTarget | null>(null)
   const activeImportSweepStartedRef = useRef(false)
   const samplePgnCacheRef = useRef<Map<string, string>>(new Map())
+  const sampleLoadSeqRef = useRef(0)
 
   // ── Evaluations ──────────────────────────────────────
   const [evaluationsByFen, setEvaluationsByFen] = useState<Map<string, EvalSnapshot>>(new Map())
@@ -2154,15 +2155,21 @@ function App() {
 
   const loadHistoricalSample = useCallback(
     async (sample: HistoricalSampleGame) => {
+      const requestId = sampleLoadSeqRef.current + 1
+      sampleLoadSeqRef.current = requestId
       setSampleLoadingId(sample.id)
       setSampleLoadError(null)
       try {
         const pgnText = await fetchSamplePgn(sample)
+        if (requestId !== sampleLoadSeqRef.current) return
         handlePgnImport(pgnText, { analyzeAfterLoad: true })
       } catch (error) {
+        if (requestId !== sampleLoadSeqRef.current) return
         setSampleLoadError(error instanceof Error ? error.message : 'Failed to load sample game.')
       } finally {
-        setSampleLoadingId(null)
+        if (requestId === sampleLoadSeqRef.current) {
+          setSampleLoadingId(null)
+        }
       }
     },
     [fetchSamplePgn, handlePgnImport],
