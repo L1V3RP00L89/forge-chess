@@ -3062,6 +3062,22 @@ body.resizing * {
     overflow: visible;
   }
 
+  .right .analysis-header {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.55rem 0.7rem;
+  }
+
+  .right .analysis-header h2 {
+    flex: 0 0 auto;
+  }
+
+  .right .analysis-tab-strip {
+    flex: 1;
+    min-width: 0;
+  }
+
   .bottom {
     position: relative !important;
     bottom: auto !important;
