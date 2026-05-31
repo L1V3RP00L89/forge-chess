@@ -47,9 +47,28 @@ export function useAiPlayer(enabled = true) {
     const workerRef = useRef<Worker | null>(null)
     const isReadyRef = useRef(false)
     const resolveRef = useRef<((move: string | null) => void) | null>(null)
+    const requestTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const [status, setStatus] = useState<AiStatus>('loading')
     const [profileName, setProfileName] = useState('Stockfish')
     const difficultyRef = useRef<AiDifficulty>(4)
+
+    const clearRequestTimeout = useCallback(() => {
+        if (!requestTimeoutRef.current) return
+        clearTimeout(requestTimeoutRef.current)
+        requestTimeoutRef.current = null
+    }, [])
+
+    const settleRequest = useCallback((move: string | null) => {
+        clearRequestTimeout()
+        const resolve = resolveRef.current
+        resolveRef.current = null
+        resolve?.(move)
+    }, [clearRequestTimeout])
+
+    const finishRequest = useCallback((move: string | null, nextStatus: AiStatus) => {
+        settleRequest(move)
+        setStatus(nextStatus)
+    }, [settleRequest])
 
     const applyDifficulty = useCallback((worker: Worker, difficulty: AiDifficulty) => {
         const elo = DIFFICULTY_ELO[difficulty]
@@ -71,8 +90,7 @@ export function useAiPlayer(enabled = true) {
         if (!enabled) {
             workerRef.current = null
             isReadyRef.current = false
-            resolveRef.current?.(null)
-            resolveRef.current = null
+            settleRequest(null)
             queueMicrotask(() => {
                 if (active) setStatus('disabled')
             })
@@ -110,10 +128,8 @@ export function useAiPlayer(enabled = true) {
 
             for (const line of lines) {
                 if (line.startsWith('__BOOT_ERROR__:')) {
-                    setStatus('error')
                     isReadyRef.current = false
-                    resolveRef.current?.(null)
-                    resolveRef.current = null
+                    finishRequest(null, 'error')
                     worker?.terminate()
                     workerRef.current = null
                     return
@@ -132,19 +148,15 @@ export function useAiPlayer(enabled = true) {
                 if (line.startsWith('bestmove ')) {
                     const parts = line.split(' ')
                     const move = parts[1] ?? null
-                    setStatus('ready')
-                    resolveRef.current?.(move === '(none)' ? null : move)
-                    resolveRef.current = null
+                    finishRequest(move === '(none)' ? null : move, 'ready')
                 }
             }
         }
 
         worker.onerror = () => {
             if (!active) return
-            setStatus('error')
             isReadyRef.current = false
-            resolveRef.current?.(null)
-            resolveRef.current = null
+            finishRequest(null, 'error')
         }
 
         worker.postMessage('uci')
@@ -155,11 +167,10 @@ export function useAiPlayer(enabled = true) {
             worker?.terminate()
             workerRef.current = null
             isReadyRef.current = false
-            resolveRef.current?.(null)
-            resolveRef.current = null
+            settleRequest(null)
             if (workerBlobUrl) URL.revokeObjectURL(workerBlobUrl)
         }
-    }, [applyDifficulty, enabled])
+    }, [applyDifficulty, enabled, finishRequest, settleRequest])
 
     const setDifficulty = useCallback((difficulty: AiDifficulty) => {
         difficultyRef.current = difficulty
@@ -177,16 +188,25 @@ export function useAiPlayer(enabled = true) {
             if (!worker || !isReadyRef.current || resolveRef.current) return Promise.resolve(null)
 
             return new Promise((resolve) => {
+                if (difficultyRef.current !== difficulty) {
+                    difficultyRef.current = difficulty
+                    applyDifficulty(worker, difficulty)
+                }
+
                 resolveRef.current = resolve
                 setStatus('thinking')
 
                 const movetime = DIFFICULTY_MOVETIME[difficulty]
+                requestTimeoutRef.current = setTimeout(() => {
+                    try { worker.postMessage('stop') } catch { /* worker may already be gone */ }
+                    finishRequest(null, 'ready')
+                }, movetime + 10_000)
                 worker.postMessage(`position fen ${fen}`)
                 // Per docs: "go movetime N" is the clean way to get a single best move
                 worker.postMessage(`go movetime ${movetime}`)
             })
         },
-        [enabled],
+        [applyDifficulty, enabled, finishRequest],
     )
 
     return { status, requestMove, setDifficulty, profileName }
