@@ -2451,7 +2451,7 @@ function App() {
                   <details className="advanced-settings" open>
                     <summary>Analyze controls</summary>
                     <div className="advanced-section">
-                      <div className="analysis-mode-pills">
+                      <div className="analysis-mode-pills" aria-label="Analysis search mode">
                         {([
                           { id: 'quick', label: 'Quick' },
                           { id: 'deep', label: 'Deep' },
@@ -2463,6 +2463,7 @@ function App() {
                             key={mode.id}
                             type="button"
                             className={`mode-pill ${analyzeMode === mode.id ? 'active' : ''}`}
+                            aria-pressed={analyzeMode === mode.id}
                             onClick={() => {
                               setActivePreset(null)
                               setAnalyzeMode(mode.id)
@@ -2780,7 +2781,7 @@ function App() {
                   <h3><span className="section-icon"><IconKing /></span> Historical Library</h3>
                   <span>{filteredSampleGames.length} games</span>
                 </header>
-                <div className="sample-filter-row">
+                <div className="sample-filter-row" aria-label="Historical game filter">
                   {([
                     { id: 'all', label: 'All' },
                     { id: 'classical', label: 'Classical' },
@@ -2790,6 +2791,7 @@ function App() {
                       key={filter.id}
                       type="button"
                       className={`mode-pill ${sampleFilter === filter.id ? 'active' : ''}`}
+                      aria-pressed={sampleFilter === filter.id}
                       onClick={() => setSampleFilter(filter.id)}
                     >
                       {filter.label}
@@ -3182,12 +3184,13 @@ function App() {
                   <div className="opening-intel-card">
                     <div className="opening-intel-head">
                       <h3><span className="section-icon"><IconBarChart /></span> Opening Intel</h3>
-                      <div className="opening-source-toggle">
+                      <div className="opening-source-toggle" aria-label="Opening database source">
                         {OPENING_SOURCES.map(source => (
                           <button
                             key={source}
                             type="button"
                             className={`mode-pill ${openingSource === source ? 'active' : ''}`}
+                            aria-pressed={openingSource === source}
                             onClick={() => setOpeningSource(source)}
                           >
                             {source === 'masters' ? 'Masters' : 'Lichess'}
@@ -3209,12 +3212,13 @@ function App() {
                     </label>
                     {openingSource === 'lichess' && (
                       <>
-                        <div className="opening-speed-toggle">
+                        <div className="opening-speed-toggle" aria-label="Lichess time controls">
                           {OPENING_SPEEDS.map(speed => (
                             <button
                               key={speed}
                               type="button"
                               className={`mode-pill ${openingSpeeds.includes(speed) ? 'active' : ''}`}
+                              aria-pressed={openingSpeeds.includes(speed)}
                               onClick={() => toggleOpeningSpeed(speed)}
                             >
                               {speed}
