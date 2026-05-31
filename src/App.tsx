@@ -2886,7 +2886,7 @@ function App() {
             >
               <summary
                 role="button"
-                aria-label="Open settings"
+                aria-label={settingsOpen ? 'Close settings' : 'Open settings'}
                 aria-expanded={settingsOpen}
                 aria-haspopup="dialog"
               >
