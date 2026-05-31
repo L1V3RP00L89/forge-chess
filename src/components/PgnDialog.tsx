@@ -251,6 +251,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                 onChange={e => {
                                     setFenText(e.target.value)
                                     setError(null)
+                                    setCopyStatus('idle')
                                 }}
                                 aria-invalid={Boolean(error)}
                             />
