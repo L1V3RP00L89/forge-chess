@@ -279,15 +279,26 @@
     -webkit-appearance: none;
     border: 0;
     padding: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tick::before {
+    content: "";
     width: 5px;
     height: 5px;
     border-radius: 50%;
     background: rgba(240, 246, 252, 0.14);
-    cursor: pointer;
     transition: background 150ms ease, transform 150ms ease;
 }
 
-.tick.active {
+.tick.active::before {
     background: var(--accent, #3fb950);
     transform: scale(1.4);
 }
