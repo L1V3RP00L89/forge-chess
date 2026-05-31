@@ -6,6 +6,14 @@ import { hasLegalKingPlacement } from './fen'
 const INITIAL_FEN = new Chess().fen()
 const PGN_TAG_NAME_PATTERN = /^[A-Za-z0-9_]+$/
 const VALID_PGN_RESULTS = new Set(['1-0', '0-1', '1/2-1/2', '*'])
+const QUALITY_EXPORT_LABELS: Record<NonNullable<GameNode['quality']>, string> = {
+    best: 'Best',
+    good: 'Good',
+    inaccuracy: 'Inaccuracy',
+    mistake: 'Mistake',
+    blunder: 'Blunder',
+    pending: 'Pending',
+}
 
 function sanitizePgnHeaderValue(value: string): string {
     return value
@@ -81,6 +89,8 @@ export function exportAnnotatedPgn(
             currentLine += `${moveNumber}... ${node.san} `
         }
 
+        const commentParts: string[] = []
+
         // Lookup evaluation
         const evaluation = evaluationsByFen.get(node.fen)
         if (evaluation) {
@@ -101,7 +111,15 @@ export function exportAnnotatedPgn(
                 evalStr = cpVal.toFixed(2)
             }
 
-            if (evalStr) currentLine += `{ [%eval ${evalStr}] } `
+            if (evalStr) commentParts.push(`[%eval ${evalStr}]`)
+        }
+
+        if (node.quality && node.quality !== 'pending') {
+            commentParts.push(QUALITY_EXPORT_LABELS[node.quality])
+        }
+
+        if (commentParts.length) {
+            currentLine += `{ ${commentParts.join('; ')} } `
         }
 
         // Wrap to ~80 chars

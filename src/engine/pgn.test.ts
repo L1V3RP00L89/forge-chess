@@ -116,6 +116,44 @@ describe('PGN export helpers', () => {
     expect(pgn).not.toContain('Infinity')
   })
 
+  it('exports reviewed move quality labels as PGN comments', () => {
+    const game = new Chess()
+    const move = game.move('e4')!
+    const fenAfterWhiteMove = game.fen()
+    const mainLine = [
+      {
+        id: 'root',
+        fen: new Chess().fen(),
+        move: null,
+        san: '',
+        uci: '',
+        parent: null,
+        children: ['n1'],
+      },
+      {
+        id: 'n1',
+        fen: fenAfterWhiteMove,
+        move,
+        san: move.san,
+        uci: 'e2e4',
+        parent: 'root',
+        children: [],
+        quality: 'best',
+      },
+    ] as unknown as GameNode[]
+
+    const pgn = exportAnnotatedPgn(
+      mainLine,
+      new Map([[fenAfterWhiteMove, { cp: -12 }]]),
+      { Result: '*' },
+    )
+    const loader = new Chess()
+    loader.loadPgn(pgn)
+
+    expect(pgn).toContain('{ [%eval 0.12]; Best }')
+    expect(loader.history()).toEqual(['e4'])
+  })
+
   it('sanitizes tag values and ignores invalid tag names when exporting', () => {
     const mainLine = [
       {
