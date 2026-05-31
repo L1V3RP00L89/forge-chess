@@ -724,6 +724,7 @@ function App() {
   const [engineLabCommand, setEngineLabCommand] = useState('')
   const [engineLabError, setEngineLabError] = useState<string | null>(null)
   const [engineLabOutputLines, setEngineLabOutputLines] = useState<string[]>([])
+  const [engineLabCopyStatus, setEngineLabCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
   const [expertModeEnabled, setExpertModeEnabled] = useState(persistedSettings.expertModeEnabled)
   const [labCommandHistory, setLabCommandHistory] = useState<string[]>(persistedSettings.labCommandHistory)
   const [lastLabRun, setLastLabRun] = useState<{ command: string; durationMs: number } | null>(null)
@@ -1699,6 +1700,7 @@ function App() {
       const startTime = performance.now()
       const outputLines = [`> ${trimmed}`]
       setEngineLabOutputLines(outputLines)
+      setEngineLabCopyStatus('idle')
       try {
         const lines = await sendCommand(trimmed, {
           stream: line => {
@@ -1721,6 +1723,7 @@ function App() {
   const clearLabConsole = useCallback(() => {
     setEngineLabOutputLines([])
     setEngineLabError(null)
+    setEngineLabCopyStatus('idle')
   }, [])
 
   const copyLabConsole = useCallback(async () => {
@@ -1728,8 +1731,10 @@ function App() {
       if (!engineLabOutputLines.length) return
       await navigator.clipboard.writeText(engineLabOutputLines.join('\n'))
       setEngineLabError(null)
-    } catch (error) {
-      setEngineLabError(error instanceof Error ? error.message : 'Failed to copy console output.')
+      setEngineLabCopyStatus('copied')
+    } catch {
+      setEngineLabCopyStatus('failed')
+      setEngineLabError('Clipboard access failed. Select the console output and copy it manually.')
     }
   }, [engineLabOutputLines])
 
@@ -4196,7 +4201,13 @@ function App() {
                         placeholder="go depth 16"
                       />
                       <button type="submit">Send</button>
-                      <button type="button" onClick={() => void copyLabConsole()}>Copy</button>
+                      <button
+                        type="button"
+                        onClick={() => void copyLabConsole()}
+                        disabled={!engineLabOutputLines.length}
+                      >
+                        {engineLabCopyStatus === 'copied' ? 'Copied' : 'Copy'}
+                      </button>
                       <button type="button" onClick={clearLabConsole}>Clear</button>
                     </form>
                     {lastLabRun && (
