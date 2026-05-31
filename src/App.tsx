@@ -43,6 +43,7 @@ import { parseFenShareHash } from './engine/shareLink'
 import type { TablebaseCategory, TablebaseMove, TablebaseResult } from './engine/tablebase'
 import { BOARD_SQUARES, describeBoardSquare, isBoardSquare } from './engine/boardAccessibility'
 import { isBoardInputLocked } from './engine/boardInput'
+import { selectCoachBestMove } from './engine/coach'
 import { isHeavyEngineLabCommand } from './engine/labCommands'
 import { defaultOrientationForGameMode } from './engine/playMode'
 import { useStockfishEngine } from './hooks/useStockfishEngine'
@@ -1435,18 +1436,29 @@ function App() {
       ? formatWhitePovEvaluation(fen, coachCloudScore.cp, coachCloudScore.mate)
       : evaluationsByFen.get(fen)
         ? formatWhitePovEvaluation(fen, evaluationsByFen.get(fen)?.cp, evaluationsByFen.get(fen)?.mate)
-        : '...'
-  const coachBestMove = coachLine?.pv[0] ?? currentCloudEval?.pvs[0]?.moves[0] ?? currentLastBestMove ?? null
+        : tablebase.result
+          ? tablebaseSummary(tablebase.result)
+          : '...'
+  const tablebaseTopMove = tablebase.result?.moves[0]?.uci ?? null
+  const coachBestMove = selectCoachBestMove({
+    engine: coachLine?.pv[0],
+    cloud: currentCloudEval?.pvs[0]?.moves[0],
+    last: currentLastBestMove,
+    tablebase: tablebaseTopMove,
+  })
   const coachBestMoveText = bestMoveLabel(fen, coachBestMove)
   const coachReplyMove = coachLine?.pv[1] ?? currentCloudEval?.pvs[0]?.moves[1] ?? currentLastPonderMove ?? null
   const coachReplyMoveText = ponderMoveLabel(fen, coachBestMove, coachReplyMove)
   const coachDepth = coachLine?.depth ?? currentCloudEval?.depth
+  const coachDepthLabel = coachDepth ? `D${coachDepth}` : tablebase.result ? 'TB exact' : status
   const engineTelemetry = engineTelemetryLabel(coachLine)
   const coachLineSan = coachLine
     ? pvToSan(coachLine.fen ?? fen, coachLine, 6)
     : currentCloudEval?.pvs[0]
       ? pvToSan(fen, { multipv: 1, depth: currentCloudEval.depth, pv: currentCloudEval.pvs[0].moves }, 6)
-      : ''
+      : tablebaseTopMove
+        ? bestMoveLabel(fen, tablebaseTopMove)
+        : ''
   const currentEngineBestUci = currentFenLines.find(line => line.multipv === 1)?.pv[0] ?? null
   const engineBookAgreement = currentEngineBestUci && openingTopBookMove
     ? currentEngineBestUci === openingTopBookMove.uci
@@ -1456,7 +1468,7 @@ function App() {
     coachBestMove,
     currentFenLines,
     openingTopBookMove?.uci,
-    tablebase.result?.moves[0]?.uci,
+    tablebaseTopMove,
   )
 
   const toggleOpeningSpeed = useCallback((speed: OpeningSpeed) => {
@@ -3585,7 +3597,7 @@ function App() {
                       </div>
                       <div>
                         <span>Depth</span>
-                        <strong>{coachDepth ? `D${coachDepth}` : status}</strong>
+                        <strong>{coachDepthLabel}</strong>
                       </div>
                     </div>
                     <p>{coachLineSan || 'Start analysis to get a candidate line.'}</p>
