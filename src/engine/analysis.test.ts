@@ -91,6 +91,31 @@ describe('review analysis helpers', () => {
     })
   })
 
+  it('reviews final checkmates without waiting for a terminal engine score', () => {
+    const game = new Chess()
+    const moves = [
+      game.move('f3')!,
+      game.move('e5')!,
+      game.move('g4')!,
+    ]
+    const beforeMateFen = game.fen()
+    moves.push(game.move('Qh4#')!)
+
+    const rows = buildReviewRows(
+      moves,
+      new Map([
+        [beforeMateFen, { cp: 10000, bestMove: 'd8h4', depth: 20, purpose: 'batch-review' }],
+      ]),
+    )
+
+    expect(rows.at(-1)).toMatchObject({
+      san: 'Qh4#',
+      quality: 'best',
+      confidence: 'deep',
+      deltaCp: 0,
+    })
+  })
+
   it('includes finite mate evaluations in the winrate graph', () => {
     const game = new Chess()
     const rootFen = game.fen()

@@ -161,6 +161,26 @@ function toUci(move: Move): string {
   return `${move.from}${move.to}${move.promotion ?? ''}`
 }
 
+function terminalEvaluationSnapshot(position: Chess): EvalSnapshot | null {
+  if (position.isCheckmate()) {
+    return {
+      cp: -10000,
+      purpose: 'batch-review',
+      mode: 'review',
+    }
+  }
+
+  if (position.isDraw()) {
+    return {
+      cp: 0,
+      purpose: 'batch-review',
+      mode: 'review',
+    }
+  }
+
+  return null
+}
+
 export function buildReviewRows(
   history: Move[],
   evaluationsByFen: Map<string, EvalSnapshot>,
@@ -176,7 +196,7 @@ export function buildReviewRows(
     const afterFen = replay.fen()
 
     const beforeSnapshot = evaluationsByFen.get(beforeFen)
-    const afterSnapshot = evaluationsByFen.get(afterFen)
+    const afterSnapshot = evaluationsByFen.get(afterFen) ?? terminalEvaluationSnapshot(replay)
     const before = beforeSnapshot ? scoreToCp(beforeSnapshot.cp, beforeSnapshot.mate) : undefined
     const after = afterSnapshot ? scoreToCp(afterSnapshot.cp, afterSnapshot.mate) : undefined
     const bestMove = beforeSnapshot?.bestMove
