@@ -2007,8 +2007,7 @@ body.resizing * {
 .cloud-line-row,
 .moves-list li,
 .mtree-row,
-.mtree-variation,
-.sample-game-row {
+.mtree-variation {
   contain: layout paint style;
   content-visibility: auto;
 }
@@ -2022,10 +2021,6 @@ body.resizing * {
 .mtree-row,
 .mtree-variation {
   contain-intrinsic-size: auto 36px;
-}
-
-.sample-game-row {
-  contain-intrinsic-size: auto 128px;
 }
 
 @media (hover: hover) and (pointer: fine) {
