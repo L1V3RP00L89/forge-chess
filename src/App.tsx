@@ -4130,7 +4130,7 @@ function App() {
               onPrev={goPrev}
               onNext={goNext}
               onLast={goLast}
-              gameMode={gameMode}
+              aiActive={playEngineActive}
               paused={paused}
               isGameOver={game.isGameOver()}
               stepMode={aiSpeed === 'step'}

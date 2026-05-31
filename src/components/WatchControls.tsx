@@ -1,4 +1,3 @@
-import type { GameMode } from './NewGameDialog'
 import type { AiSpeed } from './aiSpeed'
 import { IconSkipBack, IconChevronLeft, IconChevronRight, IconSkipForward, IconStepForward, IconPlay, IconPause } from './icons'
 
@@ -11,7 +10,7 @@ type Props = {
     onNext: () => void
     onLast: () => void
     // play/pause (AI modes)
-    gameMode: GameMode
+    aiActive: boolean
     paused: boolean
     isGameOver: boolean
     stepMode: boolean
@@ -37,7 +36,7 @@ export function WatchControls({
     onPrev,
     onNext,
     onLast,
-    gameMode,
+    aiActive,
     paused,
     isGameOver,
     stepMode,
@@ -47,8 +46,6 @@ export function WatchControls({
     aiSpeed,
     onSpeedChange,
 }: Props) {
-    const aiActive = gameMode !== 'human-vs-human'
-
     return (
         <div className="watch-controls">
             {/* ── Navigation ── */}
