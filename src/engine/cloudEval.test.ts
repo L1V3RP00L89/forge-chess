@@ -119,4 +119,64 @@ describe('cloud eval parsing', () => {
     })
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
+
+  it('hydrates valid cloud eval responses from browser storage', async () => {
+    const request = { fen: '8/8/8/8/8/8/7K/6k1 w - - 0 1', multiPv: 1 }
+    const payload = {
+      fen: normalizeCloudEvalFen(request.fen),
+      knodes: 77,
+      depth: 33,
+      fetchedAt: 1_700_000_000_000,
+      pvs: [{ moves: ['h2g2'], cp: 12 }],
+    }
+    const localStorageMock = {
+      getItem: vi.fn(() => JSON.stringify({
+        [cloudEvalRequestKey(request)]: {
+          expiresAt: Date.now() + 60_000,
+          payload,
+        },
+      })),
+      setItem: vi.fn(),
+    }
+    const fetchMock = vi.fn()
+
+    vi.stubGlobal('window', { localStorage: localStorageMock })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchCloudEvaluation(request)).resolves.toEqual(payload)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('ignores malformed browser storage entries before fetching fresh cloud evals', async () => {
+    const request = { fen: '8/8/8/8/8/8/6K1/7k w - - 0 1', multiPv: 1 }
+    const freshPayload = {
+      fen: normalizeCloudEvalFen(request.fen),
+      knodes: 8,
+      depth: 8,
+      pvs: [{ moves: 'g2g3', cp: 0 }],
+    }
+    const localStorageMock = {
+      getItem: vi.fn(() => JSON.stringify({
+        [cloudEvalRequestKey(request)]: {
+          expiresAt: Date.now() + 60_000,
+          payload: { fen: request.fen, pvs: [{ moves: 'not-an-array', cp: Number.NaN }] },
+        },
+      })),
+      setItem: vi.fn(),
+    }
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => freshPayload,
+    })
+
+    vi.stubGlobal('window', { localStorage: localStorageMock })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchCloudEvaluation(request)).resolves.toMatchObject({
+      depth: 8,
+      knodes: 8,
+      pvs: [{ moves: ['g2g3'], cp: 0 }],
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
 })
