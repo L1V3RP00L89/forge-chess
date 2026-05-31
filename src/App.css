@@ -1248,6 +1248,16 @@ body.resizing * {
   background: var(--danger);
 }
 
+.status.disabled,
+.status.standby {
+  color: var(--text-tertiary);
+}
+
+.status.disabled::before,
+.status.standby::before {
+  background: var(--text-tertiary);
+}
+
 @keyframes pulse-dot {
 
   0%,

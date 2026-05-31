@@ -341,6 +341,10 @@ function formatCompactNumber(value: number): string {
   return String(value)
 }
 
+function countLabel(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : plural}`
+}
+
 function engineTelemetryLabel(line: { depth?: number; nodes?: number; nps?: number; time?: number } | null | undefined): string | null {
   if (!line) return null
 
@@ -610,6 +614,7 @@ function App() {
   const [leftWidth, setLeftWidth] = useState(320)
   const [rightWidth, setRightWidth] = useState(320)
   const [bottomPanelOpen, setBottomPanelOpen] = useState(true)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight })
 
   // ── Engine settings ──────────────────────────────────
@@ -1443,6 +1448,7 @@ function App() {
 
   const handleWorkspaceModeChange = useCallback((mode: WorkspaceMode) => {
     if (mode === 'analysis') pause()
+    setSettingsOpen(false)
     setWorkspaceMode(mode)
   }, [pause])
 
@@ -2213,6 +2219,14 @@ function App() {
     : gameMode === 'human-vs-ai'
       ? 'Human vs AI'
       : 'AI vs AI'
+  const bottomStatusTitle = engineEnabled
+    ? profileMessage
+    : 'Engine is on standby in Play mode. Switch to Analysis mode for Stockfish analysis.'
+  const bottomStatusPrefix = engineEnabled
+    ? `${engineName} · ${activeProfile.name} ·`
+    : `${gameModeLabel} ·`
+  const bottomStatusText = engineEnabled ? status : 'Engine standby'
+  const bottomStatusClass = engineEnabled ? status : 'standby'
 
   // ─────────────────────────────────────────────────────
   return (
@@ -2280,18 +2294,29 @@ function App() {
 
             <span className="toolbar-divider desktop-only" />
 
-            <details className="settings-menu">
-              <summary><span className="btn-icon"><IconSettings /></span> Settings</summary>
+            <details
+              className="settings-menu"
+              open={settingsOpen}
+              onToggle={event => setSettingsOpen(event.currentTarget.open)}
+            >
+              <summary
+                role="button"
+                aria-label="Open settings"
+                aria-expanded={settingsOpen}
+                aria-haspopup="dialog"
+              >
+                <span className="btn-icon"><IconSettings /></span> Settings
+              </summary>
               <div className="settings-backdrop" onClick={(e) => {
-                const details = e.currentTarget.closest('details');
-                if (details) details.removeAttribute('open');
+                e.preventDefault()
+                setSettingsOpen(false)
               }}></div>
               <div className="settings-body">
                 <div className="settings-header">
                   <h2>Settings</h2>
                   <button type="button" className="settings-close-btn" onClick={(e) => {
-                    const details = e.currentTarget.closest('details');
-                    if (details) details.removeAttribute('open');
+                    e.preventDefault()
+                    setSettingsOpen(false)
                   }}>
                     Done
                   </button>
@@ -2625,7 +2650,7 @@ function App() {
               <section className="analytics-card">
                 <header className="section-heading">
                   <h3><span className="section-icon"><IconBarChart /></span> WDL Trend</h3>
-                  {wdlPoints.length > 0 && <strong>{wdlPoints.length} plies</strong>}
+                  {wdlPoints.length > 0 && <strong>{countLabel(wdlPoints.length, 'point')}</strong>}
                 </header>
                 <WdlProgressGraph
                   points={wdlPoints}
@@ -3488,8 +3513,8 @@ function App() {
             />
 
             <div className="bottom-status-row">
-              <span className="bottom-engine-info" title={profileMessage}>
-                {engineName} · {activeProfile.name} · <strong className={`status ${status}`}>{status}</strong>
+              <span className="bottom-engine-info" title={bottomStatusTitle}>
+                {bottomStatusPrefix} <strong className={`status ${bottomStatusClass}`}>{bottomStatusText}</strong>
               </span>
               {activeGoCommand && (
                 <span className="engine-command-inline">{activeGoCommand}</span>
