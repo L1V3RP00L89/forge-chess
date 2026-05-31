@@ -3664,6 +3664,9 @@ const ReviewMoveList = memo(function ReviewMoveList({ rows, nodes, currentNodeId
         const node = nodes[row.ply]
         const movePrefix = row.sideToMove === 'w' ? `${row.moveNumber}.` : `${row.moveNumber}...`
         const isCurrentReviewMove = node?.id === currentNodeId
+        const qualityLabel = REVIEW_LABELS[row.quality]
+        const impactLabel = reviewImpactLabel(row.deltaCp)
+        const confidenceLabel = reviewConfidenceLabel(row.confidence, row.evalDepth)
 
         return (
           <li key={`${row.ply}-${row.uci}`} className={`quality-${row.quality}`}>
@@ -3672,7 +3675,7 @@ const ReviewMoveList = memo(function ReviewMoveList({ rows, nodes, currentNodeId
               className={`review-move-row ${isCurrentReviewMove ? 'active' : ''}`}
               disabled={!node}
               aria-current={isCurrentReviewMove ? 'true' : undefined}
-              aria-label={`Go to ${movePrefix} ${row.san}`}
+              aria-label={`Go to ${movePrefix} ${row.san}: ${qualityLabel}, ${impactLabel}, ${confidenceLabel}`}
               onClick={() => {
                 if (node) onSelectNode(node)
               }}
@@ -3680,11 +3683,11 @@ const ReviewMoveList = memo(function ReviewMoveList({ rows, nodes, currentNodeId
               <span className="move-index">{movePrefix}</span>
               <strong>{row.san}</strong>
               <span className="move-uci">{row.uci}</span>
-              <span className="move-impact">{reviewImpactLabel(row.deltaCp)}</span>
+              <span className="move-impact">{impactLabel}</span>
               <span className={`move-confidence confidence-${row.confidence}`}>
-                {reviewConfidenceLabel(row.confidence, row.evalDepth)}
+                {confidenceLabel}
               </span>
-              <span className="move-quality">{REVIEW_LABELS[row.quality]}</span>
+              <span className="move-quality">{qualityLabel}</span>
             </button>
           </li>
         )
