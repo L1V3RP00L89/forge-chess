@@ -1331,6 +1331,8 @@ body.resizing * {
 }
 
 .analysis-tab-btn {
+  min-height: 32px;
+  box-sizing: border-box;
   border: 1px solid var(--border-subtle);
   background: rgba(255, 255, 255, 0.035);
   color: var(--text-secondary);
