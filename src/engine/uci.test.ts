@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { buildAnalyzeCommand, buildNewGameCommands, normalizeUciMoves, parseBestMoveLine } from './uci'
+import { buildAnalyzeCommand, buildNewGameCommands, normalizeUciMoves, parseBestMoveLine, parseUciMoveListInput } from './uci'
 
 describe('UCI helpers', () => {
   it('normalizes UCI moves and keeps promotions', () => {
     expect(normalizeUciMoves([' E2E4 ', 'bad', 'a7a8Q', 'h2h9'])).toEqual(['e2e4', 'a7a8q'])
+  })
+
+  it('parses searchmoves text into valid UCI moves and invalid tokens', () => {
+    expect(parseUciMoveListInput(' E2E4, Nf3 a7a8Q h2h9  c7c5 ')).toEqual({
+      validMoves: ['e2e4', 'a7a8q', 'c7c5'],
+      invalidTokens: ['Nf3', 'h2h9'],
+    })
+    expect(parseUciMoveListInput('')).toEqual({ validMoves: [], invalidTokens: [] })
   })
 
   it('builds position, options, and go commands from an analyze request', () => {

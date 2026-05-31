@@ -1214,6 +1214,11 @@ body.resizing * {
   box-shadow: 0 0 0 2px var(--accent-subtle);
 }
 
+.engine-option-row input[aria-invalid="true"] {
+  border-color: rgba(248, 81, 73, 0.76);
+  box-shadow: 0 0 0 2px rgba(248, 81, 73, 0.16);
+}
+
 .panel button:disabled,
 .panel input:disabled,
 .panel select:disabled {

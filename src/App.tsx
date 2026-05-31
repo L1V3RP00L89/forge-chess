@@ -34,7 +34,7 @@ import {
   type OpeningExplorerMove,
   type OpeningSpeed,
 } from './engine/openingExplorer'
-import type { AnalyzeMode, UciGoLimits } from './engine/uci'
+import { parseUciMoveListInput, type AnalyzeMode, type UciGoLimits } from './engine/uci'
 import { flattenPgnMainLine, parsePgnMoveTree } from './engine/pgn'
 import { hasLegalKingPlacement } from './engine/fen'
 import {
@@ -121,6 +121,7 @@ const IMPORT_SWEEP_MULTIPV = 1
 const AUTO_ANALYZE_DEBOUNCE_MS = 140
 const REVIEW_BOOK_PREFETCH_LIMIT = 30
 const REVIEW_BOOK_VISIBLE_LIMIT = 14
+const SEARCH_MOVES_HELP_ID = 'search-moves-help'
 
 const analyzePresets: Array<{ id: AnalyzePresetId; label: string; summary: string }> = [
   { id: 'blunder-check', label: 'Fast Blunder Check', summary: 'Quick scan after each move.' },
@@ -1434,14 +1435,10 @@ function App() {
     status,
   ])
 
-  const parsedSearchMoves = useMemo(
-    () =>
-      searchMovesInput
-        .split(/[,\s]+/g)
-        .map(move => move.trim())
-        .filter(Boolean),
-    [searchMovesInput],
-  )
+  const parsedSearchMoveInput = useMemo(() => parseUciMoveListInput(searchMovesInput), [searchMovesInput])
+  const parsedSearchMoves = parsedSearchMoveInput.validMoves
+  const invalidSearchMoveTokens = parsedSearchMoveInput.invalidTokens
+  const invalidSearchMovePreview = invalidSearchMoveTokens.slice(0, 3).join(', ')
   const openingTotals = openingExplorer.data
     ? {
       white: openingExplorer.data.white,
@@ -3091,8 +3088,21 @@ function App() {
                               value={searchMovesInput}
                               onChange={e => setSearchMovesInput(e.target.value)}
                               placeholder="e2e4 g1f3"
+                              aria-describedby={SEARCH_MOVES_HELP_ID}
+                              aria-invalid={invalidSearchMoveTokens.length ? true : undefined}
                             />
                           </label>
+                          <p
+                            id={SEARCH_MOVES_HELP_ID}
+                            className={`panel-copy small ${invalidSearchMoveTokens.length ? 'warning-copy' : 'command-summary'}`}
+                            role={invalidSearchMoveTokens.length ? 'alert' : undefined}
+                          >
+                            {invalidSearchMoveTokens.length
+                              ? `Ignoring invalid UCI ${invalidSearchMoveTokens.length === 1 ? 'move' : 'moves'}: ${invalidSearchMovePreview}${invalidSearchMoveTokens.length > 3 ? '...' : ''}`
+                              : parsedSearchMoves.length
+                                ? `Search limited to ${parsedSearchMoves.join(' ')}.`
+                                : 'Optional: limit Stockfish to candidate moves like e2e4 or g1f3.'}
+                          </p>
                           <label className="switch-control">
                             <input
                               type="checkbox"
@@ -3884,7 +3894,7 @@ function App() {
                         )}
                         {openingTopMoves.length > 0 && (
                           <button type="button" onClick={applyBookMovesToSearch}>
-                            Use Top Book Moves As `searchmoves`
+                            Analyze top book moves
                           </button>
                         )}
                       </>

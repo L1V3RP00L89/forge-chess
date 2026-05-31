@@ -46,6 +46,11 @@ export type ParsedBestMove = {
   ponderMove: string | null
 }
 
+export type ParsedUciMoveList = {
+  validMoves: string[]
+  invalidTokens: string[]
+}
+
 const UCI_MOVE_REGEX = /^[a-h][1-8][a-h][1-8][qrbn]?$/i
 
 function toPositiveInt(value: unknown): number | undefined {
@@ -69,6 +74,25 @@ export function isUciMove(move: string): boolean {
 export function normalizeUciMoves(moves: string[] | undefined): string[] {
   if (!moves?.length) return []
   return moves.map(move => move.trim().toLowerCase()).filter(isUciMove)
+}
+
+export function parseUciMoveListInput(input: string): ParsedUciMoveList {
+  const tokens = input
+    .split(/[,\s]+/g)
+    .map(move => move.trim())
+    .filter(Boolean)
+
+  return tokens.reduce<ParsedUciMoveList>(
+    (parsed, token) => {
+      if (isUciMove(token)) {
+        parsed.validMoves.push(token.toLowerCase())
+      } else {
+        parsed.invalidTokens.push(token)
+      }
+      return parsed
+    },
+    { invalidTokens: [], validMoves: [] },
+  )
 }
 
 export function buildPositionCommand(fen: string, historyMoves?: string[], rootFen?: string): string {
