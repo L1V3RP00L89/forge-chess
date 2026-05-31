@@ -51,6 +51,7 @@ import { useOpening } from './hooks/useOpening'
 import { useCloudEvaluation } from './hooks/useCloudEvaluation'
 import { useOpeningExplorer } from './hooks/useOpeningExplorer'
 import { useTablebase } from './hooks/useTablebase'
+import { ANALYSIS_SETTINGS_STORAGE_KEY } from './storageKeys'
 import type { GameMode, PlayerColor } from './components/NewGameDialog'
 import { WatchControls } from './components/WatchControls'
 import { AI_SPEED_MS, type AiSpeed } from './components/aiSpeed'
@@ -77,7 +78,6 @@ type SampleLibraryFilter = 'all' | HistoricalSampleFormat
 type PromotionPiece = 'q' | 'r' | 'b' | 'n'
 type PendingPromotion = { from: Square; to: Square }
 
-const ANALYSIS_SETTINGS_STORAGE_KEY = 'webchess:analysis-settings:v1'
 const LICHESS_TOKEN_PAGE_URL = 'https://lichess.org/account/oauth/token'
 const SAMPLE_PGN_CACHE_LIMIT = 12
 const DEFAULT_LEFT_PANEL_WIDTH = 320
