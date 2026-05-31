@@ -688,6 +688,7 @@ function App() {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null)
   const [legalTargets, setLegalTargets] = useState<Square[]>([])
   const [pendingPromotion, setPendingPromotion] = useState<PendingPromotion | null>(null)
+  const promotionDialogRef = useRef<HTMLDivElement>(null)
 
   // ── AI speed (throttle delay between AI moves) ───────
   const [aiSpeed, setAiSpeed] = useState<AiSpeed>('normal')
@@ -2067,6 +2068,26 @@ function App() {
     setPendingPromotion(null)
   }, [])
 
+  useEffect(() => {
+    if (!pendingPromotion) return
+
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    const firstButton = promotionDialogRef.current?.querySelector<HTMLButtonElement>('button')
+    firstButton?.focus()
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setPendingPromotion(null)
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      previouslyFocused?.focus?.()
+    }
+  }, [pendingPromotion])
+
   // ── New game ──────────────────────────────────────────
   const openNewGameDialog = () => setShowNewGameDialog(true)
   const openPgnDialog = () => setShowPgnDialog(true)
@@ -3043,8 +3064,15 @@ function App() {
                   }}
                 />
                 {pendingPromotion && (
-                  <div className="promotion-overlay" role="dialog" aria-modal="true" aria-label="Choose promotion piece">
-                    <div className="promotion-chooser">
+                  <div
+                    className="promotion-overlay"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Choose promotion piece"
+                    ref={promotionDialogRef}
+                    onClick={cancelPromotion}
+                  >
+                    <div className="promotion-chooser" onClick={event => event.stopPropagation()}>
                       {PROMOTION_OPTIONS.map(option => (
                         <button
                           key={option.piece}
