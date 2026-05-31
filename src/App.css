@@ -137,12 +137,13 @@ body.resizing * {
   select,
   textarea,
   a,
-  [role="button"]):focus-visible {
+  [role="button"],
+  [role="separator"]):focus-visible {
   outline: 2px solid var(--info);
   outline-offset: 2px;
 }
 
-.app-shell :is(button, summary, input, select, textarea, a, [role="button"]):focus:not(:focus-visible) {
+.app-shell :is(button, summary, input, select, textarea, a, [role="button"], [role="separator"]):focus:not(:focus-visible) {
   outline: none;
 }
 

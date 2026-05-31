@@ -2247,8 +2247,77 @@ function App() {
 
   // ── Resize ────────────────────────────────────────────
   const MIN_WIDTH = 60
+  const MAX_SIDE_PANEL_WIDTH = 600
   const DEFAULT_LEFT = 320
   const DEFAULT_RIGHT = 320
+  const keyboardResizeStep = 40
+
+  const activateOnKeyboard = (event: ReactKeyboardEvent<HTMLElement>, action: () => void) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    action()
+  }
+
+  const clampSidePanelWidth = (width: number) => (width < MIN_WIDTH ? 0 : Math.min(width, MAX_SIDE_PANEL_WIDTH))
+
+  const toggleTopPanel = () => setTopPanelOpen(value => !value)
+  const toggleBottomPanel = () => setBottomPanelOpen(value => !value)
+  const toggleLeftPanel = () => setLeftWidth(value => (value === 0 ? DEFAULT_LEFT : 0))
+  const toggleRightPanel = () => setRightWidth(value => (value === 0 ? DEFAULT_RIGHT : 0))
+
+  const handleLeftResizeKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      toggleLeftPanel()
+      return
+    }
+    if (event.key === 'Home') {
+      event.preventDefault()
+      setLeftWidth(0)
+      return
+    }
+    if (event.key === 'End') {
+      event.preventDefault()
+      setLeftWidth(DEFAULT_LEFT)
+      return
+    }
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault()
+      setLeftWidth(value => clampSidePanelWidth(value - keyboardResizeStep))
+      return
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault()
+      setLeftWidth(value => clampSidePanelWidth(value + keyboardResizeStep))
+    }
+  }
+
+  const handleRightResizeKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      toggleRightPanel()
+      return
+    }
+    if (event.key === 'Home') {
+      event.preventDefault()
+      setRightWidth(0)
+      return
+    }
+    if (event.key === 'End') {
+      event.preventDefault()
+      setRightWidth(DEFAULT_RIGHT)
+      return
+    }
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault()
+      setRightWidth(value => clampSidePanelWidth(value + keyboardResizeStep))
+      return
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault()
+      setRightWidth(value => clampSidePanelWidth(value - keyboardResizeStep))
+    }
+  }
 
   const startLeftResize = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -2257,7 +2326,7 @@ function App() {
     const startW = leftWidth
     const onMove = (mv: MouseEvent) => {
       const w = startW + mv.clientX - startX
-      setLeftWidth(w < MIN_WIDTH ? 0 : Math.min(w, 600))
+      setLeftWidth(clampSidePanelWidth(w))
     }
     const onUp = () => {
       document.body.classList.remove('resizing')
@@ -2275,7 +2344,7 @@ function App() {
     const startW = rightWidth
     const onMove = (mv: MouseEvent) => {
       const w = startW - (mv.clientX - startX)
-      setRightWidth(w < MIN_WIDTH ? 0 : Math.min(w, 600))
+      setRightWidth(clampSidePanelWidth(w))
     }
     const onUp = () => {
       document.body.classList.remove('resizing')
@@ -2705,8 +2774,16 @@ function App() {
             </details>
           </div>
         </div>
-        <div className="resize-handle resize-handle-bottom"
-          onClick={() => setTopPanelOpen(!topPanelOpen)} title="Toggle top bar">
+        <div
+          className="resize-handle resize-handle-bottom"
+          role="button"
+          tabIndex={0}
+          aria-expanded={topPanelOpen}
+          aria-label={topPanelOpen ? 'Collapse top bar' : 'Expand top bar'}
+          onClick={toggleTopPanel}
+          onKeyDown={event => activateOnKeyboard(event, toggleTopPanel)}
+          title="Toggle top bar"
+        >
           <span className="resize-pill horizontal" />
         </div>
       </section>
@@ -2714,9 +2791,20 @@ function App() {
       <div className="main-container">
         {/* ── Left panel (winrate graph) ── */}
         <section className="panel left" style={{ width: leftWidth }}>
-          <div className="resize-handle resize-handle-right" onMouseDown={startLeftResize}
+          <div
+            className="resize-handle resize-handle-right"
+            role="separator"
+            tabIndex={0}
+            aria-label="Resize left panel"
+            aria-orientation="vertical"
+            aria-valuemin={0}
+            aria-valuemax={MAX_SIDE_PANEL_WIDTH}
+            aria-valuenow={leftWidth}
+            onMouseDown={startLeftResize}
             onClick={() => { if (leftWidth === 0) setLeftWidth(DEFAULT_LEFT) }}
-            title="Drag to resize · click to expand">
+            onKeyDown={handleLeftResizeKeyDown}
+            title="Drag to resize · click to expand"
+          >
             <span className="resize-pill" />
           </div>
           <div className="panel-inner" style={{ opacity: (!isMobile && leftWidth === 0) ? 0 : 1 }}>
@@ -2960,9 +3048,20 @@ function App() {
 
         {/* ── Right panel ── */}
         <aside className="panel right" style={{ width: rightWidth }}>
-          <div className="resize-handle resize-handle-left" onMouseDown={startRightResize}
+          <div
+            className="resize-handle resize-handle-left"
+            role="separator"
+            tabIndex={0}
+            aria-label="Resize right panel"
+            aria-orientation="vertical"
+            aria-valuemin={0}
+            aria-valuemax={MAX_SIDE_PANEL_WIDTH}
+            aria-valuenow={rightWidth}
+            onMouseDown={startRightResize}
             onClick={() => { if (rightWidth === 0) setRightWidth(DEFAULT_RIGHT) }}
-            title="Drag to resize · click to expand">
+            onKeyDown={handleRightResizeKeyDown}
+            title="Drag to resize · click to expand"
+          >
             <span className="resize-pill" />
           </div>
           <div className="panel-inner" style={{ opacity: (!isMobile && rightWidth === 0) ? 0 : 1 }}>
@@ -3611,8 +3710,16 @@ function App() {
 
       {/* ── Bottom bar ── */}
       <section className={`panel bottom ${bottomPanelOpen ? '' : 'hidden'}`}>
-        <div className="resize-handle resize-handle-top"
-          onClick={() => setBottomPanelOpen(!bottomPanelOpen)} title="Toggle bottom bar">
+        <div
+          className="resize-handle resize-handle-top"
+          role="button"
+          tabIndex={0}
+          aria-expanded={bottomPanelOpen}
+          aria-label={bottomPanelOpen ? 'Collapse bottom bar' : 'Expand bottom bar'}
+          onClick={toggleBottomPanel}
+          onKeyDown={event => activateOnKeyboard(event, toggleBottomPanel)}
+          title="Toggle bottom bar"
+        >
           <span className="resize-pill horizontal" />
         </div>
         <div className="panel-inner">
