@@ -389,10 +389,12 @@
     .dialog-panel {
         max-width: none;
         width: 100%;
+        max-height: calc(100dvh - env(safe-area-inset-top) - 0.5rem);
         border-radius: var(--radius-xl, 16px) var(--radius-xl, 16px) 0 0;
         border-left: 0;
         border-right: 0;
         border-bottom: 0;
+        overflow-y: auto;
     }
 
     .dialog-body {
@@ -418,8 +420,13 @@
     }
 
     .dialog-actions {
+        position: sticky;
+        bottom: 0;
         padding-left: 1rem;
         padding-right: 1rem;
+        padding-bottom: calc(1.2rem + env(safe-area-inset-bottom));
+        background: var(--bg-surface, #161b22);
+        z-index: 2;
     }
 }
 
