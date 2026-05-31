@@ -1879,10 +1879,13 @@ function App() {
   // ── Move quality → annotate tree nodes ───────────────
   const setTreeNodeQualities = gameTree.setNodeQualities
   useEffect(() => {
-    const qualityUpdates = reviewRows.flatMap((row, idx) => {
+    const qualityUpdates = reviewRows.flatMap((row, idx): Array<{ id: string; quality?: ReviewLabel }> => {
       const node = mainLineNodes[idx + 1]
-      if (!node || row.quality === 'pending') return []
-      return [{ id: node.id, quality: row.quality }]
+      if (!node) return []
+      return [{
+        id: node.id,
+        quality: row.quality === 'pending' ? undefined : row.quality,
+      }]
     })
     setTreeNodeQualities(qualityUpdates)
   }, [mainLineNodes, reviewRows, setTreeNodeQualities])
