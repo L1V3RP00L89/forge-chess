@@ -941,16 +941,17 @@ function App() {
       const first = currentFocusable[0]
       const last = currentFocusable[currentFocusable.length - 1]
       const active = document.activeElement as HTMLElement | null
+      const activeIsFocusable = active ? currentFocusable.includes(active) : false
 
       if (event.shiftKey) {
-        if (active === first || !panelEl.contains(active)) {
+        if (active === first || !activeIsFocusable) {
           event.preventDefault()
           last.focus()
         }
         return
       }
 
-      if (active === last || !panelEl.contains(active)) {
+      if (active === last || !activeIsFocusable) {
         event.preventDefault()
         first.focus()
       }
@@ -2231,16 +2232,17 @@ function App() {
       const first = currentFocusable[0]
       const last = currentFocusable[currentFocusable.length - 1]
       const active = document.activeElement as HTMLElement | null
+      const activeIsFocusable = active ? currentFocusable.includes(active) : false
 
       if (event.shiftKey) {
-        if (active === first || !dialogEl.contains(active)) {
+        if (active === first || !activeIsFocusable) {
           event.preventDefault()
           last.focus()
         }
         return
       }
 
-      if (active === last || !dialogEl.contains(active)) {
+      if (active === last || !activeIsFocusable) {
         event.preventDefault()
         first.focus()
       }
