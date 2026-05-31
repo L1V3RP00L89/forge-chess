@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useRef } from 'react'
+import React, { memo, useEffect, useId, useRef } from 'react'
 import type { GameTreeHandle, GameNode } from '../hooks/useGameTree'
 import { IconPawn, IconBranch } from './icons'
 
@@ -46,6 +46,7 @@ function scrollWithinMoveList(container: HTMLElement, element: HTMLElement) {
 export const MoveListTree = memo(function MoveListTree({ tree, onNavigate }: Props) {
     const { current, mainLine, nodesSnapshot, navigateTo } = tree
     const scrollRef = useRef<HTMLDivElement>(null)
+    const commentId = useId()
 
     const line = mainLine()
 
@@ -167,10 +168,17 @@ export const MoveListTree = memo(function MoveListTree({ tree, onNavigate }: Pro
             <div className="mtree-scroll" ref={scrollRef} tabIndex={-1}>
                 {rows}
             </div>
-            {current.comment && (
+            {current.move && (
                 <aside className="mtree-current-comment" aria-label="Current move comment">
-                    <span>Comment</span>
-                    <p>{current.comment}</p>
+                    <label htmlFor={commentId}>Move note</label>
+                    <textarea
+                        id={commentId}
+                        className="mtree-comment-input"
+                        value={current.comment ?? ''}
+                        onChange={event => tree.setNodeComment(current.id, event.target.value)}
+                        rows={3}
+                        placeholder="Add a note"
+                    />
                 </aside>
             )}
         </>

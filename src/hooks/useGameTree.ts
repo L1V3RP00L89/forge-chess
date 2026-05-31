@@ -280,6 +280,24 @@ export function useGameTree(startFen?: string) {
         publishTree({ ...tree, nodes: nextNodes })
     }, [publishTree])
 
+    /** Attach or clear a user comment on a specific node. */
+    const setNodeComment = useCallback((id: string, comment: string) => {
+        const tree = treeRef.current
+        const node = tree.nodes.get(id)
+        if (!node || !node.move) return
+
+        const normalized = comment.trim() ? comment : ''
+        if ((node.comment ?? '') === normalized) return
+
+        const nextNode = { ...node }
+        if (normalized) nextNode.comment = normalized
+        else delete nextNode.comment
+
+        const nextNodes = new Map(tree.nodes)
+        nextNodes.set(id, nextNode)
+        publishTree({ ...tree, nodes: nextNodes })
+    }, [publishTree])
+
     /** Attach quality labels to many nodes in one tree publish. */
     const setNodeQualities = useCallback((updates: Array<{ id: string; quality?: ReviewLabel }>) => {
         if (!updates.length) return
@@ -334,6 +352,7 @@ export function useGameTree(startFen?: string) {
         goBack,
         goForward,
         setNodeQuality,
+        setNodeComment,
         setNodeQualities,
         reset,
     }), [
@@ -352,6 +371,7 @@ export function useGameTree(startFen?: string) {
         reset,
         root,
         setNodeQuality,
+        setNodeComment,
         setNodeQualities,
         tick,
     ])

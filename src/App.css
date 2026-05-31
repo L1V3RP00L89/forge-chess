@@ -3750,7 +3750,7 @@ body.resizing * {
   color: var(--text-secondary);
 }
 
-.mtree-current-comment span {
+.mtree-current-comment label {
   display: block;
   margin-bottom: 0.25rem;
   color: var(--text-muted);
@@ -3761,10 +3761,24 @@ body.resizing * {
   text-transform: uppercase;
 }
 
-.mtree-current-comment p {
-  margin: 0;
+.mtree-comment-input {
+  display: block;
+  width: 100%;
+  min-height: 4.6rem;
+  resize: vertical;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font: inherit;
   font-size: 0.78rem;
   line-height: 1.45;
+  padding: 0.45rem 0.5rem;
+  box-sizing: border-box;
+}
+
+.mtree-comment-input::placeholder {
+  color: var(--text-muted);
 }
 
 /* Interactive Active States */
