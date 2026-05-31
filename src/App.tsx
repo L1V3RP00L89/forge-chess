@@ -35,7 +35,8 @@ import {
   type OpeningExplorerMove,
   type OpeningSpeed,
 } from './engine/openingExplorer'
-import { parseUciMoveListInput, type AnalyzeMode, type UciGoLimits } from './engine/uci'
+import { parseCandidateMoveInput } from './engine/candidateMoves'
+import { type AnalyzeMode, type UciGoLimits } from './engine/uci'
 import { flattenPgnMainLine, parsePgnMoveTree } from './engine/pgn'
 import { hasLegalKingPlacement } from './engine/fen'
 import {
@@ -1439,7 +1440,7 @@ function App() {
     status,
   ])
 
-  const parsedSearchMoveInput = useMemo(() => parseUciMoveListInput(searchMovesInput), [searchMovesInput])
+  const parsedSearchMoveInput = useMemo(() => parseCandidateMoveInput(searchMovesInput, fen), [fen, searchMovesInput])
   const parsedSearchMoves = parsedSearchMoveInput.validMoves
   const invalidSearchMoveTokens = parsedSearchMoveInput.invalidTokens
   const invalidSearchMovePreview = invalidSearchMoveTokens.slice(0, 3).join(', ')
@@ -3145,12 +3146,12 @@ function App() {
                             />
                           </label>
                           <label className="engine-option-row">
-                            <span>Search moves (UCI)</span>
+                            <span>Candidate moves</span>
                             <input
                               type="text"
                               value={searchMovesInput}
                               onChange={e => setSearchMovesInput(e.target.value)}
-                              placeholder="e2e4 g1f3"
+                              placeholder="e4 Nf3 e2e4"
                               aria-describedby={SEARCH_MOVES_HELP_ID}
                               aria-invalid={invalidSearchMoveTokens.length ? true : undefined}
                             />
@@ -3161,10 +3162,10 @@ function App() {
                             role={invalidSearchMoveTokens.length ? 'alert' : undefined}
                           >
                             {invalidSearchMoveTokens.length
-                              ? `Ignoring invalid UCI ${invalidSearchMoveTokens.length === 1 ? 'move' : 'moves'}: ${invalidSearchMovePreview}${invalidSearchMoveTokens.length > 3 ? '...' : ''}`
+                              ? `Ignoring invalid or illegal ${invalidSearchMoveTokens.length === 1 ? 'move' : 'moves'}: ${invalidSearchMovePreview}${invalidSearchMoveTokens.length > 3 ? '...' : ''}`
                               : parsedSearchMoves.length
                                 ? `Search limited to ${parsedSearchMoves.join(' ')}.`
-                                : 'Optional: limit Stockfish to candidate moves like e2e4 or g1f3.'}
+                                : 'Optional: limit Stockfish to legal candidates like e4, Nf3, or e2e4.'}
                           </p>
                           <label className="switch-control">
                             <input
