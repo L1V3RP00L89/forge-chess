@@ -1700,10 +1700,12 @@ function App() {
         ratings: openingSource === 'lichess' ? openingRatings : undefined,
       })
       const san = mainLineNodes[index + 1]?.san ?? uci
+      const sideToMove = reviewRows[index]?.sideToMove ?? 'w'
 
       if (!fromCache) {
         return {
           ply: index + 1,
+          sideToMove,
           san,
           uci,
           status: openingAuthToken.trim() ? 'loading' as const : 'auth-required' as const,
@@ -1714,6 +1716,7 @@ function App() {
       if (!totalGames) {
         return {
           ply: index + 1,
+          sideToMove,
           san,
           uci,
           status: 'unknown' as const,
@@ -1724,6 +1727,7 @@ function App() {
       if (!move) {
         return {
           ply: index + 1,
+          sideToMove,
           san,
           uci,
           status: 'out-of-book' as const,
@@ -1735,6 +1739,7 @@ function App() {
       const moveGames = moveGamesCount(move)
       return {
         ply: index + 1,
+        sideToMove,
         san,
         uci,
         status: 'in-book' as const,
@@ -1745,6 +1750,7 @@ function App() {
   }, [
     mainLineUciMoves,
     mainLineNodes,
+    reviewRows,
     currentRootFen,
     openingAuthToken,
     openingPrefetchTick,
@@ -1753,14 +1759,20 @@ function App() {
     openingSpeeds,
   ])
 
+  const visibleReviewBookRows = useMemo(() => {
+    if (reviewSideFilter === 'both') return reviewBookRows
+    const side = reviewSideFilter === 'white' ? 'w' : 'b'
+    return reviewBookRows.filter(row => row.sideToMove === side)
+  }, [reviewBookRows, reviewSideFilter])
+
   const reviewBookSummary = useMemo(() => {
-    const inBook = reviewBookRows.filter(row => row.status === 'in-book').length
-    const outOfBook = reviewBookRows.filter(row => row.status === 'out-of-book').length
-    const loading = reviewBookRows.filter(row => row.status === 'loading').length
-    const authRequired = reviewBookRows.filter(row => row.status === 'auth-required').length
-    const firstOutOfBook = reviewBookRows.find(row => row.status === 'out-of-book') ?? null
+    const inBook = visibleReviewBookRows.filter(row => row.status === 'in-book').length
+    const outOfBook = visibleReviewBookRows.filter(row => row.status === 'out-of-book').length
+    const loading = visibleReviewBookRows.filter(row => row.status === 'loading').length
+    const authRequired = visibleReviewBookRows.filter(row => row.status === 'auth-required').length
+    const firstOutOfBook = visibleReviewBookRows.find(row => row.status === 'out-of-book') ?? null
     return { inBook, outOfBook, loading, authRequired, firstOutOfBook }
-  }, [reviewBookRows])
+  }, [visibleReviewBookRows])
 
   // Graph uses active path up to its deepest child to show the entire branch history
   const currentLineNodes = useMemo(() => {
@@ -3746,7 +3758,7 @@ function App() {
                       </p>
                     )}
                     <div className="review-book-list">
-                      {reviewBookRows.slice(0, 14).map(row => (
+                      {visibleReviewBookRows.slice(0, 14).map(row => (
                         <div key={`${row.ply}-${row.uci}`} className={`review-book-row ${row.status}`}>
                           <span>#{row.ply}</span>
                           <strong>{row.san}</strong>
