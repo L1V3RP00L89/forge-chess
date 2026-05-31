@@ -1563,6 +1563,7 @@ function App() {
     setOpeningPrefetchTick(0)
     setEngineLabError(null)
     setEngineLabOutputLines([])
+    setEngineLabCopyStatus('idle')
     setPendingPromotion(null)
   }, [])
 
