@@ -237,7 +237,7 @@ type PersistedAppSettings = {
 }
 
 const DEFAULT_PERSISTED_SETTINGS: PersistedAppSettings = {
-  workspaceMode: 'analysis',
+  workspaceMode: 'play',
   autoAnalyze: true,
   engineProfile: 'auto',
   analysisTab: 'analyze',
