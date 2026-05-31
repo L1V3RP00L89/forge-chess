@@ -18,6 +18,20 @@ const QUALITY_EXPORT_LABELS: Record<NonNullable<GameNode['quality']>, string> = 
     pending: 'Pending',
 }
 
+export type PgnExportOptions = {
+    includeVariations?: boolean
+    includeComments?: boolean
+    includeEngineAnnotations?: boolean
+    includeGlyphs?: boolean
+}
+
+const DEFAULT_PGN_EXPORT_OPTIONS: Required<PgnExportOptions> = {
+    includeVariations: true,
+    includeComments: true,
+    includeEngineAnnotations: true,
+    includeGlyphs: true,
+}
+
 function sanitizePgnHeaderValue(value: string): string {
     return value
         .replace(/[\r\n]+/g, ' ')
@@ -113,9 +127,13 @@ function normalizePgnNags(nags: unknown): string[] | undefined {
     return normalized.length ? normalized : undefined
 }
 
-function moveTextForNode(node: GameNode, parentFen: string): string {
-    const suffix = normalizePgnSuffix(node.suffix) ?? ''
-    const nags = normalizePgnNags(node.nags)?.map(nag => `$${nag}`) ?? []
+function moveTextForNode(
+    node: GameNode,
+    parentFen: string,
+    options: Required<PgnExportOptions>,
+): string {
+    const suffix = options.includeGlyphs ? normalizePgnSuffix(node.suffix) ?? '' : ''
+    const nags = options.includeGlyphs ? normalizePgnNags(node.nags)?.map(nag => `$${nag}`) ?? [] : []
     return [
         `${movePrefixFromFen(parentFen)} ${node.san}${suffix}`,
         ...nags,
@@ -148,12 +166,13 @@ function commentForNode(
     node: GameNode,
     parentFen: string,
     evaluationsByFen: Map<string, EvalSnapshot>,
+    options: Required<PgnExportOptions>,
 ): string | null {
     const commentParts: string[] = []
     const evaluation = evaluationsByFen.get(node.fen)
     const preservedComment = sanitizePgnCommentText(node.comment)
 
-    if (evaluation) {
+    if (options.includeEngineAnnotations && evaluation) {
         const turn = node.fen.split(' ')[1]
         const cpPov = isFiniteNumber(evaluation.cp)
             ? turn === 'w' ? evaluation.cp : -evaluation.cp
@@ -173,16 +192,16 @@ function commentForNode(
         if (evalStr) commentParts.push(`[%eval ${evalStr}]`)
     }
 
-    if (preservedComment) {
+    if (options.includeComments && preservedComment) {
         commentParts.push(preservedComment)
     }
 
     const beforeEvaluation = evaluationsByFen.get(parentFen)
-    if (beforeEvaluation?.bestMove && beforeEvaluation.bestMove !== node.uci) {
+    if (options.includeEngineAnnotations && beforeEvaluation?.bestMove && beforeEvaluation.bestMove !== node.uci) {
         commentParts.push(`Best ${bestMoveSanFromFen(parentFen, beforeEvaluation.bestMove)}`)
     }
 
-    if (node.quality && node.quality !== 'pending') {
+    if (options.includeEngineAnnotations && node.quality && node.quality !== 'pending') {
         commentParts.push(QUALITY_EXPORT_LABELS[node.quality])
     }
 
@@ -307,10 +326,12 @@ export function exportAnnotatedPgn(
     mainLine: GameNode[],
     evaluationsByFen: Map<string, EvalSnapshot>,
     header: Record<string, string> = {},
-    allNodes?: Map<string, GameNode>
+    allNodes?: Map<string, GameNode>,
+    exportOptions: PgnExportOptions = {},
 ): string {
     let pgn = ''
     const rootFen = mainLine[0]?.fen ? new Chess(mainLine[0].fen).fen() : INITIAL_FEN
+    const options = { ...DEFAULT_PGN_EXPORT_OPTIONS, ...exportOptions }
 
     // Set headers (Event, Site, Date, Round, White, Black, Result)
     const defaultHeaders: Record<string, string> = {
@@ -350,12 +371,12 @@ export function exportAnnotatedPgn(
             visited.add(node.id)
             const parent = node.parent ? nodeLookup.get(node.parent) : undefined
             const parentFen = parent?.fen ?? rootFen
-            lineTokens.push(moveTextForNode(node, parentFen))
+            lineTokens.push(moveTextForNode(node, parentFen, options))
 
-            const comment = commentForNode(node, parentFen, evaluationsByFen)
+            const comment = commentForNode(node, parentFen, evaluationsByFen, options)
             if (comment) lineTokens.push(comment)
 
-            if (parent?.children[0] === node.id) {
+            if (options.includeVariations && parent?.children[0] === node.id) {
                 for (const variationId of parent.children.slice(1)) {
                     const variationTokens = renderLine(variationId)
                     if (variationTokens.length) {

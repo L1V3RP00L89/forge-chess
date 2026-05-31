@@ -299,6 +299,56 @@ describe('PGN export helpers', () => {
     expect(loader.history()).toEqual(['e4', 'e5', 'Nf3'])
   })
 
+  it('can export a clean main line without study annotations', () => {
+    const rootFen = new Chess().fen()
+    const e4Game = new Chess(rootFen)
+    const e4Move = e4Game.move('e4')!
+    const e4Fen = e4Game.fen()
+    const e5Move = e4Game.move('e5')!
+    const e5Fen = e4Game.fen()
+
+    const d4Game = new Chess(rootFen)
+    const d4Move = d4Game.move('d4')!
+    const d4Fen = d4Game.fen()
+
+    const root = makeNode('root', rootFen, null, null, ['e4', 'd4'])
+    const e4 = makeNode('e4', e4Fen, e4Move, 'root', ['e5'], 'best', {
+      comment: 'Training note',
+      suffix: '!',
+      nags: ['1'],
+    })
+    const e5 = makeNode('e5', e5Fen, e5Move, 'e4')
+    const d4 = makeNode('d4', d4Fen, d4Move, 'root')
+    const nodes = new Map([
+      [root.id, root],
+      [e4.id, e4],
+      [e5.id, e5],
+      [d4.id, d4],
+    ])
+
+    const pgn = exportAnnotatedPgn(
+      [root, e4, e5],
+      new Map([[e4Fen, { cp: -34 }]]),
+      { Result: '*' },
+      nodes,
+      {
+        includeVariations: false,
+        includeComments: false,
+        includeEngineAnnotations: false,
+        includeGlyphs: false,
+      },
+    )
+    const loader = new Chess()
+    loader.loadPgn(pgn)
+
+    expect(pgn).toContain('1. e4 1... e5 *')
+    expect(pgn).not.toContain('(')
+    expect(pgn).not.toContain('{')
+    expect(pgn).not.toContain('$1')
+    expect(pgn).not.toContain('!')
+    expect(loader.history()).toEqual(['e4', 'e5'])
+  })
+
   it('parses PGN variations into a nested import tree', () => {
     const parsed = parsePgnMoveTree(`
 [Event "Branch study"]

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { GameNode } from '../hooks/useGameTree'
 import type { EvalSnapshot } from '../engine/analysis'
-import { exportAnnotatedPgn } from '../engine/pgn'
+import { exportAnnotatedPgn, type PgnExportOptions } from '../engine/pgn'
 import { buildFenShareUrl } from '../engine/shareLink'
 import { IconDownload, IconClipboard, IconUpload } from './icons'
 
@@ -27,12 +27,20 @@ type ImportResult = {
 
 type CopyStatus = 'idle' | 'fen-copied' | 'link-copied' | 'pgn-copied' | 'failed'
 
+const DEFAULT_EXPORT_OPTIONS: Required<PgnExportOptions> = {
+    includeVariations: true,
+    includeComments: true,
+    includeEngineAnnotations: true,
+    includeGlyphs: true,
+}
+
 export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, mainLineNodes, gameNodes, evaluations, pgnHeaders }: PgnDialogProps) {
     const [tab, setTab] = useState<'import' | 'fen' | 'export'>('import')
     const [importText, setImportText] = useState('')
     const [fenText, setFenText] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
+    const [exportOptions, setExportOptions] = useState(DEFAULT_EXPORT_OPTIONS)
     const panelRef = useRef<HTMLDivElement>(null)
     const titleId = useId()
     const importTextId = useId()
@@ -69,7 +77,20 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
         setError(result.error ?? 'Could not load that FEN.')
     }
 
-    const exportText = tab === 'export' ? exportAnnotatedPgn(mainLineNodes, evaluations, pgnHeaders, gameNodes) : ''
+    const setExportOption = (key: keyof PgnExportOptions, value: boolean) => {
+        setExportOptions(options => ({ ...options, [key]: value }))
+        setCopyStatus('idle')
+    }
+
+    const exportText = tab === 'export'
+        ? exportAnnotatedPgn(
+            mainLineNodes,
+            evaluations,
+            pgnHeaders,
+            exportOptions.includeVariations ? gameNodes : undefined,
+            exportOptions,
+        )
+        : ''
 
     const handleCopy = async () => {
         try {
@@ -304,6 +325,40 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                     {tab === 'export' && (
                         <div className="dialog-section">
                             <label className="dialog-label" htmlFor={exportTextId}>Annotated Output</label>
+                            <div className="dialog-export-options" role="group" aria-label="Export options">
+                                <label className="dialog-check-option">
+                                    <input
+                                        type="checkbox"
+                                        checked={exportOptions.includeVariations}
+                                        onChange={event => setExportOption('includeVariations', event.target.checked)}
+                                    />
+                                    <span>Variations</span>
+                                </label>
+                                <label className="dialog-check-option">
+                                    <input
+                                        type="checkbox"
+                                        checked={exportOptions.includeComments}
+                                        onChange={event => setExportOption('includeComments', event.target.checked)}
+                                    />
+                                    <span>Comments</span>
+                                </label>
+                                <label className="dialog-check-option">
+                                    <input
+                                        type="checkbox"
+                                        checked={exportOptions.includeEngineAnnotations}
+                                        onChange={event => setExportOption('includeEngineAnnotations', event.target.checked)}
+                                    />
+                                    <span>Engine evals</span>
+                                </label>
+                                <label className="dialog-check-option">
+                                    <input
+                                        type="checkbox"
+                                        checked={exportOptions.includeGlyphs}
+                                        onChange={event => setExportOption('includeGlyphs', event.target.checked)}
+                                    />
+                                    <span>Glyphs</span>
+                                </label>
+                            </div>
                             <textarea
                                 id={exportTextId}
                                 className="input-textarea"
