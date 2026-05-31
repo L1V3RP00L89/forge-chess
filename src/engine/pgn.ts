@@ -43,6 +43,13 @@ function normalizePgnResult(result: string | undefined): string {
     return normalized && VALID_PGN_RESULTS.has(normalized) ? normalized : '*'
 }
 
+export function formatPgnDate(date = new Date()): string {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}.${month}.${day}`
+}
+
 function isFiniteNumber(value: unknown): value is number {
     return typeof value === 'number' && Number.isFinite(value)
 }
@@ -385,7 +392,7 @@ export function exportAnnotatedPgn(
     const defaultHeaders: Record<string, string> = {
         Event: 'Web Chess Game',
         Site: 'Web Chess',
-        Date: new Date().toISOString().split('T')[0]!.replace(/-/g, '.'),
+        Date: formatPgnDate(),
         Round: '1',
         White: 'Player 1',
         Black: 'Player 2',

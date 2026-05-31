@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GameNode } from '../hooks/useGameTree'
 import { Chess } from 'chess.js'
-import { exportAnnotatedPgn, flattenPgnMainLine, parsePgnMoveTree, rootFenFromPgnHeaders } from './pgn'
+import { exportAnnotatedPgn, flattenPgnMainLine, formatPgnDate, parsePgnMoveTree, rootFenFromPgnHeaders } from './pgn'
 
 function makeNode(
   id: string,
@@ -26,6 +26,10 @@ function makeNode(
 }
 
 describe('PGN export helpers', () => {
+  it('formats default PGN dates from the local calendar day', () => {
+    expect(formatPgnDate(new Date(2026, 4, 31, 23, 30))).toBe('2026.05.31')
+  })
+
   it('exports FEN roots with setup headers and black-to-move numbering', () => {
     const game = new Chess()
     game.move('e4')
