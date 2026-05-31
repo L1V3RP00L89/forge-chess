@@ -9,6 +9,7 @@ import {
 
 describe('tablebase client', () => {
   afterEach(() => {
+    vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })
 
@@ -203,5 +204,46 @@ describe('tablebase client', () => {
       moves: [{ uci: 'g2g3', san: 'Kg3', category: 'draw' }],
     })
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('reuses the parsed browser storage snapshot across repeated tablebase misses', async () => {
+    const stored = {
+      [normalizeTablebaseFen('8/8/8/8/8/8/4K3/6k1 w - - 0 1')]: {
+        expiresAt: Date.now() + 60_000,
+        payload: {
+          fen: normalizeTablebaseFen('8/8/8/8/8/8/4K3/6k1 w - - 0 1'),
+          category: 'draw',
+          checkmate: false,
+          stalemate: false,
+          insufficientMaterial: false,
+          moves: [],
+          fetchedAt: 1_700_000_000_000,
+        },
+      },
+    }
+    let storageRaw = JSON.stringify(stored)
+    const localStorageMock = {
+      getItem: vi.fn(() => storageRaw),
+      setItem: vi.fn((_: string, nextValue: string) => {
+        storageRaw = nextValue
+      }),
+    }
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        category: 'draw',
+        moves: [],
+      }),
+    })
+    const parseSpy = vi.spyOn(JSON, 'parse')
+
+    vi.stubGlobal('window', { localStorage: localStorageMock })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchTablebase('8/8/8/8/8/8/5K2/6k1 w - - 0 1')
+    await fetchTablebase('8/8/8/8/8/8/6K1/7k w - - 0 1')
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(parseSpy).toHaveBeenCalledTimes(1)
   })
 })

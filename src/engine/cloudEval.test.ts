@@ -11,6 +11,7 @@ import {
 
 describe('cloud eval parsing', () => {
   afterEach(() => {
+    vi.restoreAllMocks()
     vi.unstubAllGlobals()
   })
 
@@ -208,6 +209,44 @@ describe('cloud eval parsing', () => {
       pvs: [{ moves: ['g2g3'], cp: 0 }],
     })
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('reuses the parsed browser storage snapshot across repeated cloud misses', async () => {
+    const stored = {
+      [cloudEvalRequestKey({ fen: '8/8/8/8/8/8/4K3/6k1 w - - 0 1', multiPv: 1 })]: {
+        expiresAt: Date.now() + 60_000,
+        payload: {
+          fen: normalizeCloudEvalFen('8/8/8/8/8/8/4K3/6k1 w - - 0 1'),
+          knodes: 1,
+          depth: 1,
+          fetchedAt: 1_700_000_000_000,
+          pvs: [{ moves: ['e2e3'], cp: 0 }],
+        },
+      },
+    }
+    const localStorageMock = {
+      getItem: vi.fn(() => JSON.stringify(stored)),
+      setItem: vi.fn(),
+    }
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        fen: normalizeCloudEvalFen('8/8/8/8/8/8/5K2/6k1 w - - 0 1'),
+        knodes: 2,
+        depth: 2,
+        pvs: [{ moves: 'f2f3', cp: 0 }],
+      }),
+    })
+    const parseSpy = vi.spyOn(JSON, 'parse')
+
+    vi.stubGlobal('window', { localStorage: localStorageMock })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchCloudEvaluation({ fen: '8/8/8/8/8/8/5K2/6k1 w - - 0 1', multiPv: 1 })
+    await fetchCloudEvaluation({ fen: '8/8/8/8/8/8/5K2/6k1 w - - 1 2', multiPv: 1 })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(parseSpy).toHaveBeenCalledTimes(1)
   })
 
   it('evicts the oldest in-memory cloud eval entries', async () => {
