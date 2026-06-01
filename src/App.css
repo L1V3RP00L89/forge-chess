@@ -3123,7 +3123,7 @@ body.resizing * {
 
   .board-stage {
     order: 1;
-    padding: var(--space-sm);
+    padding: 0.35rem var(--space-sm);
     min-height: auto;
     width: 100%;
     max-width: 100%;
@@ -3134,6 +3134,28 @@ body.resizing * {
     align-items: center;
     /* Board size driven by JS boardWidth (≈46% viewport height) */
     background: var(--bg-base);
+  }
+
+  .board-layout {
+    gap: 0.3rem;
+  }
+
+  .board-meta-strip {
+    min-height: 1.85rem;
+    padding: 0.22rem 0.38rem;
+    font-size: 0.68rem;
+  }
+
+  .opening-pill {
+    padding: 0.18rem 0.5rem;
+    gap: 0.35rem;
+    font-size: 0.68rem;
+    line-height: 1.1;
+  }
+
+  .opening-pill strong {
+    padding: 0.08rem 0.38rem;
+    font-size: 0.68rem;
   }
 
   .right {

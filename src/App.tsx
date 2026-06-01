@@ -710,6 +710,7 @@ function App() {
   const openingIntelRef = useRef<HTMLDivElement>(null)
   const mainContainerRef = useRef<HTMLDivElement>(null)
   const boardStageRef = useRef<HTMLElement>(null)
+  const analysisPanelRef = useRef<HTMLElement>(null)
   const revealOpeningIntelRef = useRef(false)
   const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight })
   const hasAutoOpenedAnalysisLeftRef = useRef(initialWorkspaceMode === 'analysis')
@@ -757,6 +758,7 @@ function App() {
   const [sampleLoadError, setSampleLoadError] = useState<string | null>(null)
   const [isImportingGame, setIsImportingGame] = useState(false)
   const [boardRevealTick, setBoardRevealTick] = useState(0)
+  const [analysisPanelRevealTick, setAnalysisPanelRevealTick] = useState(0)
   const [pendingShallowAnalyzeFen, setPendingShallowAnalyzeFen] = useState<string | null>(null)
   const [pendingPonderFen, setPendingPonderFen] = useState<string | null>(null)
   const [importSweepProgress, setImportSweepProgress] = useState<ImportSweepProgress>({ done: 0, total: 0 })
@@ -1706,6 +1708,7 @@ function App() {
   const handleAnalysisTabChange = useCallback((tab: AnalysisTab) => {
     pause()
     setAnalysisTab(tab)
+    setAnalysisPanelRevealTick(tick => tick + 1)
   }, [pause])
 
   const runLabCommand = useCallback(
@@ -2505,6 +2508,36 @@ function App() {
       if (longSettleTimer) window.clearTimeout(longSettleTimer)
     }
   }, [boardRevealTick, viewport.width])
+
+  useEffect(() => {
+    if (analysisPanelRevealTick === 0) return
+    if (viewport.width > 900) return
+    if (workspaceMode !== 'analysis') return
+
+    let settleTimer: ReturnType<typeof window.setTimeout> | null = null
+    let finalTimer: ReturnType<typeof window.setTimeout> | null = null
+    const scrollAnalysisPanelToTop = () => {
+      const mainContainer = mainContainerRef.current
+      const analysisPanel = analysisPanelRef.current
+      if (!mainContainer || !analysisPanel) return
+      const activeElement = document.activeElement
+      if (activeElement instanceof HTMLElement) activeElement.blur()
+      analysisPanel.focus({ preventScroll: true })
+      mainContainer.scrollTo({
+        top: analysisPanel.offsetTop,
+        behavior: 'auto',
+      })
+    }
+
+    scrollAnalysisPanelToTop()
+    settleTimer = window.setTimeout(scrollAnalysisPanelToTop, 120)
+    finalTimer = window.setTimeout(scrollAnalysisPanelToTop, 320)
+
+    return () => {
+      if (settleTimer) window.clearTimeout(settleTimer)
+      if (finalTimer) window.clearTimeout(finalTimer)
+    }
+  }, [analysisPanelRevealTick, viewport.width, workspaceMode])
 
   useEffect(() => {
     if (importSweepProgress.total <= 0) return
@@ -3757,6 +3790,7 @@ function App() {
         <aside
           id="analysis-panel"
           className={`panel right ${rightPanelCollapsed ? 'panel-collapsed' : ''}`}
+          ref={analysisPanelRef}
           aria-hidden={appModalOpen || promotionDialogOpen ? true : undefined}
           inert={appModalOpen || promotionDialogOpen ? true : undefined}
           style={{ width: rightWidth }}
