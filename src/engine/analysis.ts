@@ -449,14 +449,15 @@ export function buildWinrateSeries(
   }
 
   history.forEach((move, index) => {
+    const moveNumber = replay.moveNumber()
+    const sideToMove = replay.turn()
     replay.move({ from: move.from, to: move.to, promotion: move.promotion })
     const fen = replay.fen()
     const snapshot = evaluationsByFen.get(fen)
     const cp = snapshot ? scoreToCp(snapshot.cp, snapshot.mate) : undefined
     if (!isFiniteNumber(cp)) return
 
-    const moveNumber = Math.floor(index / 2) + 1
-    const prefix = index % 2 === 0 ? `${moveNumber}.` : `${moveNumber}...`
+    const prefix = sideToMove === 'w' ? `${moveNumber}.` : `${moveNumber}...`
     series.push({
       index: index + 1,
       label: `${prefix} ${move.san}`,
@@ -489,6 +490,8 @@ export function buildWdlSeries(
   }
 
   history.forEach((move, index) => {
+    const moveNumber = replay.moveNumber()
+    const sideToMove = replay.turn()
     replay.move({ from: move.from, to: move.to, promotion: move.promotion })
     const fen = replay.fen()
     const wdl = evaluationsByFen.get(fen)?.wdl
@@ -497,8 +500,7 @@ export function buildWdlSeries(
     const normalized = normalizeWhitePovWdl(fen, wdl)
     if (!normalized) return
 
-    const moveNumber = Math.floor(index / 2) + 1
-    const prefix = index % 2 === 0 ? `${moveNumber}.` : `${moveNumber}...`
+    const prefix = sideToMove === 'w' ? `${moveNumber}.` : `${moveNumber}...`
     series.push({
       index: index + 1,
       label: `${prefix} ${move.san}`,

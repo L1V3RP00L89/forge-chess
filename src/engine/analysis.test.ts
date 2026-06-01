@@ -374,4 +374,30 @@ describe('review analysis helpers', () => {
     expect(series[0]?.label).toBe('Start')
     expect(series[1]?.label).toBe('1. Kf3')
   })
+
+  it('labels graph points from black-to-move imported root positions', () => {
+    const rootFen = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'
+    const game = new Chess(rootFen)
+    const blackMove = game.move('c5')!
+    const afterBlackFen = game.fen()
+    const whiteMove = game.move('Nf3')!
+    const afterWhiteFen = game.fen()
+
+    const evaluations = new Map([
+      [rootFen, { cp: 0, wdl: { w: 100, d: 800, l: 100 } }],
+      [afterBlackFen, { cp: -40, wdl: { w: 120, d: 780, l: 100 } }],
+      [afterWhiteFen, { cp: 20, wdl: { w: 110, d: 780, l: 110 } }],
+    ])
+
+    expect(buildWinrateSeries([blackMove, whiteMove], evaluations, rootFen).map(point => point.label)).toEqual([
+      'Start',
+      '1... c5',
+      '2. Nf3',
+    ])
+    expect(buildWdlSeries([blackMove, whiteMove], evaluations, rootFen).map(point => point.label)).toEqual([
+      'Start',
+      '1... c5',
+      '2. Nf3',
+    ])
+  })
 })
