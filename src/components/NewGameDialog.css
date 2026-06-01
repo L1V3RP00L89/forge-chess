@@ -130,6 +130,7 @@
 .fen-setup-board {
     display: grid;
     grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-rows: repeat(8, minmax(0, 1fr));
     aspect-ratio: 1;
     width: min(100%, 12.5rem);
     border: 1px solid rgba(240, 246, 252, 0.12);
@@ -146,7 +147,7 @@
     border-radius: 0;
     background: #f0d9b5;
     color: #f8fafc;
-    font-size: clamp(0.95rem, 5vw, 1.35rem);
+    font-size: 1.2rem;
     line-height: 1;
     display: grid;
     place-items: center;
@@ -438,6 +439,10 @@
     .fen-setup-board {
         width: min(100%, 15rem);
         justify-self: center;
+    }
+
+    .fen-setup-square {
+        font-size: 1.35rem;
     }
 
     .fen-side-toggle {
