@@ -2906,6 +2906,11 @@ function App() {
   // ─────────────────────────────────────────────────────
   return (
     <main className="app-shell">
+      <nav className="skip-links" aria-label="Skip links">
+        <a href="#chessboard-stage">Skip to board</a>
+        <a href="#analysis-panel">Skip to analysis</a>
+      </nav>
+
       {/* ── Top bar ── */}
       <section className={`panel top ${topPanelOpen ? '' : 'hidden'}`}>
         <div className="panel-inner">
@@ -3480,7 +3485,7 @@ function App() {
         </section>
 
         {/* ── Board ── */}
-        <section className="board-stage" aria-label="Chessboard" ref={boardStageRef} tabIndex={-1}>
+        <section id="chessboard-stage" className="board-stage" aria-label="Chessboard" ref={boardStageRef} tabIndex={-1}>
           <div className="board-layout">
             <div className="board-meta-strip" aria-label="Current game state">
               <span className={`turn-pill ${game.turn() === 'w' ? 'white' : 'black'}`}>{turnLabel}</span>
@@ -3625,7 +3630,12 @@ function App() {
         </Suspense>
 
         {/* ── Right panel ── */}
-        <aside className={`panel right ${rightPanelCollapsed ? 'panel-collapsed' : ''}`} style={{ width: rightWidth }}>
+        <aside
+          id="analysis-panel"
+          className={`panel right ${rightPanelCollapsed ? 'panel-collapsed' : ''}`}
+          style={{ width: rightWidth }}
+          tabIndex={-1}
+        >
           <div
             className="resize-handle resize-handle-left"
             role="separator"

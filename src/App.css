@@ -260,6 +260,44 @@ body.resizing * {
   display: none;
 }
 
+.skip-links {
+  position: fixed;
+  top: calc(0.5rem + env(safe-area-inset-top));
+  left: calc(0.5rem + env(safe-area-inset-left));
+  z-index: 4000;
+  display: flex;
+  gap: 0.4rem;
+  pointer-events: none;
+}
+
+.skip-links a {
+  position: absolute;
+  min-width: max-content;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid rgba(125, 239, 222, 0.58);
+  border-radius: var(--radius-md);
+  background: #06110f;
+  color: #7defde;
+  box-shadow: var(--shadow-md);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  transform: translateY(-220%);
+  opacity: 0;
+  pointer-events: auto;
+  transition: transform 140ms ease, opacity 140ms ease;
+}
+
+.skip-links a:nth-child(2) {
+  left: 7.2rem;
+}
+
+.skip-links a:focus-visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
 .mobile-actions {
   display: flex;
   flex-shrink: 0;
