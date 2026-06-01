@@ -2519,6 +2519,7 @@ function App() {
 
   const handlePgnImport = useCallback((pgnText: string, options?: PgnImportOptions) => {
     try {
+      const importedGame = parsePgnMoveTree(pgnText)
       if (!options?.fromSample) {
         cancelSampleLoad()
       }
@@ -2531,7 +2532,6 @@ function App() {
       setIsImportingGame(true)
       clearImportSweep()
       clearBatchReview()
-      const importedGame = parsePgnMoveTree(pgnText)
       cancelPendingAiMove()
       const rootFen = importedGame.rootFen
       newGame()
