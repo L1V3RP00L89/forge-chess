@@ -1603,7 +1603,7 @@ function App() {
 
   const runAnalyze = useCallback(() => {
     if (!engineEnabled) return
-    clearImportSweep()
+    cancelStaleBackgroundAnalysis()
     const limits: UciGoLimits = {}
     if (analyzeMode === 'quick') {
       limits.movetime = normalizeRequiredIntegerInput(quickMovetimeMs, QUICK_MOVETIME_BOUNDS)
@@ -1661,7 +1661,7 @@ function App() {
     whiteTimeMs,
     currentPathMovesKey,
     currentRootFen,
-    clearImportSweep,
+    cancelStaleBackgroundAnalysis,
   ])
 
   const handleWorkspaceModeChange = useCallback((mode: WorkspaceMode) => {
