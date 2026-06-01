@@ -4126,6 +4126,7 @@ function App() {
                         className="opening-token-input"
                         type="password"
                         value={openingAuthToken}
+                        aria-label="Lichess API token"
                         onChange={event => setOpeningAuthToken(event.target.value)}
                         autoComplete="off"
                         spellCheck={false}
@@ -4157,6 +4158,7 @@ function App() {
                           <span>Rating bucket</span>
                           <select
                             value={openingRatingPreset}
+                            aria-label="Opening rating bucket"
                             onChange={event => setOpeningRatingPreset(event.target.value as OpeningRatingPresetId)}
                           >
                             {OPENING_RATING_PRESETS.map(preset => (
