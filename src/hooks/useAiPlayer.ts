@@ -5,8 +5,6 @@ import { createStockfishWorker } from '../engine/stockfishWorker'
 import {
     fetchTablebase,
     isTablebaseEligible,
-    tablebaseMoveCategoryForPlayer,
-    type TablebaseCategory,
     type TablebaseResult,
 } from '../engine/tablebase'
 
@@ -44,18 +42,6 @@ const BEGINNER_RANDOM_MOVE_CHANCE: Partial<Record<AiDifficulty, number>> = {
 }
 const EXACT_TABLEBASE_DIFFICULTY: AiDifficulty = 8
 const TABLEBASE_AI_TIMEOUT_MS = 2500
-const TABLEBASE_CATEGORY_PRIORITY: Record<TablebaseCategory, number> = {
-    win: 8,
-    'syzygy-win': 7,
-    'maybe-win': 6,
-    'cursed-win': 5,
-    draw: 4,
-    unknown: 3,
-    'blessed-loss': 2,
-    'maybe-loss': 1,
-    'syzygy-loss': 0,
-    loss: 0,
-}
 
 export const DIFFICULTY_LABELS: Record<AiDifficulty, string> = {
     1: 'Beginner',
@@ -129,39 +115,8 @@ export function pickBeginnerVarietyMove(
     }
 }
 
-function tablebaseDistance(move: { dtm?: number | null; preciseDtz?: number | null; dtz?: number | null }): number | null {
-    const value = move.dtm ?? move.preciseDtz ?? move.dtz
-    return typeof value === 'number' && Number.isFinite(value) ? Math.abs(value) : null
-}
-
-function tablebaseTieBreak(category: TablebaseCategory, move: { dtm?: number | null; preciseDtz?: number | null; dtz?: number | null; zeroing?: boolean }): number {
-    const distance = tablebaseDistance(move)
-    if (distance === null) return move.zeroing ? 1 : 0
-    if (TABLEBASE_CATEGORY_PRIORITY[category] >= TABLEBASE_CATEGORY_PRIORITY.draw) return -distance
-    return distance
-}
-
 export function pickExactTablebaseMove(result: TablebaseResult | null): string | null {
-    if (!result?.moves.length) return null
-
-    const ranked = result.moves
-        .map((move, index) => {
-            const category = tablebaseMoveCategoryForPlayer(move.category)
-            return {
-                category,
-                index,
-                move,
-                priority: TABLEBASE_CATEGORY_PRIORITY[category],
-                tieBreak: tablebaseTieBreak(category, move),
-            }
-        })
-        .sort((a, b) => {
-            if (a.priority !== b.priority) return b.priority - a.priority
-            if (a.tieBreak !== b.tieBreak) return b.tieBreak - a.tieBreak
-            return a.index - b.index
-        })
-
-    return ranked[0]?.move.uci ?? null
+    return result?.moves[0]?.uci ?? null
 }
 
 async function fetchExactTablebaseMove(fen: string, difficulty: AiDifficulty): Promise<string | null> {

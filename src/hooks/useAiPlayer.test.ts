@@ -70,7 +70,7 @@ describe('AI beginner move variety', () => {
 })
 
 describe('AI exact tablebase move selection', () => {
-    it('prefers winning tablebase moves from the player perspective', () => {
+    it('uses the first tablebase move because Lichess returns best moves first', () => {
         expect(pickExactTablebaseMove({
             fen: '8/8/8/8/8/8/4K3/7k w - - 0 1',
             category: 'win',
@@ -79,13 +79,13 @@ describe('AI exact tablebase move selection', () => {
             insufficientMaterial: false,
             fetchedAt: 1,
             moves: [
-                { uci: 'e2e1', san: 'Ke1', category: 'draw', dtz: 0 },
                 { uci: 'e2f3', san: 'Kf3', category: 'loss', dtz: -2 },
+                { uci: 'e2e1', san: 'Ke1', category: 'draw', dtz: 0 },
             ],
         })).toBe('e2f3')
     })
 
-    it('uses distance as a tie-break for faster wins and slower losses', () => {
+    it('preserves tablebase ordering instead of re-ranking locally', () => {
         expect(pickExactTablebaseMove({
             fen: '8/8/8/8/8/8/4K3/7k w - - 0 1',
             category: 'win',
@@ -94,23 +94,10 @@ describe('AI exact tablebase move selection', () => {
             insufficientMaterial: false,
             fetchedAt: 1,
             moves: [
-                { uci: 'e2e3', san: 'Ke3', category: 'loss', dtz: -8 },
+                { uci: 'e2e3', san: 'Ke3', category: 'draw', dtz: 0 },
                 { uci: 'e2f3', san: 'Kf3', category: 'loss', dtz: -2 },
             ],
-        })).toBe('e2f3')
-
-        expect(pickExactTablebaseMove({
-            fen: '8/8/8/8/8/8/4K3/7k w - - 0 1',
-            category: 'loss',
-            checkmate: false,
-            stalemate: false,
-            insufficientMaterial: false,
-            fetchedAt: 1,
-            moves: [
-                { uci: 'e2e3', san: 'Ke3', category: 'win', dtz: 2 },
-                { uci: 'e2f3', san: 'Kf3', category: 'win', dtz: 9 },
-            ],
-        })).toBe('e2f3')
+        })).toBe('e2e3')
     })
 
     it('returns null when no exact moves are available', () => {
