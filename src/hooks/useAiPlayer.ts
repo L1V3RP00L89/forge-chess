@@ -42,6 +42,7 @@ const BEGINNER_RANDOM_MOVE_CHANCE: Partial<Record<AiDifficulty, number>> = {
 }
 const EXACT_TABLEBASE_DIFFICULTY: AiDifficulty = 8
 const TABLEBASE_AI_TIMEOUT_MS = 2500
+const TABLEBASE_AI_ABORT_MESSAGE = 'AI tablebase request aborted.'
 
 export const DIFFICULTY_LABELS: Record<AiDifficulty, string> = {
     1: 'Beginner',
@@ -119,18 +120,40 @@ export function pickExactTablebaseMove(result: TablebaseResult | null): string |
     return result?.moves[0]?.uci ?? null
 }
 
-async function fetchExactTablebaseMove(fen: string, difficulty: AiDifficulty): Promise<string | null> {
+function abortLinkedController(controller: AbortController, signal?: AbortSignal) {
+    const reason = signal?.reason
+    controller.abort(reason instanceof Error ? reason : new Error(TABLEBASE_AI_ABORT_MESSAGE))
+}
+
+export async function fetchExactTablebaseMove(
+    fen: string,
+    difficulty: AiDifficulty,
+    signal?: AbortSignal,
+): Promise<string | null> {
     if (difficulty !== EXACT_TABLEBASE_DIFFICULTY) return null
     if (!isTablebaseEligible(fen)) return null
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), TABLEBASE_AI_TIMEOUT_MS)
+    let onAbort: (() => void) | null = null
+
+    if (signal?.aborted) {
+        abortLinkedController(controller, signal)
+    } else if (signal) {
+        onAbort = () => abortLinkedController(controller, signal)
+        signal.addEventListener('abort', onAbort, { once: true })
+    }
+
+    const timeout = setTimeout(
+        () => controller.abort(new Error('AI tablebase request timed out.')),
+        TABLEBASE_AI_TIMEOUT_MS,
+    )
     try {
         return pickExactTablebaseMove(await fetchTablebase(fen, controller.signal))
     } catch {
         return null
     } finally {
         clearTimeout(timeout)
+        if (signal && onAbort) signal.removeEventListener('abort', onAbort)
     }
 }
 
@@ -140,6 +163,7 @@ export function useAiPlayer(enabled = true) {
     const resolveRef = useRef<((move: string | null) => void) | null>(null)
     const requestTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const stopAckTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const tablebaseRequestControllerRef = useRef<AbortController | null>(null)
     const ignoredBestMoveCountRef = useRef(0)
     const [status, setStatus] = useState<AiStatus>('loading')
     const [profileName, setProfileName] = useState('Stockfish')
@@ -155,6 +179,13 @@ export function useAiPlayer(enabled = true) {
         if (!stopAckTimeoutRef.current) return
         clearTimeout(stopAckTimeoutRef.current)
         stopAckTimeoutRef.current = null
+    }, [])
+
+    const cancelTablebaseRequest = useCallback(() => {
+        const controller = tablebaseRequestControllerRef.current
+        if (!controller) return
+        tablebaseRequestControllerRef.current = null
+        controller.abort(new Error(TABLEBASE_AI_ABORT_MESSAGE))
     }, [])
 
     const releaseStoppedSearch = useCallback(() => {
@@ -192,6 +223,7 @@ export function useAiPlayer(enabled = true) {
         if (!enabled) {
             workerRef.current = null
             isReadyRef.current = false
+            cancelTablebaseRequest()
             settleRequest(null)
             queueMicrotask(() => {
                 if (active) setStatus('disabled')
@@ -282,11 +314,12 @@ export function useAiPlayer(enabled = true) {
             workerRef.current = null
             isReadyRef.current = false
             ignoredBestMoveCountRef.current = 0
+            cancelTablebaseRequest()
             clearStopAckTimeout()
             settleRequest(null)
             if (workerBlobUrl) URL.revokeObjectURL(workerBlobUrl)
         }
-    }, [applyDifficulty, clearStopAckTimeout, enabled, finishRequest, settleRequest])
+    }, [applyDifficulty, cancelTablebaseRequest, clearStopAckTimeout, enabled, finishRequest, settleRequest])
 
     const setDifficulty = useCallback((difficulty: AiDifficulty) => {
         difficultyRef.current = difficulty
@@ -297,6 +330,7 @@ export function useAiPlayer(enabled = true) {
 
     const cancelRequest = useCallback(() => {
         const worker = workerRef.current
+        cancelTablebaseRequest()
         clearRequestTimeout()
         if (resolveRef.current) {
             if (worker) {
@@ -310,7 +344,7 @@ export function useAiPlayer(enabled = true) {
             return
         }
         if (enabled && worker && isReadyRef.current) setStatus('ready')
-    }, [clearRequestTimeout, clearStopAckTimeout, enabled, releaseStoppedSearch, settleRequest])
+    }, [cancelTablebaseRequest, clearRequestTimeout, clearStopAckTimeout, enabled, releaseStoppedSearch, settleRequest])
 
     /** Request the engine to pick a move for the given position.
      *  Returns a promise resolving to a UCI move string (e.g. "e2e4") or null. */
@@ -319,7 +353,14 @@ export function useAiPlayer(enabled = true) {
             if (!enabled) return Promise.resolve(null)
 
             return (async () => {
-                const exactMove = await fetchExactTablebaseMove(fen, difficulty)
+                cancelTablebaseRequest()
+                const tablebaseController = new AbortController()
+                tablebaseRequestControllerRef.current = tablebaseController
+                const exactMove = await fetchExactTablebaseMove(fen, difficulty, tablebaseController.signal)
+                if (tablebaseRequestControllerRef.current === tablebaseController) {
+                    tablebaseRequestControllerRef.current = null
+                }
+                if (tablebaseController.signal.aborted) return null
                 if (exactMove) return exactMove
 
                 const worker = workerRef.current
@@ -352,7 +393,7 @@ export function useAiPlayer(enabled = true) {
                 })
             })()
         },
-        [applyDifficulty, clearStopAckTimeout, enabled, releaseStoppedSearch, settleRequest],
+        [applyDifficulty, cancelTablebaseRequest, clearStopAckTimeout, enabled, releaseStoppedSearch, settleRequest],
     )
 
     return { status, requestMove, setDifficulty, cancelRequest, profileName }

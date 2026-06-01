@@ -1,5 +1,20 @@
-import { describe, expect, it } from 'vitest'
-import { addStoppedSearchBestMoveAck, aiDifficultyCommands, consumeStoppedSearchBestMove, pickBeginnerVarietyMove, pickExactTablebaseMove } from './useAiPlayer'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { resetLichessFetchQueueForTests } from '../engine/lichessQueue'
+import {
+    addStoppedSearchBestMoveAck,
+    aiDifficultyCommands,
+    consumeStoppedSearchBestMove,
+    fetchExactTablebaseMove,
+    pickBeginnerVarietyMove,
+    pickExactTablebaseMove,
+} from './useAiPlayer'
+
+afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+    resetLichessFetchQueueForTests()
+})
 
 describe('AI difficulty UCI commands', () => {
     it('limits strength for beginner-friendly difficulty levels', () => {
@@ -111,5 +126,48 @@ describe('AI exact tablebase move selection', () => {
             fetchedAt: 1,
             moves: [],
         })).toBeNull()
+    })
+
+    it('skips the remote exact lookup when the AI request is already cancelled', async () => {
+        const fetchMock = vi.fn()
+        vi.stubGlobal('fetch', fetchMock)
+
+        const controller = new AbortController()
+        controller.abort(new Error('cancelled before lookup'))
+
+        await expect(fetchExactTablebaseMove(
+            '8/8/8/8/8/8/2K5/5k2 w - - 13 1',
+            8,
+            controller.signal,
+        )).resolves.toBeNull()
+        expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('aborts an in-flight exact lookup when the AI request is cancelled', async () => {
+        let fetchSignal: AbortSignal | undefined
+        const fetchMock = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+            fetchSignal = init?.signal ?? undefined
+            return new Promise<Response>((_resolve, reject) => {
+                fetchSignal?.addEventListener('abort', () => {
+                    reject(fetchSignal?.reason instanceof Error ? fetchSignal.reason : new Error('aborted'))
+                }, { once: true })
+            })
+        })
+        vi.stubGlobal('fetch', fetchMock)
+
+        const controller = new AbortController()
+        const pending = fetchExactTablebaseMove(
+            '8/8/8/8/8/8/3K4/5k2 w - - 14 1',
+            8,
+            controller.signal,
+        )
+
+        await Promise.resolve()
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+
+        controller.abort(new Error('cancelled during lookup'))
+
+        await expect(pending).resolves.toBeNull()
+        expect(fetchSignal?.aborted).toBe(true)
     })
 })
