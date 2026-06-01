@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { resetLichessFetchQueueForTests } from './lichessQueue'
 import { buildSamplePgnUrl, fetchSamplePgn } from './samplePgn'
 
 describe('sample PGN client', () => {
   afterEach(() => {
+    resetLichessFetchQueueForTests()
     vi.unstubAllGlobals()
   })
 
@@ -62,5 +64,13 @@ describe('sample PGN client', () => {
     resolveText('[Event "Stale"]')
 
     await expect(pending).rejects.toThrow()
+  })
+
+  it('shows a clear rate-limit message for sample PGN exports', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('', { status: 429 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchSamplePgn({ id: 'sample', lichessGameId: 'A2cM3wqU' }))
+      .rejects.toThrow('Lichess sample game rate limit reached; try again in a minute.')
   })
 })

@@ -36,6 +36,9 @@ export async function fetchSamplePgn(
   throwIfAborted(signal)
 
   if (!response.ok) {
+    if (response.status === 429) {
+      throw new Error('Lichess sample game rate limit reached; try again in a minute.')
+    }
     throw new Error(`Failed to fetch sample PGN (${response.status}).`)
   }
 
