@@ -233,16 +233,16 @@ export function NewGameDialog({
                             <p className="difficulty-desc">{DIFFICULTY_DESCRIPTIONS[difficulty]}</p>
                         </div>
                     )}
+                </div>
 
-                    {/* Actions */}
-                    <div className="dialog-actions">
-                        <button type="button" className="btn-cancel" onClick={onCancel}>
-                            Cancel
-                        </button>
-                        <button type="button" className="btn-start" onClick={handleStart}>
-                            <IconPlay /> Start Game
-                        </button>
-                    </div>
+                {/* Actions */}
+                <div className="dialog-actions">
+                    <button type="button" className="btn-cancel" onClick={onCancel}>
+                        Cancel
+                    </button>
+                    <button type="button" className="btn-start" onClick={handleStart}>
+                        <IconPlay /> Start Game
+                    </button>
                 </div>
             </div>
         </div>
