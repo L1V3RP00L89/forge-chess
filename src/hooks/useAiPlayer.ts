@@ -255,6 +255,20 @@ export function useAiPlayer(enabled = true) {
             if (active) setProfileName(profile.name)
         })
 
+        const failWorker = () => {
+            isReadyRef.current = false
+            ignoredBestMoveCountRef.current = 0
+            cancelTablebaseRequest()
+            clearStopAckTimeout()
+            finishRequest(null, 'error')
+            if (workerRef.current === worker) workerRef.current = null
+            try {
+                worker?.terminate()
+            } catch {
+                // Ignore shutdown errors from workers that are already gone.
+            }
+        }
+
         worker.onmessage = (event: MessageEvent<unknown>) => {
             if (!active) return
             if (typeof event.data !== 'string') return
@@ -262,10 +276,7 @@ export function useAiPlayer(enabled = true) {
 
             for (const line of lines) {
                 if (line.startsWith('__BOOT_ERROR__:')) {
-                    isReadyRef.current = false
-                    finishRequest(null, 'error')
-                    worker?.terminate()
-                    workerRef.current = null
+                    failWorker()
                     return
                 }
 
@@ -301,8 +312,7 @@ export function useAiPlayer(enabled = true) {
 
         worker.onerror = () => {
             if (!active) return
-            isReadyRef.current = false
-            finishRequest(null, 'error')
+            failWorker()
         }
 
         worker.postMessage('uci')
