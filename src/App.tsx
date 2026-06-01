@@ -680,6 +680,8 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const settingsBodyRef = useRef<HTMLDivElement>(null)
   const openingIntelRef = useRef<HTMLDivElement>(null)
+  const mainContainerRef = useRef<HTMLDivElement>(null)
+  const boardStageRef = useRef<HTMLElement>(null)
   const revealOpeningIntelRef = useRef(false)
   const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight })
   const hasAutoOpenedAnalysisLeftRef = useRef(initialWorkspaceMode === 'analysis')
@@ -726,6 +728,7 @@ function App() {
   const [sampleLoadingId, setSampleLoadingId] = useState<string | null>(null)
   const [sampleLoadError, setSampleLoadError] = useState<string | null>(null)
   const [isImportingGame, setIsImportingGame] = useState(false)
+  const [boardRevealTick, setBoardRevealTick] = useState(0)
   const [pendingShallowAnalyzeFen, setPendingShallowAnalyzeFen] = useState<string | null>(null)
   const [pendingPonderFen, setPendingPonderFen] = useState<string | null>(null)
   const [importSweepProgress, setImportSweepProgress] = useState<ImportSweepProgress>({ done: 0, total: 0 })
@@ -2393,6 +2396,47 @@ function App() {
     setSampleLoadingId(null)
   }, [abortSampleFetch])
 
+  const requestBoardReveal = useCallback(() => {
+    setBoardRevealTick(tick => tick + 1)
+  }, [])
+
+  useEffect(() => {
+    if (boardRevealTick === 0) return
+    if (viewport.width > 900) return
+
+    let settleTimer: ReturnType<typeof window.setTimeout> | null = null
+    let finalTimer: ReturnType<typeof window.setTimeout> | null = null
+    let longSettleTimer: ReturnType<typeof window.setTimeout> | null = null
+    const scrollBoardToTop = () => {
+      const mainContainer = mainContainerRef.current
+      const boardStage = boardStageRef.current
+      if (!mainContainer || !boardStage) return
+      const activeElement = document.activeElement
+      if (activeElement instanceof HTMLElement) activeElement.blur()
+      boardStage.focus({ preventScroll: true })
+      mainContainer.scrollTo({
+        top: boardStage.offsetTop,
+        behavior: 'auto',
+      })
+    }
+
+    scrollBoardToTop()
+    settleTimer = window.setTimeout(scrollBoardToTop, 160)
+    finalTimer = window.setTimeout(scrollBoardToTop, 360)
+    longSettleTimer = window.setTimeout(scrollBoardToTop, 1200)
+
+    return () => {
+      if (settleTimer) window.clearTimeout(settleTimer)
+      if (finalTimer) window.clearTimeout(finalTimer)
+      if (longSettleTimer) window.clearTimeout(longSettleTimer)
+    }
+  }, [boardRevealTick, viewport.width])
+
+  useEffect(() => {
+    if (importSweepProgress.total <= 0) return
+    requestBoardReveal()
+  }, [importSweepProgress.total, requestBoardReveal])
+
   const readCachedSamplePgn = useCallback((sampleId: string): string | null => {
     const cached = samplePgnCacheRef.current.get(sampleId)
     if (!cached) return null
@@ -2465,12 +2509,13 @@ function App() {
       pausedRef.current = true
       cancelPendingAiMove()
       setIsImportingGame(false)
+      requestBoardReveal()
       return { ok: true }
     } catch {
       setIsImportingGame(false)
       return { ok: false, error: 'Failed to parse PGN. Check the move text, headers, and move numbers.' }
     }
-  }, [cancelPendingAiMove, cancelSampleLoad, clearBoardSelection, clearImportSweep, engineEnabled, game, gameTree, newGame, setPgnHeaders])
+  }, [cancelPendingAiMove, cancelSampleLoad, clearBoardSelection, clearImportSweep, engineEnabled, game, gameTree, newGame, requestBoardReveal, setPgnHeaders])
 
   const handleAnalysisPgnImport = useCallback(
     (pgnText: string) => handlePgnImport(pgnText, { analyzeAfterLoad: true }),
@@ -2510,11 +2555,12 @@ function App() {
       pausedRef.current = true
       setPaused(true)
       cancelPendingAiMove()
+      requestBoardReveal()
       return { ok: true }
     } catch {
       return { ok: false, error: 'Failed to parse FEN. Check piece placement, side to move, castling rights, and counters.' }
     }
-  }, [cancelPendingAiMove, cancelSampleLoad, clearImportSweep, engineEnabled, game, gameTree, newGame, setPgnHeaders])
+  }, [cancelPendingAiMove, cancelSampleLoad, clearImportSweep, engineEnabled, game, gameTree, newGame, requestBoardReveal, setPgnHeaders])
 
   const handleAnalysisFenLoad = useCallback(
     (fenText: string) => handleFenLoad(fenText, { forceAnalysis: true }),
@@ -2591,8 +2637,9 @@ function App() {
       gameTree.reset()
 
       setOrientation(defaultOrientationForGameMode(mode, color))
+      requestBoardReveal()
     },
-    [cancelPendingAiMove, cancelSampleLoad, clearBoardSelection, clearImportSweep, game, gameTree, newGame, setAiPlayerDifficulty, setPgnHeaders],
+    [cancelPendingAiMove, cancelSampleLoad, clearBoardSelection, clearImportSweep, game, gameTree, newGame, requestBoardReveal, setAiPlayerDifficulty, setPgnHeaders],
   )
 
   // ── Mode switch mid-game ──────────────────────────────
@@ -3264,7 +3311,7 @@ function App() {
         </div>
       </section>
 
-      <div className="main-container">
+      <div className="main-container" ref={mainContainerRef}>
         {/* ── Left panel (winrate graph) ── */}
         <section className={`panel left ${leftPanelCollapsed ? 'panel-collapsed' : ''}`} style={{ width: leftWidth }}>
           <div
@@ -3411,7 +3458,7 @@ function App() {
         </section>
 
         {/* ── Board ── */}
-        <section className="board-stage" aria-label="Chessboard">
+        <section className="board-stage" aria-label="Chessboard" ref={boardStageRef} tabIndex={-1}>
           <div className="board-layout">
             <div className="board-meta-strip" aria-label="Current game state">
               <span className={`turn-pill ${game.turn() === 'w' ? 'white' : 'black'}`}>{turnLabel}</span>
