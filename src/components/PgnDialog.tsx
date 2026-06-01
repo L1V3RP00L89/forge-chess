@@ -4,6 +4,7 @@ import type { EvalSnapshot } from '../engine/analysis'
 import { exportAnnotatedPgn, type PgnExportOptions } from '../engine/pgn'
 import { buildFenShareUrl } from '../engine/shareLink'
 import { IconDownload, IconClipboard, IconUpload } from './icons'
+import { MAX_PGN_IMPORT_BYTES, PGN_IMPORT_LIMIT_MESSAGE, pgnImportLengthError } from './pgnImportLimits'
 
 // Using existing styles from NewGameDialog to maintain design consistency
 import './NewGameDialog.css'
@@ -33,10 +34,6 @@ const DEFAULT_EXPORT_OPTIONS: Required<PgnExportOptions> = {
     includeEngineAnnotations: true,
     includeGlyphs: true,
 }
-const MAX_PGN_IMPORT_BYTES = 5 * 1024 * 1024
-const MAX_PGN_IMPORT_CHARS = 5_000_000
-const PGN_IMPORT_LIMIT_MESSAGE = 'PGN import supports one game up to 5 MB. Choose a smaller file or paste a single game.'
-
 export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, mainLineNodes, gameNodes, evaluations, pgnHeaders }: PgnDialogProps) {
     const [tab, setTab] = useState<'import' | 'fen' | 'export'>('import')
     const [importText, setImportText] = useState('')
@@ -63,8 +60,9 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
     }, [onClose, resetFeedback])
 
     const handleImport = () => {
-        if (importText.length > MAX_PGN_IMPORT_CHARS) {
-            setError(PGN_IMPORT_LIMIT_MESSAGE)
+        const limitError = pgnImportLengthError(importText)
+        if (limitError) {
+            setError(limitError)
             return
         }
 
@@ -98,6 +96,12 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
 
         try {
             const text = await file.text()
+            const limitError = pgnImportLengthError(text)
+            if (limitError) {
+                setImportFileName(null)
+                setError(limitError)
+                return
+            }
             setImportText(text)
             setImportFileName(file.name)
         } catch {
@@ -329,7 +333,13 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                 placeholder="[Event &quot;FIDE World Cup 2023&quot;]..."
                                 value={importText}
                                 onChange={e => {
-                                    setImportText(e.target.value)
+                                    const nextText = e.target.value
+                                    const limitError = pgnImportLengthError(nextText)
+                                    if (limitError) {
+                                        setError(limitError)
+                                        return
+                                    }
+                                    setImportText(nextText)
                                     setImportFileName(null)
                                     setError(null)
                                 }}
