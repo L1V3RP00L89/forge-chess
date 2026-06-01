@@ -3205,10 +3205,16 @@ body.resizing * {
 
   .mobile-modes-wrapper {
     grid-area: modes;
-    display: grid;
-    grid-template-columns: 1fr;
+    display: flex;
     gap: 0.35rem;
     min-width: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .mobile-modes-wrapper::-webkit-scrollbar {
+    display: none;
   }
 
   .top .settings-menu {
@@ -3229,18 +3235,19 @@ body.resizing * {
   }
 
   .top-mode-pills {
-    width: 100%;
-    justify-content: center;
+    flex: 0 0 auto;
+    width: auto;
+    justify-content: flex-start;
   }
 
   .top-mode-pills[aria-label="Game mode"] .gc-pill {
-    flex: 1 1 0;
-    min-width: 0;
+    flex: 0 0 auto;
+    min-width: auto;
     padding-left: 0.35rem;
     padding-right: 0.35rem;
     text-align: center;
-    white-space: normal;
-    line-height: 1.05;
+    white-space: nowrap;
+    line-height: 1;
   }
 
   .top-mode-pills[aria-label="Game mode"] .gc-pill-icon {
