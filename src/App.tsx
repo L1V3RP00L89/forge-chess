@@ -642,7 +642,7 @@ function loadPersistedSettings(): PersistedAppSettings {
       hashMb: normalizeInteger(parsed.hashMb, 16, 512, DEFAULT_PERSISTED_SETTINGS.hashMb),
       showWdl: typeof parsed.showWdl === 'boolean' ? parsed.showWdl : DEFAULT_PERSISTED_SETTINGS.showWdl,
       limitNodes: normalizeOptionalPositiveInteger(parsed.limitNodes, LIMIT_NODES_BOUNDS.max),
-      searchMovesInput: typeof parsed.searchMovesInput === 'string' ? parsed.searchMovesInput : DEFAULT_PERSISTED_SETTINGS.searchMovesInput,
+      searchMovesInput: DEFAULT_PERSISTED_SETTINGS.searchMovesInput,
       useClockLimits: typeof parsed.useClockLimits === 'boolean' ? parsed.useClockLimits : DEFAULT_PERSISTED_SETTINGS.useClockLimits,
       whiteTimeMs: normalizeInteger(parsed.whiteTimeMs, CLOCK_TIME_BOUNDS.min, CLOCK_TIME_BOUNDS.max, DEFAULT_PERSISTED_SETTINGS.whiteTimeMs),
       blackTimeMs: normalizeInteger(parsed.blackTimeMs, CLOCK_TIME_BOUNDS.min, CLOCK_TIME_BOUNDS.max, DEFAULT_PERSISTED_SETTINGS.blackTimeMs),
@@ -732,6 +732,7 @@ function App() {
   const [mateTarget, setMateTarget] = useState<NumericInputValue>(persistedSettings.mateTarget)
   const [limitNodes, setLimitNodes] = useState<NumericInputValue>(persistedSettings.limitNodes ?? '')
   const [searchMovesInput, setSearchMovesInput] = useState(persistedSettings.searchMovesInput)
+  const searchMovesFenRef = useRef(fen)
   const [useClockLimits, setUseClockLimits] = useState(persistedSettings.useClockLimits)
   const [whiteTimeMs, setWhiteTimeMs] = useState<NumericInputValue>(persistedSettings.whiteTimeMs)
   const [blackTimeMs, setBlackTimeMs] = useState<NumericInputValue>(persistedSettings.blackTimeMs)
@@ -1796,7 +1797,7 @@ function App() {
       hashMb,
       showWdl,
       limitNodes: optionalIntegerInputToNullable(limitNodes, LIMIT_NODES_BOUNDS),
-      searchMovesInput,
+      searchMovesInput: DEFAULT_PERSISTED_SETTINGS.searchMovesInput,
       useClockLimits,
       whiteTimeMs: normalizeRequiredIntegerInput(whiteTimeMs, CLOCK_TIME_BOUNDS),
       blackTimeMs: normalizeRequiredIntegerInput(blackTimeMs, CLOCK_TIME_BOUNDS),
@@ -1837,13 +1838,18 @@ function App() {
     topMoveArrowCount,
     quickMovetimeMs,
     searchDepth,
-    searchMovesInput,
     showAdvancedAnalyze,
     showWdl,
     useClockLimits,
     whiteIncMs,
     whiteTimeMs,
   ])
+
+  useEffect(() => {
+    if (searchMovesFenRef.current === fen) return
+    searchMovesFenRef.current = fen
+    setSearchMovesInput(value => value ? '' : value)
+  }, [fen])
 
   // ── Derived move data ─────────────────────────────────
   const mainLineNodes = useMemo(() => gameTree.mainLine(), [gameTree])
