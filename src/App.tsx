@@ -868,7 +868,7 @@ function App() {
   )
   const isImportSweepActive = importSweepProgress.total > 0 && importSweepProgress.done < importSweepProgress.total
   const openingFenPath = useMemo(() => currentPathNodes.map(n => n.fen), [currentPathNodes])
-  const shouldLoadOpeningNames = workspaceMode === 'analysis' && analysisTab === 'analyze' && currentPathNodes.length > 1
+  const shouldLoadOpeningNames = currentPathNodes.length > 1
   const opening = useOpening(openingFenPath, shouldLoadOpeningNames)
   const canGoBack = currentPathNodes.length > 1
   const canGoForward = gameTree.current.children.length > 0
