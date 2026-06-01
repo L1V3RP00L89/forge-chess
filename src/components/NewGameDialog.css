@@ -733,9 +733,6 @@
         z-index: 2;
     }
 
-    .pgn-dialog .dialog-actions {
-        position: static;
-    }
 }
 
 .thinking-dots {
