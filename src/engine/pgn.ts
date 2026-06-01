@@ -7,8 +7,12 @@ import { hasLegalKingPlacement } from './fen'
 
 const INITIAL_FEN = new Chess().fen()
 const PGN_TAG_NAME_PATTERN = /^[A-Za-z0-9_]+$/
+const PGN_EVENT_TAG_LINE_PATTERN = /^\s*\[Event\s+"(?:[^"\\]|\\.)*"\]\s*$/gim
 const VALID_PGN_RESULTS = new Set(['1-0', '0-1', '1/2-1/2', '*'])
 const PGN_EVAL_COMMENT_PATTERN = /\[%eval\s+[^\]]+\]/gi
+export const PGN_EMPTY_IMPORT_ERROR = 'Paste a PGN game or choose a .pgn file before importing.'
+export const PGN_MULTIPLE_GAMES_ERROR = 'PGN import supports one game at a time. Paste a single game, or split a database file before importing.'
+const PGN_IMPORT_USER_ERRORS = new Set([PGN_EMPTY_IMPORT_ERROR, PGN_MULTIPLE_GAMES_ERROR])
 const QUALITY_EXPORT_LABELS: Record<NonNullable<GameNode['quality']>, string> = {
     best: 'Best',
     good: 'Good',
@@ -36,6 +40,21 @@ function sanitizePgnHeaderValue(value: string): string {
     return value
         .replace(/[\r\n]+/g, ' ')
         .replace(/"/g, "'")
+}
+
+export function hasMultiplePgnGames(pgnText: string): boolean {
+    const eventTags = pgnText.match(PGN_EVENT_TAG_LINE_PATTERN)
+    return (eventTags?.length ?? 0) > 1
+}
+
+export function pgnImportContentError(pgnText: string): string | null {
+    if (!pgnText.trim()) return PGN_EMPTY_IMPORT_ERROR
+    return hasMultiplePgnGames(pgnText) ? PGN_MULTIPLE_GAMES_ERROR : null
+}
+
+export function pgnImportUserErrorMessage(error: unknown): string | null {
+    if (!(error instanceof Error)) return null
+    return PGN_IMPORT_USER_ERRORS.has(error.message) ? error.message : null
 }
 
 function normalizePgnResult(result: string | undefined): string {
@@ -344,6 +363,9 @@ export function parsePgnMoveTree(pgnText: string): {
     evaluations: Map<string, EvalSnapshot>
     result?: string
 } {
+    const importError = pgnImportContentError(pgnText)
+    if (importError) throw new Error(importError)
+
     const parsed = parsePgn(pgnText)
     const headers = { ...parsed.headers }
     if (parsed.result && !headers.Result) headers.Result = parsed.result

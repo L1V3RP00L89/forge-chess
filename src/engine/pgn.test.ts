@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import type { GameNode } from '../hooks/useGameTree'
 import { Chess } from 'chess.js'
-import { exportAnnotatedPgn, flattenPgnMainLine, formatPgnDate, parsePgnMoveTree, rootFenFromPgnHeaders } from './pgn'
+import {
+  PGN_EMPTY_IMPORT_ERROR,
+  PGN_MULTIPLE_GAMES_ERROR,
+  exportAnnotatedPgn,
+  flattenPgnMainLine,
+  formatPgnDate,
+  hasMultiplePgnGames,
+  parsePgnMoveTree,
+  pgnImportContentError,
+  rootFenFromPgnHeaders,
+} from './pgn'
 
 function makeNode(
   id: string,
@@ -520,5 +530,35 @@ describe('PGN export helpers', () => {
   it('uses the PGN termination marker as Result when the tag is missing', () => {
     const parsed = parsePgnMoveTree('1. e4 e5 1/2-1/2')
     expect(parsed.headers.Result).toBe('1/2-1/2')
+  })
+})
+
+describe('PGN import preflight', () => {
+  it('rejects empty PGN imports before resetting the board', () => {
+    expect(pgnImportContentError(' \n\t ')).toBe(PGN_EMPTY_IMPORT_ERROR)
+    expect(() => parsePgnMoveTree(' \n\t ')).toThrow(PGN_EMPTY_IMPORT_ERROR)
+  })
+
+  it('gives database-style multi-game files a clear one-game-at-a-time error', () => {
+    const multiGamePgn = `
+[Event "Game one"]
+[Result "*"]
+
+1. e4 e5 *
+
+[Event "Game two"]
+[Result "*"]
+
+1. d4 d5 *
+`
+
+    expect(hasMultiplePgnGames(multiGamePgn)).toBe(true)
+    expect(pgnImportContentError(multiGamePgn)).toBe(PGN_MULTIPLE_GAMES_ERROR)
+    expect(() => parsePgnMoveTree(multiGamePgn)).toThrow(PGN_MULTIPLE_GAMES_ERROR)
+  })
+
+  it('accepts a normal single-game PGN for import', () => {
+    expect(hasMultiplePgnGames('[Event "Game one"]\n\n1. e4 e5 *')).toBe(false)
+    expect(pgnImportContentError('[Event "Game one"]\n\n1. e4 e5 *')).toBeNull()
   })
 })

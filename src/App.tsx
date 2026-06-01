@@ -38,7 +38,7 @@ import {
 } from './engine/openingExplorer'
 import { parseCandidateMoveInput } from './engine/candidateMoves'
 import { type AnalyzeMode, type UciGoLimits } from './engine/uci'
-import { flattenPgnMainLine, parsePgnMoveTree } from './engine/pgn'
+import { flattenPgnMainLine, parsePgnMoveTree, pgnImportUserErrorMessage } from './engine/pgn'
 import { FEN_PARSE_ERROR, validateFenForAnalysis } from './engine/fen'
 import { buildImportSweepTargets, countImportSweepCandidates, type ImportSweepTarget } from './engine/importSweep'
 import {
@@ -2557,9 +2557,9 @@ function App() {
       setIsImportingGame(false)
       requestBoardReveal()
       return { ok: true }
-    } catch {
+    } catch (error) {
       setIsImportingGame(false)
-      return { ok: false, error: 'Failed to parse PGN. Check the move text, headers, and move numbers.' }
+      return { ok: false, error: pgnImportUserErrorMessage(error) ?? 'Failed to parse PGN. Check the move text, headers, and move numbers.' }
     }
   }, [cancelPendingAiMove, cancelSampleLoad, clearBatchReview, clearBoardSelection, clearImportSweep, engineEnabled, game, gameTree, newGame, requestBoardReveal, setPgnHeaders])
 

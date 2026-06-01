@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type ChangeEv
 import type { GameNode } from '../hooks/useGameTree'
 import type { EvalSnapshot } from '../engine/analysis'
 import { validateFenForAnalysis } from '../engine/fen'
-import { exportAnnotatedPgn, type PgnExportOptions } from '../engine/pgn'
+import { exportAnnotatedPgn, pgnImportContentError, type PgnExportOptions } from '../engine/pgn'
 import {
     createEmptyPositionSetup,
     createStartingPositionSetup,
@@ -95,9 +95,9 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
     }, [onClose, resetFeedback])
 
     const handleImport = () => {
-        const limitError = pgnImportLengthError(importText)
-        if (limitError) {
-            setError(limitError)
+        const importError = pgnImportLengthError(importText) ?? pgnImportContentError(importText)
+        if (importError) {
+            setError(importError)
             return
         }
 
@@ -139,6 +139,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
             }
             setImportText(text)
             setImportFileName(file.name)
+            setError(pgnImportContentError(text))
         } catch {
             setImportFileName(null)
             setError('Could not read that PGN file.')
@@ -194,8 +195,13 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
         () => validateFenForAnalysis(fenTextForShareLink(fenText, currentFen)),
         [currentFen, fenText],
     )
+    const importContentError = useMemo(
+        () => importText.trim() ? pgnImportContentError(importText) : null,
+        [importText],
+    )
     const canLoadFen = Boolean(fenText.trim()) && !fenValidationError
     const canCopyShareLink = fenShareValidation.ok
+    const canImportPgn = Boolean(importText.trim()) && !importContentError
 
     const handleLoadFen = () => {
         if (fenValidationError) {
@@ -419,14 +425,14 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                     }
                                     setImportText(nextText)
                                     setImportFileName(null)
-                                    setError(null)
+                                    setError(nextText.trim() ? pgnImportContentError(nextText) : null)
                                 }}
                                 aria-invalid={Boolean(error)}
                             />
                             {error && <p className="dialog-error" role="alert">{error}</p>}
                             <div className="dialog-actions">
                                 <button type="button" className="btn-cancel" onClick={closeDialog}>Cancel</button>
-                                <button type="button" className="btn-start" onClick={handleImport} disabled={!importText.trim()}>
+                                <button type="button" className="btn-start" onClick={handleImport} disabled={!canImportPgn}>
                                     Import & Analyze
                                 </button>
                             </div>
