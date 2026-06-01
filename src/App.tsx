@@ -39,6 +39,7 @@ import { parseCandidateMoveInput } from './engine/candidateMoves'
 import { type AnalyzeMode, type UciGoLimits } from './engine/uci'
 import { flattenPgnMainLine, parsePgnMoveTree } from './engine/pgn'
 import { hasLegalKingPlacement } from './engine/fen'
+import { buildImportSweepTargets, type ImportSweepTarget } from './engine/importSweep'
 import {
   normalizeOptionalIntegerInput,
   normalizeRequiredIntegerInput,
@@ -119,6 +120,7 @@ const IMPORT_LOAD_MOVETIME_MS = 70
 const IMPORT_SHALLOW_MULTIPV = 1
 const MOVE_PONDER_MIN_DEPTH = 20
 const IMPORT_SWEEP_MOVETIME_MS = 70
+const IMPORT_SWEEP_TARGET_LIMIT = 80
 const IMPORT_SWEEP_MULTIPV = 1
 const AUTO_ANALYZE_DEBOUNCE_MS = 140
 const REVIEW_BOOK_PREFETCH_LIMIT = 30
@@ -160,12 +162,6 @@ const TABLEBASE_CATEGORY_LABELS: Record<TablebaseCategory, string> = {
   loss: 'Loss',
 }
 
-type ImportSweepTarget = {
-  fen: string
-  rootFen: string
-  historyMoves: string[]
-}
-
 type BatchReviewTarget = ImportSweepTarget
 
 type AnalysisTarget = {
@@ -181,31 +177,6 @@ type PgnImportOptions = {
 
 type FenLoadOptions = {
   forceAnalysis?: boolean
-}
-
-function buildImportSweepTargets(
-  entries: Array<{ move: { from: string; to: string; promotion?: string }; fen: string }>,
-  rootFen: string,
-): ImportSweepTarget[] {
-  if (!entries.length) return []
-
-  const historyMoves: string[] = []
-  const targets: ImportSweepTarget[] = [{
-    fen: rootFen,
-    rootFen,
-    historyMoves: [],
-  }]
-
-  for (const entry of entries) {
-    historyMoves.push(`${entry.move.from}${entry.move.to}${entry.move.promotion ?? ''}`)
-    targets.push({
-      fen: entry.fen,
-      rootFen,
-      historyMoves: [...historyMoves],
-    })
-  }
-
-  return targets
 }
 
 function buildBatchReviewTargets(
@@ -2502,8 +2473,7 @@ function App() {
       setEvaluationsByFen(importedGame.evaluations)
       if (shouldAnalyzeAfterLoad) {
         setPendingShallowAnalyzeFen(finalFen)
-        const allSweepTargets = buildImportSweepTargets(mainLineEntries, rootFen)
-        const sweepTargets = allSweepTargets.slice(0, -1)
+        const sweepTargets = buildImportSweepTargets(mainLineEntries, rootFen, IMPORT_SWEEP_TARGET_LIMIT)
         importSweepQueueRef.current = sweepTargets
         setImportSweepProgress({ done: 0, total: sweepTargets.length })
       } else {
