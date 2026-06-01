@@ -382,7 +382,7 @@
     font-size: 1.15rem;
     font-weight: 700;
     color: var(--text-heading, #ffffff);
-    letter-spacing: 0.02em;
+    letter-spacing: 0;
 }
 
 /* ── Sections ──────────────────────────────────────── */
@@ -395,7 +395,7 @@
     font-family: var(--font-heading, inherit);
     font-size: 0.68rem;
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0;
     text-transform: uppercase;
     color: var(--text-tertiary, #6e7681);
 }
