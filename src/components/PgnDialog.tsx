@@ -85,6 +85,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
     const [selectedSetupPiece, setSelectedSetupPiece] = useState<SetupPiece | null>('P')
     const panelRef = useRef<HTMLDivElement>(null)
     const importFileInputRef = useRef<HTMLInputElement>(null)
+    const wasOpenRef = useRef(false)
     const [importFileName, setImportFileName] = useState<string | null>(null)
     const titleId = useId()
     const importTextId = useId()
@@ -182,6 +183,17 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
         setFenText(positionSetupToFen(nextSetup))
         resetFeedback()
     }, [resetFeedback])
+
+    useEffect(() => {
+        if (!open) {
+            wasOpenRef.current = false
+            return
+        }
+        if (wasOpenRef.current) return
+
+        wasOpenRef.current = true
+        syncFenTextAndSetup(currentFen)
+    }, [currentFen, open, syncFenTextAndSetup])
 
     const exportText = useMemo(
         () => tab === 'export'
