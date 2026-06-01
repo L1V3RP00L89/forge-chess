@@ -2978,7 +2978,7 @@ function App() {
 
   // ─────────────────────────────────────────────────────
   return (
-    <main className="app-shell">
+    <main className="app-shell" data-workspace-mode={workspaceMode}>
       <nav
         className="skip-links"
         aria-label="Skip links"

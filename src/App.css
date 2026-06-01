@@ -3288,6 +3288,10 @@ body.resizing * {
     flex-basis: 17rem;
   }
 
+  .app-shell[data-workspace-mode="analysis"] .top-mode-pills[aria-label="Game mode"] {
+    display: none;
+  }
+
   .top-mode-pills[aria-label="Game mode"] .gc-pill {
     flex: 1 1 auto;
     min-width: 0;
@@ -3440,6 +3444,10 @@ body.resizing * {
     min-height: 1.45rem;
     gap: 0.32rem;
     overflow: hidden;
+  }
+
+  .app-shell[data-workspace-mode="analysis"] .bottom-status-row {
+    display: none !important;
   }
 
   .bottom-status-row .bottom-engine-info {
