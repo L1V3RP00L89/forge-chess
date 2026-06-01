@@ -150,6 +150,80 @@ export function isReviewEvaluationSufficient(snapshot: EvalSnapshot | undefined,
   return isFiniteNumber(snapshot.depth) && snapshot.depth >= normalizedMinDepth
 }
 
+function snapshotDepth(snapshot: EvalSnapshot): number {
+  return isFiniteNumber(snapshot.depth) ? snapshot.depth : -1
+}
+
+function snapshotNodes(snapshot: EvalSnapshot): number {
+  return isFiniteNumber(snapshot.nodes) ? snapshot.nodes : -1
+}
+
+function sameSnapshotScore(a: EvalSnapshot, b: EvalSnapshot): boolean {
+  return scoreToCp(a.cp, a.mate) === scoreToCp(b.cp, b.mate)
+    && a.mate === b.mate
+}
+
+function sameSnapshotWdl(a: EvalSnapshot, b: EvalSnapshot): boolean {
+  return a.wdl?.w === b.wdl?.w
+    && a.wdl?.d === b.wdl?.d
+    && a.wdl?.l === b.wdl?.l
+}
+
+function sameEvaluationSnapshot(a: EvalSnapshot, b: EvalSnapshot): boolean {
+  return sameSnapshotScore(a, b)
+    && sameSnapshotWdl(a, b)
+    && a.bestMove === b.bestMove
+    && a.depth === b.depth
+    && a.nodes === b.nodes
+    && a.nps === b.nps
+    && a.time === b.time
+    && a.searchId === b.searchId
+    && a.mode === b.mode
+    && a.purpose === b.purpose
+}
+
+export function shouldReplaceEvaluationSnapshot(
+  current: EvalSnapshot | undefined,
+  next: EvalSnapshot,
+): boolean {
+  if (!isFiniteNumber(scoreToCp(next.cp, next.mate))) return false
+  if (!current) return true
+  if (!isFiniteNumber(scoreToCp(current.cp, current.mate))) return true
+
+  const currentShallow = isShallowEvaluation(current)
+  const nextShallow = isShallowEvaluation(next)
+  if (currentShallow && !nextShallow) return true
+  if (!currentShallow && nextShallow) return false
+
+  const currentDepth = snapshotDepth(current)
+  const nextDepth = snapshotDepth(next)
+  if (current.purpose === 'cloud-eval' && next.purpose !== 'cloud-eval' && currentDepth >= nextDepth) return false
+  if (next.purpose === 'cloud-eval' && current.purpose !== 'cloud-eval' && nextDepth >= currentDepth) return true
+  if (nextDepth > currentDepth) return true
+  if (nextDepth < currentDepth) return false
+
+  const currentNodes = snapshotNodes(current)
+  const nextNodes = snapshotNodes(next)
+  if (nextNodes > currentNodes) return true
+  if (nextNodes < currentNodes) return false
+
+  return !sameEvaluationSnapshot(current, next)
+}
+
+export function mergeEvaluationSnapshot(
+  current: EvalSnapshot | undefined,
+  next: EvalSnapshot,
+): EvalSnapshot | undefined {
+  if (shouldReplaceEvaluationSnapshot(current, next)) return next
+  if (!current) return undefined
+
+  if (next.wdl && !sameSnapshotWdl(current, next) && sameSnapshotScore(current, next)) {
+    return { ...current, wdl: next.wdl }
+  }
+
+  return current
+}
+
 function minDepth(a: EvalSnapshot, b: EvalSnapshot): number | undefined {
   if (isFiniteNumber(a.depth) && isFiniteNumber(b.depth)) return Math.min(a.depth, b.depth)
   if (isFiniteNumber(a.depth)) return a.depth

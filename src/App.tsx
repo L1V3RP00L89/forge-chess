@@ -9,6 +9,7 @@ import {
   formatWhitePovEvaluation,
   isReviewEvaluationSufficient,
   isTerminalPositionFen,
+  mergeEvaluationSnapshot,
   pvToSan,
   scoreToCp,
   summarizeAccuracy,
@@ -1187,54 +1188,28 @@ function App() {
     if (typeof cp !== 'number') return
     const bestMove = primaryBestMove
     const evaluationFen = primaryLine?.fen ?? fen
+    const snapshot: EvalSnapshot = {
+      cp,
+      mate: primaryLine?.mate,
+      bestMove,
+      wdl: primaryLine?.wdl,
+      depth: primaryLine?.depth,
+      nodes: primaryLine?.nodes,
+      nps: primaryLine?.nps,
+      time: primaryLine?.time,
+      searchId: primaryLine?.searchId,
+      mode: primaryLine?.mode,
+      purpose: primaryLine?.purpose,
+      searchedAt: Date.now(),
+    }
+
     setEvaluationsByFen(prev => {
       const cur = prev.get(evaluationFen)
-      const localDepth = primaryLine?.depth
-      if (
-        cur?.purpose === 'cloud-eval'
-        && typeof cur.depth === 'number'
-        && typeof localDepth === 'number'
-        && localDepth < cur.depth
-      ) {
-        const sameWdl = cur.wdl?.w === primaryLine?.wdl?.w
-          && cur.wdl?.d === primaryLine?.wdl?.d
-          && cur.wdl?.l === primaryLine?.wdl?.l
-        if (!primaryLine?.wdl || sameWdl) return prev
-
-        const next = new Map(prev)
-        next.set(evaluationFen, {
-          ...cur,
-          wdl: primaryLine.wdl,
-        })
-        return next
-      }
-      // Check if cp and wdl are exactly the same
-      const sameCp = cur?.cp === cp
-      const sameMate = cur?.mate === primaryLine?.mate
-      const sameWdl = cur?.wdl?.w === primaryLine?.wdl?.w
-        && cur?.wdl?.d === primaryLine?.wdl?.d
-        && cur?.wdl?.l === primaryLine?.wdl?.l
-      const sameSearch = cur?.searchId === primaryLine?.searchId
-      const sameDepth = cur?.depth === primaryLine?.depth
-      const samePurpose = cur?.purpose === primaryLine?.purpose
-      const sameBestMove = cur?.bestMove === bestMove
-      if (sameCp && sameMate && sameWdl && sameSearch && sameDepth && samePurpose && sameBestMove) return prev
+      const merged = mergeEvaluationSnapshot(cur, snapshot)
+      if (!merged || merged === cur) return prev
 
       const next = new Map(prev)
-      next.set(evaluationFen, {
-        cp,
-        mate: primaryLine?.mate,
-        bestMove,
-        wdl: primaryLine?.wdl,
-        depth: primaryLine?.depth,
-        nodes: primaryLine?.nodes,
-        nps: primaryLine?.nps,
-        time: primaryLine?.time,
-        searchId: primaryLine?.searchId,
-        mode: primaryLine?.mode,
-        purpose: primaryLine?.purpose,
-        searchedAt: Date.now(),
-      })
+      next.set(evaluationFen, merged)
       return next
     })
   }, [
@@ -1261,22 +1236,11 @@ function App() {
 
     setEvaluationsByFen(previous => {
       const current = previous.get(fen)
-      const currentDepth = current?.depth ?? 0
-      const cloudDepth = snapshot.depth ?? 0
-      if (current && current.purpose !== 'cloud-eval' && currentDepth >= cloudDepth) return previous
-      if (
-        current?.purpose === 'cloud-eval'
-        && current.cp === snapshot.cp
-        && current.mate === snapshot.mate
-        && current.bestMove === snapshot.bestMove
-        && current.depth === snapshot.depth
-        && current.nodes === snapshot.nodes
-      ) {
-        return previous
-      }
+      const merged = mergeEvaluationSnapshot(current, snapshot)
+      if (!merged || merged === current) return previous
 
       const next = new Map(previous)
-      next.set(fen, snapshot)
+      next.set(fen, merged)
       return next
     })
   }, [currentCloudEval, engineEnabled, fen])

@@ -9,7 +9,9 @@ import {
   formatWhitePovEvaluation,
   isTerminalPositionFen,
   isReviewEvaluationSufficient,
+  mergeEvaluationSnapshot,
   scoreToCp,
+  shouldReplaceEvaluationSnapshot,
   summarizeAccuracy,
   summarizeReview,
   uciToSan,
@@ -197,6 +199,74 @@ describe('review analysis helpers', () => {
     expect(isReviewEvaluationSufficient({ cp: 20, depth: 12 }, 16)).toBe(false)
     expect(isReviewEvaluationSufficient({ cp: 20, depth: 16 }, 16)).toBe(true)
     expect(isReviewEvaluationSufficient({ cp: Number.NaN, mate: -3, depth: 18 }, 16)).toBe(true)
+  })
+
+  it('keeps deeper review evaluations over shallow import scans', () => {
+    const current = { cp: 42, depth: 18, bestMove: 'e2e4', purpose: 'batch-review' as const }
+    const shallowImport = { cp: -80, depth: 4, bestMove: 'd2d4', purpose: 'import-sweep' as const }
+
+    expect(shouldReplaceEvaluationSnapshot(current, shallowImport)).toBe(false)
+    expect(mergeEvaluationSnapshot(current, shallowImport)).toBe(current)
+  })
+
+  it('allows deeper local evaluations to replace shallower stored snapshots', () => {
+    const deeperManual = { cp: 35, depth: 18, nodes: 2000, purpose: 'manual' as const }
+
+    expect(mergeEvaluationSnapshot(
+      { cp: 10, depth: 12, nodes: 1000, purpose: 'cloud-eval' as const },
+      deeperManual,
+    )).toEqual(deeperManual)
+    expect(mergeEvaluationSnapshot(
+      { cp: 10, depth: 12, nodes: 1000, purpose: 'auto' as const },
+      deeperManual,
+    )).toEqual(deeperManual)
+  })
+
+  it('prefers cloud evaluations unless local analysis is deeper', () => {
+    const cloudSameDepth = { cp: 12, depth: 16, nodes: 300000, purpose: 'cloud-eval' as const }
+    const deeperLocal = { cp: 10, depth: 20, nodes: 500000, purpose: 'manual' as const }
+
+    expect(mergeEvaluationSnapshot(
+      { cp: 8, depth: 16, nodes: 250000, purpose: 'auto' as const },
+      cloudSameDepth,
+    )).toEqual(cloudSameDepth)
+    expect(mergeEvaluationSnapshot(deeperLocal, cloudSameDepth)).toBe(deeperLocal)
+  })
+
+  it('can merge WDL into a kept snapshot when the score matches', () => {
+    const current = {
+      cp: 20,
+      depth: 18,
+      purpose: 'batch-review' as const,
+      wdl: { w: 10, d: 80, l: 10 },
+    }
+    const matchingScoreWdl = {
+      cp: 20,
+      depth: 4,
+      purpose: 'import-sweep' as const,
+      wdl: { w: 12, d: 76, l: 12 },
+    }
+    const differentScoreWdl = {
+      cp: 21,
+      depth: 4,
+      purpose: 'import-sweep' as const,
+      wdl: { w: 13, d: 74, l: 13 },
+    }
+
+    expect(mergeEvaluationSnapshot(current, matchingScoreWdl)).toEqual({
+      ...current,
+      wdl: matchingScoreWdl.wdl,
+    })
+    expect(mergeEvaluationSnapshot(current, differentScoreWdl)).toBe(current)
+  })
+
+  it('ignores invalid replacement evaluations', () => {
+    const current = { cp: 15, depth: 18, purpose: 'manual' as const }
+    const invalid = { cp: Number.NaN, depth: 99, purpose: 'manual' as const }
+
+    expect(shouldReplaceEvaluationSnapshot(current, invalid)).toBe(false)
+    expect(mergeEvaluationSnapshot(current, invalid)).toBe(current)
+    expect(mergeEvaluationSnapshot(undefined, invalid)).toBeUndefined()
   })
 
   it('summarizes player accuracy from evaluated centipawn loss', () => {
