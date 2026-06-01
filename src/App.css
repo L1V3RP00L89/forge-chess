@@ -887,6 +887,10 @@ body.resizing * {
   height: 100%;
 }
 
+.app-shell[data-workspace-mode="play"] .left {
+  display: none !important;
+}
+
 .left .panel-inner {
   border-left: none;
   border-top: none;
@@ -3317,10 +3321,6 @@ body.resizing * {
 
   .app-shell[data-workspace-mode="analysis"] .top-mode-pills[aria-label="Game mode"] {
     display: none;
-  }
-
-  .app-shell[data-workspace-mode="play"] .left {
-    display: none !important;
   }
 
   .top-mode-pills[aria-label="Game mode"] .gc-pill {

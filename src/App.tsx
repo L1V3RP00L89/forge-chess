@@ -2978,6 +2978,8 @@ function App() {
   }
 
   const isMobile = viewport.width <= 900
+  const leftPanelUnavailable = workspaceMode === 'play'
+  const layoutLeftWidth = leftPanelUnavailable ? 0 : leftWidth
   const desktopBoardChromeReserve = 44
   const mobileBoardWidth = Math.min(
     Math.max(0, viewport.width - 16),
@@ -2988,7 +2990,7 @@ function App() {
   const boardWidth = isMobile
     ? mobileBoardWidth
     : Math.min(
-      viewport.width - leftWidth - rightWidth - 48,
+      viewport.width - layoutLeftWidth - rightWidth - 48,
       viewport.height - (bottomPanelOpen ? 140 : 80) - (topPanelOpen ? 80 : 40) - desktopBoardChromeReserve,
       800,
     )
@@ -3001,7 +3003,7 @@ function App() {
     : gameMode === 'human-vs-ai'
       ? 'Human vs AI'
       : 'AI vs AI'
-  const leftPanelCollapsed = leftWidth === 0
+  const leftPanelCollapsed = leftPanelUnavailable || leftWidth === 0
   const rightPanelCollapsed = rightWidth === 0
   const playEngineActive = workspaceMode === 'play' && gameMode !== 'human-vs-human'
   const playEngineStatus = isAiThinking ? 'thinking' : aiPlayer.status
@@ -3508,9 +3510,9 @@ function App() {
         {/* ── Left panel (winrate graph) ── */}
         <section
           className={`panel left ${leftPanelCollapsed ? 'panel-collapsed' : ''}`}
-          aria-hidden={appModalOpen || promotionDialogOpen ? true : undefined}
-          inert={appModalOpen || promotionDialogOpen ? true : undefined}
-          style={{ width: leftWidth }}
+          aria-hidden={leftPanelUnavailable || appModalOpen || promotionDialogOpen ? true : undefined}
+          inert={leftPanelUnavailable || appModalOpen || promotionDialogOpen ? true : undefined}
+          style={{ width: layoutLeftWidth }}
         >
           <div
             className="resize-handle resize-handle-right"
