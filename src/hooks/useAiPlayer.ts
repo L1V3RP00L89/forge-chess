@@ -59,13 +59,27 @@ export function aiDifficultyCommands(difficulty: AiDifficulty): string[] {
     ]
 }
 
-type AiStatus = 'loading' | 'ready' | 'thinking' | 'error' | 'disabled'
+type AiStatus = 'loading' | 'ready' | 'thinking' | 'stopping' | 'error' | 'disabled'
+const STOPPED_SEARCH_ACK_TIMEOUT_MS = 10_000
+
+export function consumeStoppedSearchBestMove(pendingStoppedSearches: number): {
+    ignore: boolean
+    remaining: number
+} {
+    if (!Number.isFinite(pendingStoppedSearches) || pendingStoppedSearches <= 0) {
+        return { ignore: false, remaining: 0 }
+    }
+
+    return { ignore: true, remaining: Math.max(0, Math.floor(pendingStoppedSearches) - 1) }
+}
 
 export function useAiPlayer(enabled = true) {
     const workerRef = useRef<Worker | null>(null)
     const isReadyRef = useRef(false)
     const resolveRef = useRef<((move: string | null) => void) | null>(null)
     const requestTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const stopAckTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const ignoredBestMoveCountRef = useRef(0)
     const [status, setStatus] = useState<AiStatus>('loading')
     const [profileName, setProfileName] = useState('Stockfish')
     const difficultyRef = useRef<AiDifficulty>(4)
@@ -75,6 +89,20 @@ export function useAiPlayer(enabled = true) {
         clearTimeout(requestTimeoutRef.current)
         requestTimeoutRef.current = null
     }, [])
+
+    const clearStopAckTimeout = useCallback(() => {
+        if (!stopAckTimeoutRef.current) return
+        clearTimeout(stopAckTimeoutRef.current)
+        stopAckTimeoutRef.current = null
+    }, [])
+
+    const releaseStoppedSearch = useCallback(() => {
+        ignoredBestMoveCountRef.current = 0
+        clearStopAckTimeout()
+        if (enabled && workerRef.current && isReadyRef.current) {
+            setStatus('ready')
+        }
+    }, [clearStopAckTimeout, enabled])
 
     const settleRequest = useCallback((move: string | null) => {
         clearRequestTimeout()
@@ -159,6 +187,18 @@ export function useAiPlayer(enabled = true) {
                 }
 
                 if (line.startsWith('bestmove ')) {
+                    const stoppedSearchAck = consumeStoppedSearchBestMove(ignoredBestMoveCountRef.current)
+                    if (stoppedSearchAck.ignore) {
+                        ignoredBestMoveCountRef.current = stoppedSearchAck.remaining
+                        if (ignoredBestMoveCountRef.current === 0) {
+                            clearStopAckTimeout()
+                        }
+                        if (!resolveRef.current && workerRef.current && isReadyRef.current) {
+                            setStatus('ready')
+                        }
+                        continue
+                    }
+
                     const parts = line.split(' ')
                     const move = parts[1] ?? null
                     finishRequest(move === '(none)' ? null : move, 'ready')
@@ -180,10 +220,12 @@ export function useAiPlayer(enabled = true) {
             worker?.terminate()
             workerRef.current = null
             isReadyRef.current = false
+            ignoredBestMoveCountRef.current = 0
+            clearStopAckTimeout()
             settleRequest(null)
             if (workerBlobUrl) URL.revokeObjectURL(workerBlobUrl)
         }
-    }, [applyDifficulty, enabled, finishRequest, settleRequest])
+    }, [applyDifficulty, clearStopAckTimeout, enabled, finishRequest, settleRequest])
 
     const setDifficulty = useCallback((difficulty: AiDifficulty) => {
         difficultyRef.current = difficulty
@@ -196,11 +238,18 @@ export function useAiPlayer(enabled = true) {
         const worker = workerRef.current
         clearRequestTimeout()
         if (resolveRef.current) {
+            if (worker) {
+                ignoredBestMoveCountRef.current += 1
+                setStatus('stopping')
+                clearStopAckTimeout()
+                stopAckTimeoutRef.current = setTimeout(releaseStoppedSearch, STOPPED_SEARCH_ACK_TIMEOUT_MS)
+            }
             try { worker?.postMessage('stop') } catch { /* worker may already be gone */ }
             settleRequest(null)
+            return
         }
         if (enabled && worker && isReadyRef.current) setStatus('ready')
-    }, [clearRequestTimeout, enabled, settleRequest])
+    }, [clearRequestTimeout, clearStopAckTimeout, enabled, releaseStoppedSearch, settleRequest])
 
     /** Request the engine to pick a move for the given position.
      *  Returns a promise resolving to a UCI move string (e.g. "e2e4") or null. */
@@ -209,6 +258,7 @@ export function useAiPlayer(enabled = true) {
             const worker = workerRef.current
             if (!enabled) return Promise.resolve(null)
             if (!worker || !isReadyRef.current || resolveRef.current) return Promise.resolve(null)
+            if (ignoredBestMoveCountRef.current > 0) return Promise.resolve(null)
 
             return new Promise((resolve) => {
                 if (difficultyRef.current !== difficulty) {
