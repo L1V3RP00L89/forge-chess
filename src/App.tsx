@@ -754,6 +754,7 @@ function App() {
   const aiMoveScheduledRef = useRef(false)
   const gameModeRef = useRef<GameMode>('human-vs-human')
   const playerColorRef = useRef<PlayerColor>('white')
+  const modalTriggerRef = useRef<HTMLElement | null>(null)
   gameModeRef.current = gameMode
   playerColorRef.current = playerColor
 
@@ -875,8 +876,9 @@ function App() {
   const opening = useOpening(openingFenPath, shouldLoadOpeningNames)
   const canGoBack = currentPathNodes.length > 1
   const canGoForward = gameTree.current.children.length > 0
+  const appModalOpen = showNewGameDialog || showPgnDialog
   const shortcutsSuspended =
-    showNewGameDialog || showPgnDialog || settingsOpen || pendingPromotion !== null
+    appModalOpen || settingsOpen || pendingPromotion !== null
 
   useEffect(() => {
     if (workspaceMode !== 'analysis') return
@@ -2375,16 +2377,42 @@ function App() {
   }, [pendingPromotion])
 
   // ── New game ──────────────────────────────────────────
+  const rememberModalTrigger = () => {
+    modalTriggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  }
+
+  const restoreModalTriggerFocus = useCallback(() => {
+    const trigger = modalTriggerRef.current
+    modalTriggerRef.current = null
+    if (!trigger) return
+
+    window.requestAnimationFrame(() => {
+      if (document.contains(trigger)) {
+        trigger.focus()
+      }
+    })
+  }, [])
+
   const openNewGameDialog = () => {
+    rememberModalTrigger()
     setSettingsOpen(false)
     setShowPgnDialog(false)
     setShowNewGameDialog(true)
   }
   const openPgnDialog = () => {
+    rememberModalTrigger()
     setSettingsOpen(false)
     setShowNewGameDialog(false)
     setShowPgnDialog(true)
   }
+  const closeNewGameDialog = useCallback(() => {
+    setShowNewGameDialog(false)
+    restoreModalTriggerFocus()
+  }, [restoreModalTriggerFocus])
+  const closePgnDialog = useCallback(() => {
+    setShowPgnDialog(false)
+    restoreModalTriggerFocus()
+  }, [restoreModalTriggerFocus])
   const handleSettingsToggle = (event: SyntheticEvent<HTMLDetailsElement>) => {
     const nextOpen = event.currentTarget.open
     setSettingsOpen(nextOpen)
@@ -2906,13 +2934,22 @@ function App() {
   // ─────────────────────────────────────────────────────
   return (
     <main className="app-shell">
-      <nav className="skip-links" aria-label="Skip links">
+      <nav
+        className="skip-links"
+        aria-label="Skip links"
+        aria-hidden={appModalOpen ? true : undefined}
+        inert={appModalOpen ? true : undefined}
+      >
         <a href="#chessboard-stage">Skip to board</a>
         <a href="#analysis-panel">Skip to analysis</a>
       </nav>
 
       {/* ── Top bar ── */}
-      <section className={`panel top ${topPanelOpen ? '' : 'hidden'}`}>
+      <section
+        className={`panel top ${topPanelOpen ? '' : 'hidden'}`}
+        aria-hidden={appModalOpen ? true : undefined}
+        inert={appModalOpen ? true : undefined}
+      >
         <div className="panel-inner">
           <div className="panel-content compact-grid">
             <div className="app-brand">
@@ -3340,7 +3377,12 @@ function App() {
 
       <div className="main-container" ref={mainContainerRef}>
         {/* ── Left panel (winrate graph) ── */}
-        <section className={`panel left ${leftPanelCollapsed ? 'panel-collapsed' : ''}`} style={{ width: leftWidth }}>
+        <section
+          className={`panel left ${leftPanelCollapsed ? 'panel-collapsed' : ''}`}
+          aria-hidden={appModalOpen ? true : undefined}
+          inert={appModalOpen ? true : undefined}
+          style={{ width: leftWidth }}
+        >
           <div
             className="resize-handle resize-handle-right"
             role="separator"
@@ -3485,7 +3527,15 @@ function App() {
         </section>
 
         {/* ── Board ── */}
-        <section id="chessboard-stage" className="board-stage" aria-label="Chessboard" ref={boardStageRef} tabIndex={-1}>
+        <section
+          id="chessboard-stage"
+          className="board-stage"
+          aria-label="Chessboard"
+          aria-hidden={appModalOpen ? true : undefined}
+          inert={appModalOpen ? true : undefined}
+          ref={boardStageRef}
+          tabIndex={-1}
+        >
           <div className="board-layout">
             <div className="board-meta-strip" aria-label="Current game state">
               <span className={`turn-pill ${game.turn() === 'w' ? 'white' : 'black'}`}>{turnLabel}</span>
@@ -3610,14 +3660,14 @@ function App() {
               initialPlayerColor={playerColor}
               initialDifficulty={aiDifficulty}
               onStart={handleNewGameStart}
-              onCancel={() => setShowNewGameDialog(false)}
+              onCancel={closeNewGameDialog}
             />
           )}
 
           {showPgnDialog && (
             <PgnDialog
               open
-              onClose={() => setShowPgnDialog(false)}
+              onClose={closePgnDialog}
               onImport={handleAnalysisPgnImport}
               onLoadFen={handleAnalysisFenLoad}
               currentFen={fen}
@@ -3633,6 +3683,8 @@ function App() {
         <aside
           id="analysis-panel"
           className={`panel right ${rightPanelCollapsed ? 'panel-collapsed' : ''}`}
+          aria-hidden={appModalOpen ? true : undefined}
+          inert={appModalOpen ? true : undefined}
           style={{ width: rightWidth }}
           tabIndex={-1}
         >
