@@ -83,6 +83,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
     const [exportOptions, setExportOptions] = useState(DEFAULT_EXPORT_OPTIONS)
     const [setup, setSetup] = useState<PositionSetup>(() => parsePositionSetupFen(currentFen) ?? createStartingPositionSetup())
     const [selectedSetupPiece, setSelectedSetupPiece] = useState<SetupPiece | null>('P')
+    const [shareLinkFallback, setShareLinkFallback] = useState('')
     const panelRef = useRef<HTMLDivElement>(null)
     const importFileInputRef = useRef<HTMLInputElement>(null)
     const wasOpenRef = useRef(false)
@@ -97,6 +98,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
     const resetFeedback = useCallback(() => {
         setError(null)
         setCopyStatus('idle')
+        setShareLinkFallback('')
     }, [])
 
     const closeDialog = useCallback(() => {
@@ -285,11 +287,13 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
             return
         }
 
+        const shareUrl = buildFenShareUrl(fenToShare, window.location.href)
         try {
-            await navigator.clipboard.writeText(buildFenShareUrl(fenToShare, window.location.href))
+            await navigator.clipboard.writeText(shareUrl)
             setCopyStatus('link-copied')
         } catch {
             setCopyStatus('failed')
+            setShareLinkFallback(shareUrl)
         }
     }
 
@@ -627,7 +631,20 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                 <p className="dialog-error" role="status">{fenValidationError}</p>
                             )}
                             {copyStatus === 'failed' && (
-                                <p className="dialog-error" role="alert">Clipboard access failed. The current FEN is in the text box.</p>
+                                shareLinkFallback ? (
+                                    <div className="dialog-share-fallback" role="alert">
+                                        <p className="dialog-error">Clipboard access failed. Select the share link and copy it manually.</p>
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={shareLinkFallback}
+                                            aria-label="Share link fallback"
+                                            onFocus={event => event.currentTarget.select()}
+                                        />
+                                    </div>
+                                ) : (
+                                    <p className="dialog-error" role="alert">Clipboard access failed. The current FEN is in the text box.</p>
+                                )
                             )}
                         </div>
                     )}

@@ -72,6 +72,25 @@
     white-space: nowrap;
 }
 
+.dialog-share-fallback {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.dialog-share-fallback input {
+    width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    padding: 0.45rem 0.55rem;
+    border: 1px solid var(--border-default, rgba(240, 246, 252, 0.10));
+    border-radius: var(--radius-xs, 6px);
+    background: rgba(1, 4, 9, 0.4);
+    color: var(--text-primary, #e6edf3);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    box-sizing: border-box;
+}
+
 .dialog-export-options {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
