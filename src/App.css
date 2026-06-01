@@ -3437,6 +3437,15 @@ body.resizing * {
     font-size: 0.85rem;
   }
 
+  .panel .gc-pill,
+  .panel .wc-speed-pill,
+  .panel .mode-pill,
+  .panel .analysis-tab-btn {
+    min-height: 40px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+  }
+
   .wc-btn {
     min-width: 2.5rem;
     min-height: 2.5rem;
