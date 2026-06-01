@@ -3926,6 +3926,8 @@ function App() {
                             key={preset.id}
                             type="button"
                             className={`preset-card ${activePreset === preset.id ? 'active' : ''}`}
+                            aria-label={`${preset.label}. ${preset.summary}`}
+                            aria-pressed={activePreset === preset.id}
                             onClick={() => applyPreset(preset.id)}
                           >
                             <strong>{preset.label}</strong>
