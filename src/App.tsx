@@ -2664,7 +2664,10 @@ function App() {
           writeCachedSamplePgn(sample.id, pgnText)
         }
         if (requestId !== sampleLoadSeqRef.current) return
-        handlePgnImport(pgnText, { analyzeAfterLoad: true, fromSample: true })
+        const result = handlePgnImport(pgnText, { analyzeAfterLoad: true, fromSample: true })
+        if (!result.ok) {
+          setSampleLoadError(result.error ?? 'Failed to load sample game.')
+        }
       } catch (error) {
         if (requestId !== sampleLoadSeqRef.current) return
         setSampleLoadError(error instanceof Error ? error.message : 'Failed to load sample game.')
