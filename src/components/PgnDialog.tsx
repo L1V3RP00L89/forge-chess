@@ -430,12 +430,6 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                 aria-invalid={Boolean(error)}
                             />
                             {error && <p className="dialog-error" role="alert">{error}</p>}
-                            <div className="dialog-actions">
-                                <button type="button" className="btn-cancel" onClick={closeDialog}>Cancel</button>
-                                <button type="button" className="btn-start" onClick={handleImport} disabled={!canImportPgn}>
-                                    Import & Analyze
-                                </button>
-                            </div>
                         </div>
                     )}
 
@@ -614,12 +608,6 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                             {copyStatus === 'failed' && (
                                 <p className="dialog-error" role="alert">Clipboard access failed. The current FEN is in the text box.</p>
                             )}
-                            <div className="dialog-actions">
-                                <button type="button" className="btn-cancel" onClick={closeDialog}>Cancel</button>
-                                <button type="button" className="btn-start" onClick={handleLoadFen} disabled={!canLoadFen}>
-                                    Load & Analyze
-                                </button>
-                            </div>
                         </div>
                     )}
 
@@ -666,21 +654,39 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                 readOnly
                                 value={exportText}
                             />
-                            <div className="dialog-actions">
-                                <button type="button" className="btn-cancel" onClick={closeDialog}>Close</button>
-                                <button type="button" className="btn-cancel" onClick={handleDownload}>
-                                    Download PGN
-                                </button>
-                                <button type="button" className="btn-start" onClick={handleCopy}>
-                                    {copyStatus === 'pgn-copied' ? 'Copied' : 'Copy PGN'}
-                                </button>
-                            </div>
                             {copyStatus === 'failed' && (
                                 <p className="dialog-error" role="alert">Clipboard access failed. Select the text and copy it manually.</p>
                             )}
                         </div>
                     )}
                 </div>
+                {tab === 'import' && (
+                    <div className="dialog-actions">
+                        <button type="button" className="btn-cancel" onClick={closeDialog}>Cancel</button>
+                        <button type="button" className="btn-start" onClick={handleImport} disabled={!canImportPgn}>
+                            Import & Analyze
+                        </button>
+                    </div>
+                )}
+                {tab === 'fen' && (
+                    <div className="dialog-actions">
+                        <button type="button" className="btn-cancel" onClick={closeDialog}>Cancel</button>
+                        <button type="button" className="btn-start" onClick={handleLoadFen} disabled={!canLoadFen}>
+                            Load & Analyze
+                        </button>
+                    </div>
+                )}
+                {tab === 'export' && (
+                    <div className="dialog-actions">
+                        <button type="button" className="btn-cancel" onClick={closeDialog}>Close</button>
+                        <button type="button" className="btn-cancel" onClick={handleDownload}>
+                            Download PGN
+                        </button>
+                        <button type="button" className="btn-start" onClick={handleCopy}>
+                            {copyStatus === 'pgn-copied' ? 'Copied' : 'Copy PGN'}
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     )
