@@ -1525,8 +1525,37 @@ function App() {
     if (!revealOpeningIntelRef.current) return
     if (analysisTab !== 'analyze' || analysisExperience !== 'pro') return
     revealOpeningIntelRef.current = false
-    openingIntelRef.current?.scrollIntoView({ block: 'start' })
-  }, [analysisExperience, analysisTab])
+
+    let settleTimer: ReturnType<typeof window.setTimeout> | null = null
+    let finalTimer: ReturnType<typeof window.setTimeout> | null = null
+    const revealOpeningIntel = () => {
+      const openingIntel = openingIntelRef.current
+      if (!openingIntel) return
+      const panelContent = openingIntel.closest('.panel-content') as HTMLElement | null
+      const scrollContainer = viewport.width <= 900 ? mainContainerRef.current : panelContent
+      if (!scrollContainer) {
+        openingIntel.scrollIntoView({ block: 'start' })
+        return
+      }
+
+      const containerRect = scrollContainer.getBoundingClientRect()
+      const targetRect = openingIntel.getBoundingClientRect()
+      const top = scrollContainer.scrollTop + targetRect.top - containerRect.top - 12
+      scrollContainer.scrollTo({
+        top: Math.max(0, top),
+        behavior: 'auto',
+      })
+    }
+
+    revealOpeningIntel()
+    settleTimer = window.setTimeout(revealOpeningIntel, 120)
+    finalTimer = window.setTimeout(revealOpeningIntel, 320)
+
+    return () => {
+      if (settleTimer) window.clearTimeout(settleTimer)
+      if (finalTimer) window.clearTimeout(finalTimer)
+    }
+  }, [analysisExperience, analysisTab, viewport.width])
 
   const resetSavedWorkspace = useCallback(() => {
     try {
