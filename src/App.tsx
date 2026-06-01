@@ -72,6 +72,15 @@ import { AI_SPEED_MS, type AiSpeed } from './components/aiSpeed'
 import { WdlBar } from './components/WdlBar'
 import { HorizontalWdlBar } from './components/HorizontalWdlBar'
 import { MoveListTree } from './components/MoveListTree'
+import {
+  GRAPH_HEIGHT,
+  GRAPH_PAD_BOTTOM,
+  GRAPH_PAD_LEFT,
+  GRAPH_PAD_RIGHT,
+  GRAPH_PAD_TOP,
+  graphTickStep,
+  graphWidthForIndex,
+} from './components/graphLayout'
 import { IconBot, IconBarChart, IconSearch, IconSwords, IconAlert, IconKing, IconRefresh, IconFlip, IconDownload, IconUsers, IconZap, IconSettings, IconPlay, IconStop, IconTrendingUp } from './components/icons'
 import './App.css'
 
@@ -4586,24 +4595,6 @@ function EngineOptionControl({ option, onSetOption, disabled = false }: EngineOp
 }
 
 // ── Winrate graph ──────────────────────────────────────────────────────────────
-
-const GRAPH_HEIGHT = 220
-const GRAPH_PAD_LEFT = 52
-const GRAPH_PAD_RIGHT = 20
-const GRAPH_PAD_TOP = 16
-const GRAPH_PAD_BOTTOM = 34
-const GRAPH_BASE_WIDTH = 300
-const GRAPH_PX_PER_PLY = 16
-
-function graphWidthForIndex(maxIndex: number): number {
-  return Math.max(GRAPH_BASE_WIDTH, GRAPH_PAD_LEFT + GRAPH_PAD_RIGHT + (maxIndex * GRAPH_PX_PER_PLY))
-}
-
-function graphTickStep(maxIndex: number): number {
-  if (maxIndex <= 20) return 4
-  const roughStep = Math.max(4, Math.round(maxIndex / 10))
-  return roughStep % 2 === 0 ? roughStep : roughStep + 1
-}
 
 function formatMoveAxisLabel(index: number): string {
   const moveNumber = index / 2
