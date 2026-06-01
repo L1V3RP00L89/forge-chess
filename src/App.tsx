@@ -3142,6 +3142,8 @@ function App() {
                             max={32}
                             step={1}
                             value={searchDepth}
+                            aria-label="Search depth"
+                            aria-valuetext={`${searchDepth} plies`}
                             onChange={e => {
                               setActivePreset(null)
                               setSearchDepth(Number(e.target.value))
@@ -3192,6 +3194,8 @@ function App() {
                           max={5}
                           step={1}
                           value={multiPv}
+                          aria-label="MultiPV analysis lines"
+                          aria-valuetext={`${multiPv} principal ${multiPv === 1 ? 'variation' : 'variations'}`}
                           onChange={e => {
                             setActivePreset(null)
                             setMultiPv(Number(e.target.value))
@@ -3217,6 +3221,8 @@ function App() {
                             max={5}
                             step={1}
                             value={topMoveArrowCount}
+                            aria-label="Top move arrow count"
+                            aria-valuetext={`${topMoveArrowCount} ${topMoveArrowCount === 1 ? 'arrow' : 'arrows'}`}
                             onChange={e => setTopMoveArrowCount(Number(e.target.value))}
                           />
                           <strong>{topMoveArrowCount}</strong>
@@ -3339,6 +3345,8 @@ function App() {
                       <label className="control">
                         <span>Hash</span>
                         <input type="range" min={16} max={512} step={16} value={hashMb}
+                          aria-label="Engine hash size"
+                          aria-valuetext={`${hashMb} megabytes`}
                           onChange={e => setHashMb(Number(e.target.value))} />
                         <strong>{hashMb} MB</strong>
                       </label>
