@@ -2167,6 +2167,7 @@ function App() {
       if (!move) return false
 
       cancelStaleBackgroundAnalysis()
+      stop()
       const newFen = game.fen()
       setFen(newFen)
       gameTree.addMove(move, newFen)
@@ -2174,7 +2175,7 @@ function App() {
       setPendingPromotion(null)
       return true
     },
-    [cancelStaleBackgroundAnalysis, clearBoardSelection, game, gameTree],
+    [cancelStaleBackgroundAnalysis, clearBoardSelection, game, gameTree, stop],
   )
 
   const beginPromotion = useCallback(
