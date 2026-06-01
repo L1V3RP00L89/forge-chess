@@ -2109,6 +2109,16 @@ body.resizing * {
   margin-top: var(--space-md);
 }
 
+.review-book-token-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-height: 34px;
+  margin: 0.15rem 0 0.55rem;
+}
+
 .critical-moments-card {
   margin-top: var(--space-md);
   border: 1px solid var(--border-subtle);

@@ -697,6 +697,8 @@ function App() {
   const [bottomPanelOpen, setBottomPanelOpen] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const settingsBodyRef = useRef<HTMLDivElement>(null)
+  const openingIntelRef = useRef<HTMLDivElement>(null)
+  const revealOpeningIntelRef = useRef(false)
   const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight })
   const hasAutoOpenedAnalysisLeftRef = useRef(initialWorkspaceMode === 'analysis')
 
@@ -1523,6 +1525,19 @@ function App() {
     setActivePreset(null)
     setAnalysisTab('analyze')
   }, [openingTopMoves])
+
+  const openOpeningIntel = useCallback(() => {
+    revealOpeningIntelRef.current = true
+    setAnalysisExperience('pro')
+    setAnalysisTab('analyze')
+  }, [])
+
+  useEffect(() => {
+    if (!revealOpeningIntelRef.current) return
+    if (analysisTab !== 'analyze' || analysisExperience !== 'pro') return
+    revealOpeningIntelRef.current = false
+    openingIntelRef.current?.scrollIntoView({ block: 'start' })
+  }, [analysisExperience, analysisTab])
 
   const resetSavedWorkspace = useCallback(() => {
     try {
@@ -3846,7 +3861,7 @@ function App() {
                     </div>
                   )}
                   {analysisExperience === 'pro' && (
-                  <div className="opening-intel-card">
+                  <div className="opening-intel-card" ref={openingIntelRef}>
                     <div className="opening-intel-head">
                       <h3><span className="section-icon"><IconBarChart /></span> Opening Intel</h3>
                       <div className="opening-source-toggle" aria-label="Opening database source">
@@ -4170,8 +4185,18 @@ function App() {
                     )}
                     {reviewBookSummary.authRequired > 0 && (
                       <p className="panel-copy small warning-copy">
-                        Add a session-only Lichess token in Analyze to compare the line against cloud book stats.
+                        Add a session-only Lichess token in Pro Opening Intel to compare the line against cloud book stats.
                       </p>
+                    )}
+                    {reviewBookSummary.authRequired > 0 && (
+                      <button
+                        type="button"
+                        className="review-book-token-btn"
+                        onClick={openOpeningIntel}
+                      >
+                        <span className="btn-icon"><IconBarChart /></span>
+                        Open Opening Intel
+                      </button>
                     )}
                     <div className="review-book-list">
                       {visibleReviewBookRows.slice(0, REVIEW_BOOK_VISIBLE_LIMIT).map(row => (
