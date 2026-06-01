@@ -71,12 +71,10 @@ function makeTree(fen?: string): GameTree {
 export function useGameTree(startFen?: string) {
     const [treeState, setTreeState] = useState<GameTree>(() => makeTree(startFen))
     const treeRef = useRef<GameTree>(treeState)
-    const [tick, setTick] = useState(0)
 
     const publishTree = useCallback((nextTree: GameTree) => {
         treeRef.current = nextTree
         setTreeState(nextTree)
-        setTick(t => t + 1)
     }, [])
 
     // ── Selectors ─────────────────────────────────────────────────────────────
@@ -338,7 +336,6 @@ export function useGameTree(startFen?: string) {
         current,
         root,
         nodesSnapshot,
-        tick,
         // Derived
         mainLine,
         currentPath,
@@ -373,7 +370,6 @@ export function useGameTree(startFen?: string) {
         setNodeQuality,
         setNodeComment,
         setNodeQualities,
-        tick,
     ])
 }
 
