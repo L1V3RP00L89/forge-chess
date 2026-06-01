@@ -1076,7 +1076,7 @@ function App() {
     stop()
   }, [clearBatchReview, stop])
 
-  const cancelBackgroundAnalysisForBoardEdit = useCallback(() => {
+  const cancelStaleBackgroundAnalysis = useCallback(() => {
     const hadImportSweep = importSweepProgress.total > 0
       || importSweepQueueRef.current.length > 0
       || activeImportSweepRef.current !== null
@@ -1666,10 +1666,11 @@ function App() {
 
   const handleWorkspaceModeChange = useCallback((mode: WorkspaceMode) => {
     if (mode !== 'play') cancelPendingAiMove()
+    if (mode === 'play') cancelStaleBackgroundAnalysis()
     if (mode === 'analysis') pause()
     setSettingsOpen(false)
     setWorkspaceMode(mode)
-  }, [cancelPendingAiMove, pause])
+  }, [cancelPendingAiMove, cancelStaleBackgroundAnalysis, pause])
 
   const handleAnalysisTabChange = useCallback((tab: AnalysisTab) => {
     pause()
@@ -2165,7 +2166,7 @@ function App() {
       }
       if (!move) return false
 
-      cancelBackgroundAnalysisForBoardEdit()
+      cancelStaleBackgroundAnalysis()
       const newFen = game.fen()
       setFen(newFen)
       gameTree.addMove(move, newFen)
@@ -2173,7 +2174,7 @@ function App() {
       setPendingPromotion(null)
       return true
     },
-    [cancelBackgroundAnalysisForBoardEdit, clearBoardSelection, game, gameTree],
+    [cancelStaleBackgroundAnalysis, clearBoardSelection, game, gameTree],
   )
 
   const beginPromotion = useCallback(
@@ -2715,14 +2716,17 @@ function App() {
     cancelPendingAiMove()
     setGameMode(mode)
     setOrientation(defaultOrientationForGameMode(mode, playerColor))
-    if (workspaceMode !== 'play') setWorkspaceMode('play')
+    if (workspaceMode !== 'play') {
+      cancelStaleBackgroundAnalysis()
+      setWorkspaceMode('play')
+    }
     if (mode === 'ai-vs-ai') clearBoardSelection()
     if (pausedRef.current) {
       pausedRef.current = false
       setPaused(false)
     }
     setFen(f => f)
-  }, [cancelPendingAiMove, clearBoardSelection, playerColor, workspaceMode])
+  }, [cancelPendingAiMove, cancelStaleBackgroundAnalysis, clearBoardSelection, playerColor, workspaceMode])
 
   const navigateMoveListAndPause = useCallback((chess: Chess) => {
     navigateAndPause(chess)
