@@ -2577,6 +2577,9 @@ function App() {
     const loadSharedHash = () => {
       const sharedFen = loadSharedFenFromUrl()
       if (!sharedFen || sharedFen === game.fen()) return
+      setShowPgnDialog(false)
+      setShowNewGameDialog(false)
+      setSettingsOpen(false)
       handleFenLoad(sharedFen, { forceAnalysis: true })
     }
 
