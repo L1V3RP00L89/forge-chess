@@ -3046,15 +3046,16 @@ function App() {
   const rightPanelCollapsed = rightWidth === 0
   const playEngineActive = workspaceMode === 'play' && gameMode !== 'human-vs-human'
   const playEngineStatus = isAiThinking ? 'thinking' : aiPlayer.status
+  const aiDifficultyLabel = DIFFICULTY_LABELS[aiDifficulty]
   const bottomStatusTitle = engineEnabled
     ? profileMessage
     : playEngineActive
-      ? `${aiPlayer.profileName} play engine · ${DIFFICULTY_LABELS[aiDifficulty]} difficulty`
+      ? `${aiPlayer.profileName} play engine · ${aiDifficultyLabel} difficulty`
       : 'Engine is on standby in Play mode. Switch to Analysis mode for Stockfish analysis.'
   const bottomStatusPrefix = engineEnabled
     ? `${engineName} · ${activeProfile.name} ·`
     : playEngineActive
-      ? `${gameModeLabel} · AI`
+      ? `${gameModeLabel} · ${aiDifficultyLabel} AI`
       : `${gameModeLabel} · Engine`
   const bottomStatusText = engineEnabled
     ? status
@@ -3929,7 +3930,7 @@ function App() {
                     <h3><span className="section-icon"><IconSwords /></span> Play Focus</h3>
                     <p className="panel-copy small">
                       {playEngineActive
-                        ? `${aiPlayer.profileName} play engine is ${playEngineStatus}.`
+                        ? `${aiPlayer.profileName} play engine is ${playEngineStatus} at ${aiDifficultyLabel} difficulty.`
                         : 'Analysis engine is on standby. Use this view for clean gameplay and move navigation.'}
                     </p>
                     <label className="switch-control">
