@@ -162,6 +162,7 @@ export function NewGameDialog({
                                     type="button"
                                     className={`mode-card ${mode === opt.value ? 'selected' : ''}`}
                                     onClick={() => setMode(opt.value)}
+                                    aria-label={`${opt.label}: ${opt.description}`}
                                     aria-pressed={mode === opt.value}
                                     data-selected-mode={mode === opt.value ? 'true' : undefined}
                                 >
