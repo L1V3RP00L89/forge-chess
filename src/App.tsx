@@ -427,6 +427,11 @@ function tablebaseMoveSummary(move: TablebaseMove): string {
   ].filter(Boolean).join(' · ')
 }
 
+function tablebaseMoveAriaLabel(move: TablebaseMove): string {
+  const summary = tablebaseMoveSummary(move)
+  return summary ? `${move.san}: ${summary}. UCI ${move.uci}` : `${move.san}. UCI ${move.uci}`
+}
+
 function bestMoveLabel(fen: string, uci: string | null | undefined): string {
   if (!uci) return '...'
   return uciToSan(fen, uci) ?? uci
@@ -4015,6 +4020,7 @@ function App() {
                               type="button"
                               className="tablebase-move-row"
                               title={move.uci}
+                              aria-label={tablebaseMoveAriaLabel(move)}
                               onClick={() => {
                                 setShowAdvancedAnalyze(true)
                                 setActivePreset(null)
