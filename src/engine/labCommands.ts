@@ -23,6 +23,7 @@ const SEARCHMOVES_TRAILING_LIMITS = new Set([
 const HEAVY_COMMAND_MESSAGE = 'Enable expert mode before running heavy commands (bench/perft/unbounded go).'
 const SEARCHMOVES_ORDER_MESSAGE =
   'Stockfish treats searchmoves as the final go parameter. Put limits before searchmoves, for example: go depth 12 searchmoves e2e4.'
+const QUIT_COMMAND_MESSAGE = 'Engine shutdown is managed by the app. Switch engine profile or reload the page instead of sending quit.'
 
 function hasPositiveNumericValue(parts: string[], index: number): boolean {
   const value = Number(parts[index + 1])
@@ -69,4 +70,10 @@ export function engineLabCommandSafetyMessage(command: string): string | null {
     return SEARCHMOVES_ORDER_MESSAGE
   }
   return HEAVY_COMMAND_MESSAGE
+}
+
+export function engineLabCommandBlockMessage(command: string): string | null {
+  const parts = commandParts(command)
+  if (parts[0] === 'quit') return QUIT_COMMAND_MESSAGE
+  return null
 }

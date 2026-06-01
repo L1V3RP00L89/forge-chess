@@ -57,7 +57,7 @@ import { tablebaseMoveCategoryForPlayer } from './engine/tablebase'
 import { BOARD_SQUARES, describeBoardSquare, isBoardSquare } from './engine/boardAccessibility'
 import { isBoardInputLocked } from './engine/boardInput'
 import { selectCoachBestMove } from './engine/coach'
-import { engineLabCommandSafetyMessage } from './engine/labCommands'
+import { engineLabCommandBlockMessage, engineLabCommandSafetyMessage } from './engine/labCommands'
 import { defaultOrientationForGameMode } from './engine/playMode'
 import { useStockfishEngine } from './hooks/useStockfishEngine'
 import { DIFFICULTY_LABELS, useAiPlayer, type AiDifficulty } from './hooks/useAiPlayer'
@@ -1660,6 +1660,11 @@ function App() {
       setEngineLabError(null)
       if (status === 'analyzing' && trimmed.toLowerCase() !== 'stop') {
         setEngineLabError('Stop the active analysis before sending Engine Lab commands.')
+        return
+      }
+      const blockMessage = engineLabCommandBlockMessage(trimmed)
+      if (blockMessage) {
+        setEngineLabError(blockMessage)
         return
       }
       const safetyMessage = !expertModeEnabled ? engineLabCommandSafetyMessage(trimmed) : null

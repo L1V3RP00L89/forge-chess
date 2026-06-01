@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { engineLabCommandSafetyMessage, isHeavyEngineLabCommand } from './labCommands'
+import { engineLabCommandBlockMessage, engineLabCommandSafetyMessage, isHeavyEngineLabCommand } from './labCommands'
 
 describe('Engine Lab command safety', () => {
   it('locks heavy diagnostics and unbounded searches', () => {
@@ -38,5 +38,12 @@ describe('Engine Lab command safety', () => {
     expect(engineLabCommandSafetyMessage('go searchmoves e2e4 depth 12')).toContain('Put limits before searchmoves')
     expect(engineLabCommandSafetyMessage('go depth 12 searchmoves e2e4')).toBeNull()
     expect(engineLabCommandSafetyMessage('bench')).toContain('Enable expert mode')
+  })
+
+  it('blocks app-managed engine lifecycle commands even in expert workflows', () => {
+    expect(engineLabCommandBlockMessage('quit')).toContain('managed by the app')
+    expect(engineLabCommandBlockMessage(' QUIT ')).toContain('managed by the app')
+    expect(engineLabCommandBlockMessage('stop')).toBeNull()
+    expect(engineLabCommandBlockMessage('isready')).toBeNull()
   })
 })
