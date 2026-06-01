@@ -4769,7 +4769,7 @@ const WinrateGraph = memo(function WinrateGraph({ points, currentIndex, onNaviga
   if (points.length === 0) {
     return (
       <div className="empty-state">
-        <span className="empty-state-icon">📈</span>
+        <span className="empty-state-icon" aria-hidden="true"><IconTrendingUp /></span>
         <p>Play and analyze moves to build the live winrate graph.</p>
       </div>
     )
@@ -4914,7 +4914,7 @@ const WdlProgressGraph = memo(function WdlProgressGraph({ points, currentIndex, 
   if (points.length === 0) {
     return (
       <div className="empty-state">
-        <span className="empty-state-icon">📊</span>
+        <span className="empty-state-icon" aria-hidden="true"><IconBarChart /></span>
         <p>Analyze moves with WDL enabled to build the W/D/B progression graph.</p>
       </div>
     )
