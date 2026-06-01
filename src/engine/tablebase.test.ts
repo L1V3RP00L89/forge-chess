@@ -20,12 +20,14 @@ describe('tablebase client', () => {
     expect(isTablebaseEligible('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')).toBe(false)
   })
 
-  it('normalizes tablebase keys to the FEN fields that define the lookup position', () => {
+  it('keeps the halfmove clock in tablebase keys for 50-move-rule accuracy', () => {
     const fenA = '8/8/8/8/8/8/4K3/6k1 w - - 0 1'
     const fenB = '8/8/8/8/8/8/4K3/6k1 w - - 42 99'
+    const fenC = '8/8/8/8/8/8/4K3/6k1 w - - 0 99'
 
-    expect(normalizeTablebaseFen(fenA)).toBe('8/8/8/8/8/8/4K3/6k1 w - -')
-    expect(normalizeTablebaseFen(fenA)).toBe(normalizeTablebaseFen(fenB))
+    expect(normalizeTablebaseFen(fenA)).toBe('8/8/8/8/8/8/4K3/6k1 w - - 0 1')
+    expect(normalizeTablebaseFen(fenA)).not.toBe(normalizeTablebaseFen(fenB))
+    expect(normalizeTablebaseFen(fenA)).toBe(normalizeTablebaseFen(fenC))
   })
 
   it('labels move categories from the player perspective', () => {
@@ -110,7 +112,7 @@ describe('tablebase client', () => {
     expect(new URL(url).searchParams.get('fen')).toBe(normalizeTablebaseFen('8/8/8/8/8/8/4K3/6k1 w - - 0 1'))
   })
 
-  it('reuses tablebase responses across positions that only differ by move counters', async () => {
+  it('reuses tablebase responses across positions that only differ by fullmove number', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -123,11 +125,27 @@ describe('tablebase client', () => {
     await expect(fetchTablebase('8/8/8/8/8/8/2K5/6k1 w - - 0 1')).resolves.toMatchObject({
       category: 'draw',
     })
-    await expect(fetchTablebase('8/8/8/8/8/8/2K5/6k1 w - - 37 82')).resolves.toMatchObject({
+    await expect(fetchTablebase('8/8/8/8/8/8/2K5/6k1 w - - 0 82')).resolves.toMatchObject({
       category: 'draw',
     })
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not reuse tablebase responses across different halfmove clocks', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        category: 'draw',
+        moves: [],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchTablebase('8/8/8/8/8/8/K7/6k1 w - - 0 1')
+    await fetchTablebase('8/8/8/8/8/8/K7/6k1 w - - 37 82')
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('does not cache a response aborted during parsing', async () => {
