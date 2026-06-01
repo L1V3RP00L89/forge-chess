@@ -489,8 +489,26 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
+    .new-game-dialog .mode-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .mode-card {
         min-height: 48px;
+    }
+
+    .new-game-dialog .mode-card {
+        min-height: 96px;
+        padding: 0.62rem 0.34rem;
+    }
+
+    .new-game-dialog .mode-card strong {
+        font-size: 0.68rem;
+    }
+
+    .new-game-dialog .mode-desc {
+        font-size: 0.6rem;
+        line-height: 1.22;
     }
 
     .dialog-actions {

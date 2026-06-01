@@ -140,7 +140,7 @@ export function NewGameDialog({
         <div className="dialog-backdrop" onClick={onCancel}>
             <div
                 ref={panelRef}
-                className="dialog-panel"
+                className="dialog-panel new-game-dialog"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
