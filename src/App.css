@@ -2376,6 +2376,10 @@ body.resizing * {
   border-color: rgba(240, 136, 62, 0.32);
 }
 
+.review-book-row.after-novelty {
+  opacity: 0.62;
+}
+
 .review-book-row.loading {
   opacity: 0.72;
 }

@@ -3,7 +3,9 @@ import {
   fetchOpeningExplorer,
   hasOpeningExplorerAuthToken,
   normalizeOpeningExplorerFenKey,
+  openingExplorerGameCount,
   prefetchOpeningExplorer,
+  shouldContinueOpeningBookLine,
 } from './openingExplorer'
 
 describe('opening explorer client', () => {
@@ -35,6 +37,26 @@ describe('opening explorer client', () => {
 
     expect(normalizeOpeningExplorerFenKey(fenA)).toBe('8/8/8/8/8/8/4K3/6k1 w - -')
     expect(normalizeOpeningExplorerFenKey(fenA)).toBe(normalizeOpeningExplorerFenKey(fenB))
+  })
+
+  it('detects when a reviewed line should stop opening-book prefetching', () => {
+    const inBook = {
+      white: 10,
+      draws: 5,
+      black: 3,
+      moves: [{ uci: 'e7e5', san: 'e5', white: 4, draws: 2, black: 1 }],
+    }
+    const noGames = {
+      white: 0,
+      draws: 0,
+      black: 0,
+      moves: [{ uci: 'e7e5', san: 'e5', white: 0, draws: 0, black: 0 }],
+    }
+
+    expect(openingExplorerGameCount(inBook)).toBe(18)
+    expect(shouldContinueOpeningBookLine(inBook, 'e7e5')).toBe(true)
+    expect(shouldContinueOpeningBookLine(inBook, 'c7c5')).toBe(false)
+    expect(shouldContinueOpeningBookLine(noGames, 'e7e5')).toBe(false)
   })
 
   it('sends bearer auth, normalizes filters, and caches responses by position', async () => {

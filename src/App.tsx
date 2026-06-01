@@ -32,6 +32,8 @@ import {
   fetchOpeningExplorer,
   getCachedOpeningExplorer,
   hasOpeningExplorerAuthToken,
+  openingExplorerGameCount,
+  shouldContinueOpeningBookLine,
   type OpeningDatabaseSource,
   type OpeningExplorerMove,
   type OpeningSpeed,
@@ -767,6 +769,7 @@ function App() {
   const [openingRatingPreset, setOpeningRatingPreset] = useState<OpeningRatingPresetId>(persistedSettings.openingRatingPreset)
   const [openingAuthToken, setOpeningAuthToken] = useState('')
   const [reviewBookError, setReviewBookError] = useState<string | null>(null)
+  const [reviewBookTerminalPly, setReviewBookTerminalPly] = useState<number | null>(null)
   const [showBoardArrows, setShowBoardArrows] = useState<boolean>(persistedSettings.showBoardArrows)
   const [showTopMoveArrows, setShowTopMoveArrows] = useState<boolean>(persistedSettings.showTopMoveArrows)
   const [topMoveArrowCount, setTopMoveArrowCount] = useState<number>(persistedSettings.topMoveArrowCount)
@@ -1604,6 +1607,7 @@ function App() {
     setOpeningRatingPreset(DEFAULT_PERSISTED_SETTINGS.openingRatingPreset)
     setOpeningAuthToken('')
     setReviewBookError(null)
+    setReviewBookTerminalPly(null)
     setShowBoardArrows(DEFAULT_PERSISTED_SETTINGS.showBoardArrows)
     setShowTopMoveArrows(DEFAULT_PERSISTED_SETTINGS.showTopMoveArrows)
     setTopMoveArrowCount(DEFAULT_PERSISTED_SETTINGS.topMoveArrowCount)
@@ -1909,6 +1913,7 @@ function App() {
 
   useEffect(() => {
     setReviewBookError(null)
+    setReviewBookTerminalPly(null)
     if (workspaceMode !== 'analysis') return
     if (analysisTab !== 'review') return
     if (!mainLineUciMoves.length) return
@@ -1922,7 +1927,7 @@ function App() {
       for (let idx = 0; idx < maxPlyToPrefetch; idx += 1) {
         if (cancelled) return
         try {
-          await fetchOpeningExplorer({
+          const bookPosition = await fetchOpeningExplorer({
             source: openingSource,
             fen: currentRootFen,
             moves: mainLineUciMoves.slice(0, idx),
@@ -1930,6 +1935,11 @@ function App() {
             ratings: openingSource === 'lichess' ? openingRatings : undefined,
             authToken: openingAuthToken,
           }, controller.signal)
+          if (!shouldContinueOpeningBookLine(bookPosition, mainLineUciMoves[idx] ?? '')) {
+            setReviewBookTerminalPly(idx + 1)
+            setOpeningPrefetchTick(tick => tick + 1)
+            return
+          }
         } catch (error) {
           if (cancelled || controller.signal.aborted) return
           const message = error instanceof Error ? error.message : String(error)
@@ -1964,6 +1974,16 @@ function App() {
       const san = mainLineNodes[index + 1]?.san ?? uci
       const sideToMove = mainLineNodes[index]?.fen.split(/\s+/g)[1] === 'b' ? 'b' : 'w'
 
+      if (reviewBookTerminalPly !== null && index + 1 > reviewBookTerminalPly) {
+        return {
+          ply: index + 1,
+          sideToMove,
+          san,
+          uci,
+          status: 'after-novelty' as const,
+        }
+      }
+
       if (!fromCache) {
         return {
           ply: index + 1,
@@ -1978,7 +1998,7 @@ function App() {
         }
       }
 
-      const totalGames = fromCache.white + fromCache.draws + fromCache.black
+      const totalGames = openingExplorerGameCount(fromCache)
       if (!totalGames) {
         return {
           ply: index + 1,
@@ -2022,6 +2042,7 @@ function App() {
     openingRatings,
     openingSource,
     openingSpeeds,
+    reviewBookTerminalPly,
     reviewBookError,
   ])
 
@@ -2035,10 +2056,11 @@ function App() {
     const inBook = visibleReviewBookRows.filter(row => row.status === 'in-book').length
     const outOfBook = visibleReviewBookRows.filter(row => row.status === 'out-of-book').length
     const loading = visibleReviewBookRows.filter(row => row.status === 'loading').length
+    const afterNovelty = visibleReviewBookRows.filter(row => row.status === 'after-novelty').length
     const authRequired = visibleReviewBookRows.filter(row => row.status === 'auth-required').length
     const failed = visibleReviewBookRows.filter(row => row.status === 'error').length
     const firstOutOfBook = visibleReviewBookRows.find(row => row.status === 'out-of-book') ?? null
-    return { inBook, outOfBook, loading, authRequired, failed, firstOutOfBook }
+    return { inBook, outOfBook, loading, afterNovelty, authRequired, failed, firstOutOfBook }
   }, [visibleReviewBookRows])
 
   // Graph uses active path up to its deepest child to show the entire branch history
@@ -4420,6 +4442,7 @@ function App() {
                     <p className="panel-copy small command-summary">
                       First {Math.min(mainLineUciMoves.length, REVIEW_BOOK_PREFETCH_LIMIT)} plies · In book {reviewBookSummary.inBook} · Out of book {reviewBookSummary.outOfBook}
                       {reviewBookSummary.loading > 0 ? ` · checking ${reviewBookSummary.loading}` : ''}
+                      {reviewBookSummary.afterNovelty > 0 ? ` · after novelty ${reviewBookSummary.afterNovelty}` : ''}
                       {reviewBookSummary.authRequired > 0 ? ' · token needed' : ''}
                       {reviewBookSummary.failed > 0 ? ' · book unavailable' : ''}
                     </p>
@@ -4462,7 +4485,9 @@ function App() {
                                     ? 'Token'
                                     : row.status === 'error'
                                       ? 'Error'
-                                      : 'n/a'}
+                                      : row.status === 'after-novelty'
+                                        ? 'After novelty'
+                                        : 'n/a'}
                           </span>
                         </div>
                       ))}

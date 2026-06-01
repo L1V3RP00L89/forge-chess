@@ -166,6 +166,18 @@ export function hasOpeningExplorerAuthToken(authToken: string | undefined): bool
   return Boolean(normalizeAuthToken(authToken))
 }
 
+export function openingExplorerGameCount(response: Pick<OpeningExplorerResponse, 'white' | 'draws' | 'black'>): number {
+  return Math.max(0, response.white) + Math.max(0, response.draws) + Math.max(0, response.black)
+}
+
+export function shouldContinueOpeningBookLine(
+  response: Pick<OpeningExplorerResponse, 'white' | 'draws' | 'black' | 'moves'>,
+  nextMoveUci: string,
+): boolean {
+  return openingExplorerGameCount(response) > 0
+    && response.moves.some(move => move.uci === nextMoveUci)
+}
+
 function authHeaders(authToken: string | undefined): HeadersInit {
   const token = normalizeAuthToken(authToken)
   return token ? { Authorization: `Bearer ${token}` } : {}
