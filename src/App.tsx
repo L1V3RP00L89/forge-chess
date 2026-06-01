@@ -2576,16 +2576,20 @@ function App() {
   useEffect(() => {
     const loadSharedHash = () => {
       const sharedFen = loadSharedFenFromUrl()
-      if (!sharedFen || sharedFen === game.fen()) return
+      if (!sharedFen) return
       setShowPgnDialog(false)
       setShowNewGameDialog(false)
       setSettingsOpen(false)
+      if (sharedFen === game.fen()) {
+        requestBoardReveal()
+        return
+      }
       handleFenLoad(sharedFen, { forceAnalysis: true })
     }
 
     window.addEventListener('hashchange', loadSharedHash)
     return () => window.removeEventListener('hashchange', loadSharedHash)
-  }, [game, handleFenLoad])
+  }, [game, handleFenLoad, requestBoardReveal])
 
   const loadHistoricalSample = useCallback(
     async (sample: HistoricalSampleGame) => {
