@@ -5,15 +5,20 @@ import { exportAnnotatedPgn, type PgnExportOptions } from '../engine/pgn'
 import {
     createEmptyPositionSetup,
     createStartingPositionSetup,
+    hasSetupCastlingRight,
     parsePositionSetupFen,
     positionSetupToFen,
     SETUP_BOARD_SQUARES,
     SETUP_PIECE_OPTIONS,
     setupPieceGlyph,
     setupPieceLabel,
+    updateSetupCastlingRight,
+    updateSetupFullmove,
+    updateSetupHalfmove,
     updateSetupSquare,
     updateSetupTurn,
     type PositionSetup,
+    type SetupCastlingRight,
     type SetupPiece,
     type SetupTurn,
 } from '../engine/positionSetup'
@@ -49,10 +54,18 @@ const DEFAULT_EXPORT_OPTIONS: Required<PgnExportOptions> = {
     includeEngineAnnotations: true,
     includeGlyphs: true,
 }
+
+const SETUP_CASTLING_OPTIONS: Array<{ right: SetupCastlingRight; label: string; short: string }> = [
+    { right: 'K', label: 'White kingside', short: 'K' },
+    { right: 'Q', label: 'White queenside', short: 'Q' },
+    { right: 'k', label: 'Black kingside', short: 'k' },
+    { right: 'q', label: 'Black queenside', short: 'q' },
+]
+
 export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, mainLineNodes, gameNodes, evaluations, pgnHeaders }: PgnDialogProps) {
     const [tab, setTab] = useState<'import' | 'fen' | 'export'>('import')
     const [importText, setImportText] = useState('')
-    const [fenText, setFenText] = useState('')
+    const [fenText, setFenText] = useState(currentFen)
     const [error, setError] = useState<string | null>(null)
     const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
     const [exportOptions, setExportOptions] = useState(DEFAULT_EXPORT_OPTIONS)
@@ -65,6 +78,8 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
     const importTextId = useId()
     const fenTextId = useId()
     const exportTextId = useId()
+    const halfmoveId = useId()
+    const fullmoveId = useId()
 
     const resetFeedback = useCallback(() => {
         setError(null)
@@ -461,22 +476,81 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                         })}
                                     </div>
                                     <div className="fen-setup-controls">
-                                        <span className="dialog-label">Side</span>
-                                        <div className="fen-side-toggle" aria-label="Side to move">
-                                            {([
-                                                { value: 'w', label: 'White' },
-                                                { value: 'b', label: 'Black' },
-                                            ] as Array<{ value: SetupTurn; label: string }>).map(option => (
-                                                <button
-                                                    key={option.value}
-                                                    type="button"
-                                                    className={`mode-card fen-side-btn ${setup.turn === option.value ? 'selected' : ''}`}
-                                                    aria-pressed={setup.turn === option.value}
-                                                    onClick={() => applySetupChange(current => updateSetupTurn(current, option.value))}
-                                                >
-                                                    <strong>{option.label}</strong>
-                                                </button>
-                                            ))}
+                                        <div className="fen-setup-control-block">
+                                            <span className="dialog-label">Side</span>
+                                            <div className="fen-side-toggle" aria-label="Side to move">
+                                                {([
+                                                    { value: 'w', label: 'White' },
+                                                    { value: 'b', label: 'Black' },
+                                                ] as Array<{ value: SetupTurn; label: string }>).map(option => (
+                                                    <button
+                                                        key={option.value}
+                                                        type="button"
+                                                        className={`mode-card fen-side-btn ${setup.turn === option.value ? 'selected' : ''}`}
+                                                        aria-pressed={setup.turn === option.value}
+                                                        onClick={() => applySetupChange(current => updateSetupTurn(current, option.value))}
+                                                    >
+                                                        <strong>{option.label}</strong>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="fen-setup-control-block">
+                                            <span className="dialog-label">Castling</span>
+                                            <div className="fen-castling-grid" role="group" aria-label="Castling rights">
+                                                {SETUP_CASTLING_OPTIONS.map(option => (
+                                                    <label key={option.right} className="dialog-check-option fen-castling-option">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={hasSetupCastlingRight(setup, option.right)}
+                                                            onChange={event => {
+                                                                applySetupChange(current =>
+                                                                    updateSetupCastlingRight(current, option.right, event.target.checked),
+                                                                )
+                                                            }}
+                                                        />
+                                                        <span>{option.short}</span>
+                                                        <small>{option.label}</small>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="fen-setup-control-block">
+                                            <span className="dialog-label">Counters</span>
+                                            <div className="fen-counter-grid">
+                                                <label className="fen-counter-field" htmlFor={halfmoveId}>
+                                                    <span>Halfmove</span>
+                                                    <input
+                                                        id={halfmoveId}
+                                                        type="number"
+                                                        min={0}
+                                                        step={1}
+                                                        inputMode="numeric"
+                                                        value={setup.halfmove}
+                                                        onChange={event => {
+                                                            applySetupChange(current =>
+                                                                updateSetupHalfmove(current, Number(event.target.value)),
+                                                            )
+                                                        }}
+                                                    />
+                                                </label>
+                                                <label className="fen-counter-field" htmlFor={fullmoveId}>
+                                                    <span>Fullmove</span>
+                                                    <input
+                                                        id={fullmoveId}
+                                                        type="number"
+                                                        min={1}
+                                                        step={1}
+                                                        inputMode="numeric"
+                                                        value={setup.fullmove}
+                                                        onChange={event => {
+                                                            applySetupChange(current =>
+                                                                updateSetupFullmove(current, Number(event.target.value)),
+                                                            )
+                                                        }}
+                                                    />
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

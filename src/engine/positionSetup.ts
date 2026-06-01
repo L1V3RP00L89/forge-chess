@@ -8,6 +8,7 @@ const CASTLING_ORDER = ['K', 'Q', 'k', 'q'] as const
 
 export type SetupPiece = 'P' | 'N' | 'B' | 'R' | 'Q' | 'K' | 'p' | 'n' | 'b' | 'r' | 'q' | 'k'
 export type SetupTurn = 'w' | 'b'
+export type SetupCastlingRight = typeof CASTLING_ORDER[number]
 
 export type PositionSetup = {
   pieces: Partial<Record<Square, SetupPiece>>
@@ -67,6 +68,10 @@ export function normalizeCastlingRights(value: string | undefined): string {
   const rights = new Set(value.split('').filter(char => CASTLING_ORDER.includes(char as typeof CASTLING_ORDER[number])))
   const normalized = CASTLING_ORDER.filter(right => rights.has(right)).join('')
   return normalized || '-'
+}
+
+export function hasSetupCastlingRight(setup: PositionSetup, right: SetupCastlingRight): boolean {
+  return normalizeCastlingRights(setup.castling).includes(right)
 }
 
 export function parsePositionSetupFen(fen: string): PositionSetup | null {
@@ -159,8 +164,36 @@ export function updateSetupTurn(setup: PositionSetup, turn: SetupTurn): Position
   return { ...setup, turn }
 }
 
+export function updateSetupCastlingRight(
+  setup: PositionSetup,
+  right: SetupCastlingRight,
+  enabled: boolean,
+): PositionSetup {
+  const rights = new Set(normalizeCastlingRights(setup.castling).replace('-', '').split(''))
+  if (enabled) rights.add(right)
+  else rights.delete(right)
+
+  return {
+    ...setup,
+    castling: normalizeCastlingRights(CASTLING_ORDER.filter(castlingRight => rights.has(castlingRight)).join('')),
+  }
+}
+
+export function updateSetupHalfmove(setup: PositionSetup, value: number): PositionSetup {
+  return { ...setup, halfmove: normalizeCounter(value, 0, 0) }
+}
+
+export function updateSetupFullmove(setup: PositionSetup, value: number): PositionSetup {
+  return { ...setup, fullmove: normalizeCounter(value, 1, 1) }
+}
+
 function normalizeNonNegativeInteger(value: string | undefined, fallback: number): number {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return fallback
   return Math.max(0, Math.floor(parsed))
+}
+
+function normalizeCounter(value: number, fallback: number, min: number): number {
+  if (!Number.isFinite(value)) return fallback
+  return Math.max(min, Math.floor(value))
 }

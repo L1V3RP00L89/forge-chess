@@ -3,11 +3,15 @@ import { type Square } from 'chess.js'
 import {
   createEmptyPositionSetup,
   createStartingPositionSetup,
+  hasSetupCastlingRight,
   normalizeCastlingRights,
   parsePositionSetupFen,
   positionSetupToFen,
   setupPieceGlyph,
   setupPieceLabel,
+  updateSetupCastlingRight,
+  updateSetupFullmove,
+  updateSetupHalfmove,
   updateSetupSquare,
   updateSetupTurn,
 } from './positionSetup'
@@ -46,6 +50,17 @@ describe('position setup helpers', () => {
     expect(normalizeCastlingRights('qKQkK')).toBe('KQkq')
     expect(normalizeCastlingRights('abc')).toBe('-')
     expect(normalizeCastlingRights('-')).toBe('-')
+  })
+
+  it('updates castling rights and counters from setup controls', () => {
+    const setup = createEmptyPositionSetup()
+    const withWhiteCastle = updateSetupCastlingRight(setup, 'K', true)
+    const withBothWhite = updateSetupCastlingRight(withWhiteCastle, 'Q', true)
+    const withoutKingside = updateSetupCastlingRight(withBothWhite, 'K', false)
+    const withCounters = updateSetupFullmove(updateSetupHalfmove(withoutKingside, 12.9), 41.7)
+
+    expect(hasSetupCastlingRight(withBothWhite, 'K')).toBe(true)
+    expect(positionSetupToFen(withCounters)).toBe('8/8/8/8/8/8/8/8 w Q - 12 41')
   })
 
   it('provides stable piece labels and glyphs', () => {
