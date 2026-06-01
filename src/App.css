@@ -4120,6 +4120,22 @@ body.resizing * {
     min-width: 44px;
     min-height: 44px;
   }
+
+  .panel .mtree-chip {
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 0.42rem 0.5rem;
+  }
+
+  .panel .mtree-chip-compact {
+    min-height: 40px;
+    padding: 0.34rem 0.48rem;
+  }
+
+  .panel .mtree-row,
+  .panel .mtree-variation {
+    gap: 0.28rem;
+  }
 }
 
 /* Interactive Active States */
