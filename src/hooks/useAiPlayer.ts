@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Chess, type Move } from 'chess.js'
 import { detectEngineCapabilities, resolveProfile } from '../engine/profiles'
 import { createStockfishWorker } from '../engine/stockfishWorker'
 
@@ -28,6 +29,11 @@ const DIFFICULTY_MOVETIME: Record<AiDifficulty, number> = {
     6: 1000,
     7: 1500,
     8: 2000,
+}
+
+const BEGINNER_RANDOM_MOVE_CHANCE: Partial<Record<AiDifficulty, number>> = {
+    1: 0.38,
+    2: 0.20,
 }
 
 export const DIFFICULTY_LABELS: Record<AiDifficulty, string> = {
@@ -76,6 +82,30 @@ export function consumeStoppedSearchBestMove(pendingStoppedSearches: number): {
 export function addStoppedSearchBestMoveAck(pendingStoppedSearches: number): number {
     if (!Number.isFinite(pendingStoppedSearches) || pendingStoppedSearches <= 0) return 1
     return Math.floor(pendingStoppedSearches) + 1
+}
+
+function moveToUci(move: Move): string {
+    return `${move.from}${move.to}${move.promotion ?? ''}`
+}
+
+export function pickBeginnerVarietyMove(
+    fen: string,
+    difficulty: AiDifficulty,
+    random = Math.random,
+): string | null {
+    const chance = BEGINNER_RANDOM_MOVE_CHANCE[difficulty]
+    if (!chance) return null
+    if (random() >= chance) return null
+
+    try {
+        const chess = new Chess(fen)
+        const moves = chess.moves({ verbose: true })
+        if (!moves.length) return null
+        const index = Math.min(moves.length - 1, Math.floor(random() * moves.length))
+        return moveToUci(moves[index]!)
+    } catch {
+        return null
+    }
 }
 
 export function useAiPlayer(enabled = true) {
@@ -262,6 +292,8 @@ export function useAiPlayer(enabled = true) {
         (fen: string, difficulty: AiDifficulty): Promise<string | null> => {
             const worker = workerRef.current
             if (!enabled) return Promise.resolve(null)
+            const varietyMove = pickBeginnerVarietyMove(fen, difficulty)
+            if (varietyMove) return Promise.resolve(varietyMove)
             if (!worker || !isReadyRef.current || resolveRef.current) return Promise.resolve(null)
             if (ignoredBestMoveCountRef.current > 0) return Promise.resolve(null)
 
