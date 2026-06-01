@@ -4091,6 +4091,37 @@ body.resizing * {
   color: var(--text-muted);
 }
 
+@media (max-width: 900px) {
+  .top .compact-grid .top-mode-pills .gc-pill {
+    height: auto;
+    min-height: 44px;
+    padding: 0.45rem 0.8rem;
+  }
+
+  .right .inline-actions button,
+  .right .preset-card,
+  .right .tablebase-move-row,
+  .right .opening-move-row,
+  .right .review-book-token-btn,
+  .right .engine-lab-console input,
+  .right .engine-lab-console button,
+  .right .diagnostics-actions button,
+  .right .engine-option-row input,
+  .right .engine-option-row select,
+  .app-shell .panel.right .engine-option-row input,
+  .app-shell .panel.right .engine-option-row select,
+  .right .opening-source-toggle .mode-pill,
+  .right .opening-speed-toggle .mode-pill {
+    min-height: 44px;
+  }
+
+  .panel .wc-btn,
+  .panel .wc-speed-pill {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
 /* Interactive Active States */
 button:active:not(:disabled),
 .wc-btn:active:not(:disabled),
