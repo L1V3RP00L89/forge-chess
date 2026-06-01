@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { type Square } from 'chess.js'
 import {
+  canUseSetupCastlingRight,
   createEmptyPositionSetup,
   createStartingPositionSetup,
   hasSetupCastlingRight,
@@ -53,14 +54,36 @@ describe('position setup helpers', () => {
   })
 
   it('updates castling rights and counters from setup controls', () => {
-    const setup = createEmptyPositionSetup()
+    const setup = updateSetupSquare(
+      updateSetupSquare(
+        updateSetupSquare(createEmptyPositionSetup(), 'e1' as Square, 'K'),
+        'a1' as Square,
+        'R',
+      ),
+      'h1' as Square,
+      'R',
+    )
     const withWhiteCastle = updateSetupCastlingRight(setup, 'K', true)
     const withBothWhite = updateSetupCastlingRight(withWhiteCastle, 'Q', true)
     const withoutKingside = updateSetupCastlingRight(withBothWhite, 'K', false)
     const withCounters = updateSetupFullmove(updateSetupHalfmove(withoutKingside, 12.9), 41.7)
 
     expect(hasSetupCastlingRight(withBothWhite, 'K')).toBe(true)
-    expect(positionSetupToFen(withCounters)).toBe('8/8/8/8/8/8/8/8 w Q - 12 41')
+    expect(positionSetupToFen(withCounters)).toBe('8/8/8/8/8/8/8/R3K2R w Q - 12 41')
+  })
+
+  it('only emits castling rights when the home king and rook are present', () => {
+    const empty = createEmptyPositionSetup()
+    const unavailable = updateSetupCastlingRight(empty, 'K', true)
+    const startingPosition = createStartingPositionSetup()
+    const withoutKingsideRook = updateSetupSquare(startingPosition, 'h1' as Square, null)
+    const withoutWhiteKing = updateSetupSquare(startingPosition, 'e1' as Square, null)
+
+    expect(canUseSetupCastlingRight(empty, 'K')).toBe(false)
+    expect(hasSetupCastlingRight(unavailable, 'K')).toBe(false)
+    expect(positionSetupToFen(unavailable)).toBe('8/8/8/8/8/8/8/8 w - - 0 1')
+    expect(positionSetupToFen(withoutKingsideRook)).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBN1 w Qkq - 0 1')
+    expect(positionSetupToFen(withoutWhiteKing)).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQ1BNR w kq - 0 1')
   })
 
   it('provides stable piece labels and glyphs', () => {

@@ -5,6 +5,7 @@ import { exportAnnotatedPgn, type PgnExportOptions } from '../engine/pgn'
 import {
     createEmptyPositionSetup,
     createStartingPositionSetup,
+    canUseSetupCastlingRight,
     hasSetupCastlingRight,
     parsePositionSetupFen,
     positionSetupToFen,
@@ -499,21 +500,29 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                         <div className="fen-setup-control-block">
                                             <span className="dialog-label">Castling</span>
                                             <div className="fen-castling-grid" role="group" aria-label="Castling rights">
-                                                {SETUP_CASTLING_OPTIONS.map(option => (
-                                                    <label key={option.right} className="dialog-check-option fen-castling-option">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={hasSetupCastlingRight(setup, option.right)}
-                                                            onChange={event => {
-                                                                applySetupChange(current =>
-                                                                    updateSetupCastlingRight(current, option.right, event.target.checked),
-                                                                )
-                                                            }}
-                                                        />
-                                                        <span>{option.short}</span>
-                                                        <small>{option.label}</small>
-                                                    </label>
-                                                ))}
+                                                {SETUP_CASTLING_OPTIONS.map(option => {
+                                                    const canCastle = canUseSetupCastlingRight(setup, option.right)
+                                                    return (
+                                                        <label
+                                                            key={option.right}
+                                                            className={`dialog-check-option fen-castling-option ${canCastle ? '' : 'disabled'}`}
+                                                            title={canCastle ? option.label : `${option.label} needs the home king and rook`}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={hasSetupCastlingRight(setup, option.right)}
+                                                                disabled={!canCastle}
+                                                                onChange={event => {
+                                                                    applySetupChange(current =>
+                                                                        updateSetupCastlingRight(current, option.right, event.target.checked),
+                                                                    )
+                                                                }}
+                                                            />
+                                                            <span>{option.short}</span>
+                                                            <small>{canCastle ? option.label : 'Needs home king + rook'}</small>
+                                                        </label>
+                                                    )
+                                                })}
                                             </div>
                                         </div>
                                         <div className="fen-setup-control-block">

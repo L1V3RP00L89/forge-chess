@@ -202,6 +202,11 @@
     padding: 0.34rem 0.42rem;
 }
 
+.fen-castling-option.disabled {
+    opacity: 0.58;
+    cursor: not-allowed;
+}
+
 .fen-castling-option span {
     min-width: 0.8rem;
     color: var(--text-primary, #e6edf3);
@@ -218,6 +223,11 @@
     line-height: 1.15;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.fen-castling-option.disabled span,
+.fen-castling-option.disabled small {
+    color: var(--text-tertiary, #6e7681);
 }
 
 .fen-counter-grid {

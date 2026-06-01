@@ -10,6 +10,18 @@ export type SetupPiece = 'P' | 'N' | 'B' | 'R' | 'Q' | 'K' | 'p' | 'n' | 'b' | '
 export type SetupTurn = 'w' | 'b'
 export type SetupCastlingRight = typeof CASTLING_ORDER[number]
 
+const CASTLING_REQUIREMENTS: Record<SetupCastlingRight, {
+  king: Square
+  kingPiece: SetupPiece
+  rook: Square
+  rookPiece: SetupPiece
+}> = {
+  K: { king: 'e1', kingPiece: 'K', rook: 'h1', rookPiece: 'R' },
+  Q: { king: 'e1', kingPiece: 'K', rook: 'a1', rookPiece: 'R' },
+  k: { king: 'e8', kingPiece: 'k', rook: 'h8', rookPiece: 'r' },
+  q: { king: 'e8', kingPiece: 'k', rook: 'a8', rookPiece: 'r' },
+}
+
 export type PositionSetup = {
   pieces: Partial<Record<Square, SetupPiece>>
   turn: SetupTurn
@@ -70,8 +82,14 @@ export function normalizeCastlingRights(value: string | undefined): string {
   return normalized || '-'
 }
 
+export function canUseSetupCastlingRight(setup: PositionSetup, right: SetupCastlingRight): boolean {
+  const requirement = CASTLING_REQUIREMENTS[right]
+  return setup.pieces[requirement.king] === requirement.kingPiece
+    && setup.pieces[requirement.rook] === requirement.rookPiece
+}
+
 export function hasSetupCastlingRight(setup: PositionSetup, right: SetupCastlingRight): boolean {
-  return normalizeCastlingRights(setup.castling).includes(right)
+  return normalizeAvailableCastlingRights(setup).includes(right)
 }
 
 export function parsePositionSetupFen(fen: string): PositionSetup | null {
@@ -146,7 +164,7 @@ export function positionSetupToFen(setup: PositionSetup): string {
   return [
     ranks.join('/'),
     setup.turn,
-    normalizeCastlingRights(setup.castling),
+    normalizeAvailableCastlingRights(setup),
     '-',
     Math.max(0, Math.floor(setup.halfmove)),
     Math.max(1, Math.floor(setup.fullmove)),
@@ -157,7 +175,8 @@ export function updateSetupSquare(setup: PositionSetup, square: Square, piece: S
   const pieces = { ...setup.pieces }
   if (piece) pieces[square] = piece
   else delete pieces[square]
-  return { ...setup, pieces }
+  const next = { ...setup, pieces }
+  return { ...next, castling: normalizeAvailableCastlingRights(next) }
 }
 
 export function updateSetupTurn(setup: PositionSetup, turn: SetupTurn): PositionSetup {
@@ -173,10 +192,11 @@ export function updateSetupCastlingRight(
   if (enabled) rights.add(right)
   else rights.delete(right)
 
-  return {
+  const next = {
     ...setup,
     castling: normalizeCastlingRights(CASTLING_ORDER.filter(castlingRight => rights.has(castlingRight)).join('')),
   }
+  return { ...next, castling: normalizeAvailableCastlingRights(next) }
 }
 
 export function updateSetupHalfmove(setup: PositionSetup, value: number): PositionSetup {
@@ -196,4 +216,14 @@ function normalizeNonNegativeInteger(value: string | undefined, fallback: number
 function normalizeCounter(value: number, fallback: number, min: number): number {
   if (!Number.isFinite(value)) return fallback
   return Math.max(min, Math.floor(value))
+}
+
+function normalizeAvailableCastlingRights(setup: PositionSetup): string {
+  const normalized = normalizeCastlingRights(setup.castling)
+  if (normalized === '-') return '-'
+
+  const rights = CASTLING_ORDER
+    .filter(right => normalized.includes(right) && canUseSetupCastlingRight(setup, right))
+    .join('')
+  return rights || '-'
 }
