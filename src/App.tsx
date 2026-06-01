@@ -2937,8 +2937,8 @@ function App() {
       <nav
         className="skip-links"
         aria-label="Skip links"
-        aria-hidden={appModalOpen ? true : undefined}
-        inert={appModalOpen ? true : undefined}
+        aria-hidden={appModalOpen || settingsOpen ? true : undefined}
+        inert={appModalOpen || settingsOpen ? true : undefined}
       >
         <a href="#chessboard-stage">Skip to board</a>
         <a href="#analysis-panel">Skip to analysis</a>
@@ -2952,11 +2952,15 @@ function App() {
       >
         <div className="panel-inner">
           <div className="panel-content compact-grid">
-            <div className="app-brand">
+            <div className="app-brand" aria-hidden={settingsOpen ? true : undefined}>
               <span className="app-brand-icon"><IconKing /></span>
               <span className="app-brand-text">Web Chess</span>
             </div>
-            <div className="mobile-actions">
+            <div
+              className="mobile-actions"
+              aria-hidden={settingsOpen ? true : undefined}
+              inert={settingsOpen ? true : undefined}
+            >
               <button type="button" onClick={openNewGameDialog} aria-label="Start new game" title="New game">
                 <span className="btn-icon"><IconRefresh /></span> <span className="btn-label">New game</span>
               </button>
@@ -2970,7 +2974,11 @@ function App() {
 
             {/* Workspace & Game Mode wrappers */}
             <span className="toolbar-divider desktop-only" />
-            <div className="mobile-modes-wrapper">
+            <div
+              className="mobile-modes-wrapper"
+              aria-hidden={settingsOpen ? true : undefined}
+              inert={settingsOpen ? true : undefined}
+            >
               <div className="top-mode-pills" aria-label="Workspace mode">
                 {([
                   { id: 'play', label: 'Play', icon: <IconSwords /> },
@@ -3367,6 +3375,8 @@ function App() {
           tabIndex={0}
           aria-expanded={topPanelOpen}
           aria-label={topPanelOpen ? 'Collapse top bar' : 'Expand top bar'}
+          aria-hidden={settingsOpen ? true : undefined}
+          inert={settingsOpen ? true : undefined}
           onClick={toggleTopPanel}
           onKeyDown={event => activateOnKeyboard(event, toggleTopPanel)}
           title="Toggle top bar"
@@ -3375,7 +3385,12 @@ function App() {
         </div>
       </section>
 
-      <div className="main-container" ref={mainContainerRef}>
+      <div
+        className="main-container"
+        ref={mainContainerRef}
+        aria-hidden={settingsOpen ? true : undefined}
+        inert={settingsOpen ? true : undefined}
+      >
         {/* ── Left panel (winrate graph) ── */}
         <section
           className={`panel left ${leftPanelCollapsed ? 'panel-collapsed' : ''}`}
