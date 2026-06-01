@@ -1076,6 +1076,19 @@ function App() {
     stop()
   }, [clearBatchReview, stop])
 
+  const cancelBackgroundAnalysisForBoardEdit = useCallback(() => {
+    const hadImportSweep = importSweepProgress.total > 0
+      || importSweepQueueRef.current.length > 0
+      || activeImportSweepRef.current !== null
+    const hadBatchReview = isBatchReviewing
+      || batchReviewQueueRef.current.length > 0
+      || activeBatchReviewRef.current !== null
+
+    if (hadImportSweep) clearImportSweep()
+    if (hadBatchReview) clearBatchReview()
+    if (hadImportSweep || hadBatchReview) stop()
+  }, [clearBatchReview, clearImportSweep, importSweepProgress.total, isBatchReviewing, stop])
+
   const startBatchReview = useCallback(() => {
     if (!engineEnabled) return
     const nodes = gameTreeRef.current.mainLine()
@@ -2152,7 +2165,7 @@ function App() {
       }
       if (!move) return false
 
-      clearImportSweep()
+      cancelBackgroundAnalysisForBoardEdit()
       const newFen = game.fen()
       setFen(newFen)
       gameTree.addMove(move, newFen)
@@ -2160,7 +2173,7 @@ function App() {
       setPendingPromotion(null)
       return true
     },
-    [clearBoardSelection, clearImportSweep, game, gameTree],
+    [cancelBackgroundAnalysisForBoardEdit, clearBoardSelection, game, gameTree],
   )
 
   const beginPromotion = useCallback(
