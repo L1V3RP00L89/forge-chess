@@ -2918,15 +2918,20 @@ function App() {
 
   const isMobile = viewport.width <= 900
   const desktopBoardChromeReserve = 44
+  const mobileBoardWidth = Math.min(
+    Math.max(0, viewport.width - 16),
+    Math.max(300, Math.round(viewport.height * 0.46)),
+  )
 
-  // Mobile: leave room for the bottom controls and the first analysis/play panel.
+  // Mobile: prefer finger-friendly squares while respecting narrow screens.
   const boardWidth = isMobile
-    ? Math.min(viewport.width - 16, Math.round(viewport.height * 0.4))
+    ? mobileBoardWidth
     : Math.min(
       viewport.width - leftWidth - rightWidth - 48,
       viewport.height - (bottomPanelOpen ? 140 : 80) - (topPanelOpen ? 80 : 40) - desktopBoardChromeReserve,
       800,
     )
+  const renderedBoardWidth = isMobile ? boardWidth : Math.max(260, boardWidth)
   const turnLabel = game.turn() === 'w' ? 'White to move' : 'Black to move'
   const moveNumberLabel = `Move ${fen.split(/\s+/)[5] ?? '1'}`
   const currentMoveQuality = gameTree.current.quality
@@ -3667,7 +3672,7 @@ function App() {
                       darkSquareStyle: { backgroundColor: '#b58863' },
                       lightSquareStyle: { backgroundColor: '#f0d9b5' },
                       boardStyle: {
-                        width: `${Math.max(260, boardWidth)}px`,
+                        width: `${renderedBoardWidth}px`,
                         maxWidth: '100%',
                         borderRadius: 12,
                         boxShadow: '0 8px 40px rgba(0, 0, 0, 0.60), 0 2px 8px rgba(0, 0, 0, 0.40)',
