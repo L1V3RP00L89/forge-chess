@@ -1068,12 +1068,17 @@ function App() {
     }),
   })
 
-  const stopBatchReview = useCallback(() => {
+  const clearBatchReview = useCallback(() => {
     batchReviewQueueRef.current = []
     activeBatchReviewRef.current = null
     setIsBatchReviewing(false)
+    setBatchReviewProgress({ done: 0, total: 0 })
+  }, [])
+
+  const stopBatchReview = useCallback(() => {
+    clearBatchReview()
     stop()
-  }, [stop])
+  }, [clearBatchReview, stop])
 
   const startBatchReview = useCallback(() => {
     if (!engineEnabled) return
@@ -1178,12 +1183,9 @@ function App() {
     if (workspaceMode !== 'play') return
     stop()
     clearImportSweep()
+    clearBatchReview()
     setPendingShallowAnalyzeFen(null)
-    setIsBatchReviewing(false)
-    batchReviewQueueRef.current = []
-    activeBatchReviewRef.current = null
-    setBatchReviewProgress({ done: 0, total: 0 })
-  }, [clearImportSweep, stop, workspaceMode])
+  }, [clearBatchReview, clearImportSweep, stop, workspaceMode])
 
   const primaryLine = lines.find(l => l.multipv === 1) ?? lines[0]
   const primaryBestMove = primaryLine?.pv[0]
@@ -1550,7 +1552,8 @@ function App() {
     setEngineLabCopyStatus('idle')
     setLastLabRun(null)
     setPendingPromotion(null)
-  }, [])
+    clearBatchReview()
+  }, [clearBatchReview])
 
   const applyPreset = useCallback((presetId: AnalyzePresetId) => {
     setActivePreset(presetId)
@@ -2516,6 +2519,7 @@ function App() {
 
       setIsImportingGame(true)
       clearImportSweep()
+      clearBatchReview()
       const importedGame = parsePgnMoveTree(pgnText)
       cancelPendingAiMove()
       const rootFen = importedGame.rootFen
@@ -2561,7 +2565,7 @@ function App() {
       setIsImportingGame(false)
       return { ok: false, error: 'Failed to parse PGN. Check the move text, headers, and move numbers.' }
     }
-  }, [cancelPendingAiMove, cancelSampleLoad, clearBoardSelection, clearImportSweep, engineEnabled, game, gameTree, newGame, requestBoardReveal, setPgnHeaders])
+  }, [cancelPendingAiMove, cancelSampleLoad, clearBatchReview, clearBoardSelection, clearImportSweep, engineEnabled, game, gameTree, newGame, requestBoardReveal, setPgnHeaders])
 
   const handleAnalysisPgnImport = useCallback(
     (pgnText: string) => handlePgnImport(pgnText, { analyzeAfterLoad: true }),
@@ -2591,13 +2595,13 @@ function App() {
       setEvaluationsByFen(new Map())
       setPgnHeaders({})
       clearImportSweep()
+      clearBatchReview()
       setPendingShallowAnalyzeFen(shouldAnalyzeAfterLoad ? rootFen : null)
       setSampleLoadError(null)
       setPendingPromotion(null)
       setSelectedSquare(null)
       setLegalTargets([])
       setIsImportingGame(false)
-      setIsBatchReviewing(false)
       pausedRef.current = true
       setPaused(true)
       cancelPendingAiMove()
@@ -2606,7 +2610,7 @@ function App() {
     } catch {
       return { ok: false, error: 'Failed to parse FEN. Check piece placement, side to move, castling rights, and counters.' }
     }
-  }, [cancelPendingAiMove, cancelSampleLoad, clearImportSweep, engineEnabled, game, gameTree, newGame, requestBoardReveal, setPgnHeaders])
+  }, [cancelPendingAiMove, cancelSampleLoad, clearBatchReview, clearImportSweep, engineEnabled, game, gameTree, newGame, requestBoardReveal, setPgnHeaders])
 
   const handleAnalysisFenLoad = useCallback(
     (fenText: string) => handleFenLoad(fenText, { forceAnalysis: true }),
@@ -2681,6 +2685,7 @@ function App() {
       setEvaluationsByFen(new Map())
       setPgnHeaders({})
       clearImportSweep()
+      clearBatchReview()
       setPendingShallowAnalyzeFen(null)
       setIsImportingGame(false)
       setPendingPromotion(null)
@@ -2692,7 +2697,7 @@ function App() {
       setOrientation(defaultOrientationForGameMode(mode, color))
       requestBoardReveal()
     },
-    [cancelPendingAiMove, cancelSampleLoad, clearBoardSelection, clearImportSweep, game, gameTree, newGame, requestBoardReveal, setAiPlayerDifficulty, setPgnHeaders],
+    [cancelPendingAiMove, cancelSampleLoad, clearBatchReview, clearBoardSelection, clearImportSweep, game, gameTree, newGame, requestBoardReveal, setAiPlayerDifficulty, setPgnHeaders],
   )
 
   // ── Mode switch mid-game ──────────────────────────────
