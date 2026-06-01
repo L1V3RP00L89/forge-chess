@@ -2332,6 +2332,11 @@ body.resizing * {
   opacity: 0.72;
 }
 
+.review-book-row.error {
+  border-color: rgba(248, 81, 73, 0.36);
+  background: rgba(248, 81, 73, 0.08);
+}
+
 .review-filter-row {
   display: flex;
   flex-wrap: wrap;

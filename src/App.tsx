@@ -29,9 +29,9 @@ import {
 } from './engine/cloudEval'
 import { shouldFetchCloudEvaluation } from './engine/cloudEvalPolicy'
 import {
+  fetchOpeningExplorer,
   getCachedOpeningExplorer,
   hasOpeningExplorerAuthToken,
-  prefetchOpeningExplorer,
   type OpeningDatabaseSource,
   type OpeningExplorerMove,
   type OpeningSpeed,
@@ -749,6 +749,7 @@ function App() {
   const [openingSpeeds, setOpeningSpeeds] = useState<OpeningSpeed[]>(persistedSettings.openingSpeeds)
   const [openingRatingPreset, setOpeningRatingPreset] = useState<OpeningRatingPresetId>(persistedSettings.openingRatingPreset)
   const [openingAuthToken, setOpeningAuthToken] = useState('')
+  const [reviewBookError, setReviewBookError] = useState<string | null>(null)
   const [showBoardArrows, setShowBoardArrows] = useState<boolean>(persistedSettings.showBoardArrows)
   const [showTopMoveArrows, setShowTopMoveArrows] = useState<boolean>(persistedSettings.showTopMoveArrows)
   const [topMoveArrowCount, setTopMoveArrowCount] = useState<number>(persistedSettings.topMoveArrowCount)
@@ -1584,6 +1585,7 @@ function App() {
     setOpeningSpeeds(DEFAULT_PERSISTED_SETTINGS.openingSpeeds)
     setOpeningRatingPreset(DEFAULT_PERSISTED_SETTINGS.openingRatingPreset)
     setOpeningAuthToken('')
+    setReviewBookError(null)
     setShowBoardArrows(DEFAULT_PERSISTED_SETTINGS.showBoardArrows)
     setShowTopMoveArrows(DEFAULT_PERSISTED_SETTINGS.showTopMoveArrows)
     setTopMoveArrowCount(DEFAULT_PERSISTED_SETTINGS.topMoveArrowCount)
@@ -1883,6 +1885,7 @@ function App() {
       : 'No major swings found in this reviewed line.'
 
   useEffect(() => {
+    setReviewBookError(null)
     if (workspaceMode !== 'analysis') return
     if (analysisTab !== 'review') return
     if (!mainLineUciMoves.length) return
@@ -1895,14 +1898,22 @@ function App() {
     const run = async () => {
       for (let idx = 0; idx < maxPlyToPrefetch; idx += 1) {
         if (cancelled) return
-        await prefetchOpeningExplorer({
-          source: openingSource,
-          fen: currentRootFen,
-          moves: mainLineUciMoves.slice(0, idx),
-          speeds: openingSource === 'lichess' ? openingSpeeds : undefined,
-          ratings: openingSource === 'lichess' ? openingRatings : undefined,
-          authToken: openingAuthToken,
-        }, controller.signal)
+        try {
+          await fetchOpeningExplorer({
+            source: openingSource,
+            fen: currentRootFen,
+            moves: mainLineUciMoves.slice(0, idx),
+            speeds: openingSource === 'lichess' ? openingSpeeds : undefined,
+            ratings: openingSource === 'lichess' ? openingRatings : undefined,
+            authToken: openingAuthToken,
+          }, controller.signal)
+        } catch (error) {
+          if (cancelled || controller.signal.aborted) return
+          const message = error instanceof Error ? error.message : String(error)
+          setReviewBookError(message)
+          setOpeningPrefetchTick(tick => tick + 1)
+          return
+        }
         if (cancelled) return
         setOpeningPrefetchTick(tick => tick + 1)
       }
@@ -1936,7 +1947,11 @@ function App() {
           sideToMove,
           san,
           uci,
-          status: hasOpeningExplorerToken ? 'loading' as const : 'auth-required' as const,
+          status: hasOpeningExplorerToken
+            ? reviewBookError
+              ? 'error' as const
+              : 'loading' as const
+            : 'auth-required' as const,
         }
       }
 
@@ -1984,6 +1999,7 @@ function App() {
     openingRatings,
     openingSource,
     openingSpeeds,
+    reviewBookError,
   ])
 
   const visibleReviewBookRows = useMemo(() => {
@@ -1997,8 +2013,9 @@ function App() {
     const outOfBook = visibleReviewBookRows.filter(row => row.status === 'out-of-book').length
     const loading = visibleReviewBookRows.filter(row => row.status === 'loading').length
     const authRequired = visibleReviewBookRows.filter(row => row.status === 'auth-required').length
+    const failed = visibleReviewBookRows.filter(row => row.status === 'error').length
     const firstOutOfBook = visibleReviewBookRows.find(row => row.status === 'out-of-book') ?? null
-    return { inBook, outOfBook, loading, authRequired, firstOutOfBook }
+    return { inBook, outOfBook, loading, authRequired, failed, firstOutOfBook }
   }, [visibleReviewBookRows])
 
   // Graph uses active path up to its deepest child to show the entire branch history
@@ -4376,7 +4393,11 @@ function App() {
                       First {Math.min(mainLineUciMoves.length, REVIEW_BOOK_PREFETCH_LIMIT)} plies · In book {reviewBookSummary.inBook} · Out of book {reviewBookSummary.outOfBook}
                       {reviewBookSummary.loading > 0 ? ` · checking ${reviewBookSummary.loading}` : ''}
                       {reviewBookSummary.authRequired > 0 ? ' · token needed' : ''}
+                      {reviewBookSummary.failed > 0 ? ' · book unavailable' : ''}
                     </p>
+                    {reviewBookError && reviewBookSummary.failed > 0 && (
+                      <p className="panel-copy small error-copy">Book lookup: {reviewBookError}</p>
+                    )}
                     {reviewBookSummary.firstOutOfBook && (
                       <p className="panel-copy small">
                         First novelty: ply {reviewBookSummary.firstOutOfBook.ply} ({reviewBookSummary.firstOutOfBook.san})
@@ -4411,7 +4432,9 @@ function App() {
                                   ? '...'
                                   : row.status === 'auth-required'
                                     ? 'Token'
-                                    : 'n/a'}
+                                    : row.status === 'error'
+                                      ? 'Error'
+                                      : 'n/a'}
                           </span>
                         </div>
                       ))}
