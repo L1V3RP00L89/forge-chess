@@ -8,6 +8,11 @@ import { hasLegalKingPlacement } from './fen'
 const INITIAL_FEN = new Chess().fen()
 const PGN_TAG_NAME_PATTERN = /^[A-Za-z0-9_]+$/
 const PGN_EVENT_TAG_LINE_PATTERN = /^\s*\[Event\s+"(?:[^"\\]|\\.)*"\]\s*$/gim
+const PGN_RESULT_TAG_LINE_PATTERN = /^\s*\[Result\s+"(?:[^"\\]|\\.)*"\]\s*$/gim
+const PGN_HEADER_LINE_PATTERN = /^\s*\[[A-Za-z0-9_]+\s+"(?:[^"\\]|\\.)*"\]\s*$/gm
+const PGN_BLOCK_COMMENT_PATTERN = /\{[^]*?\}/g
+const PGN_SEMICOLON_COMMENT_PATTERN = /;[^\r\n]*/g
+const PGN_MOVETEXT_RESULT_PATTERN = /(?:^|\s)(?:1-0|0-1|1\/2-1\/2|\*)(?=\s|$)/g
 const VALID_PGN_RESULTS = new Set(['1-0', '0-1', '1/2-1/2', '*'])
 const PGN_EVAL_COMMENT_PATTERN = /\[%eval\s+[^\]]+\]/gi
 export const PGN_EMPTY_IMPORT_ERROR = 'Paste a PGN game or choose a .pgn file before importing.'
@@ -44,7 +49,17 @@ function sanitizePgnHeaderValue(value: string): string {
 
 export function hasMultiplePgnGames(pgnText: string): boolean {
     const eventTags = pgnText.match(PGN_EVENT_TAG_LINE_PATTERN)
-    return (eventTags?.length ?? 0) > 1
+    if ((eventTags?.length ?? 0) > 1) return true
+
+    const resultTags = pgnText.match(PGN_RESULT_TAG_LINE_PATTERN)
+    if ((resultTags?.length ?? 0) > 1) return true
+
+    const movetextOnly = pgnText
+        .replace(PGN_HEADER_LINE_PATTERN, '\n')
+        .replace(PGN_BLOCK_COMMENT_PATTERN, ' ')
+        .replace(PGN_SEMICOLON_COMMENT_PATTERN, ' ')
+    const terminationMarkers = movetextOnly.match(PGN_MOVETEXT_RESULT_PATTERN)
+    return (terminationMarkers?.length ?? 0) > 1
 }
 
 export function pgnImportContentError(pgnText: string): string | null {

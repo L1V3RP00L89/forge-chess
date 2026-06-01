@@ -557,6 +557,49 @@ describe('PGN import preflight', () => {
     expect(() => parsePgnMoveTree(multiGamePgn)).toThrow(PGN_MULTIPLE_GAMES_ERROR)
   })
 
+  it('rejects headerless multi-game move text by termination markers', () => {
+    const multiGamePgn = `
+1. e4 e5 1-0
+
+1. d4 d5 0-1
+`
+
+    expect(hasMultiplePgnGames(multiGamePgn)).toBe(true)
+    expect(pgnImportContentError(multiGamePgn)).toBe(PGN_MULTIPLE_GAMES_ERROR)
+    expect(() => parsePgnMoveTree(multiGamePgn)).toThrow(PGN_MULTIPLE_GAMES_ERROR)
+  })
+
+  it('rejects database entries that repeat Result tags without Event tags', () => {
+    const multiGamePgn = `
+[White "Ada"]
+[Black "Max"]
+[Result "1-0"]
+
+1. e4 1-0
+
+[White "Lee"]
+[Black "Noor"]
+[Result "0-1"]
+
+1. d4 0-1
+`
+
+    expect(hasMultiplePgnGames(multiGamePgn)).toBe(true)
+    expect(pgnImportContentError(multiGamePgn)).toBe(PGN_MULTIPLE_GAMES_ERROR)
+  })
+
+  it('does not count result-looking comments as extra games', () => {
+    const singleGamePgn = `
+[Event "Training note"]
+[Result "1-0"]
+
+1. e4 { White is playing for 1-0 here. } e5 2. Nf3 1-0
+`
+
+    expect(hasMultiplePgnGames(singleGamePgn)).toBe(false)
+    expect(pgnImportContentError(singleGamePgn)).toBeNull()
+  })
+
   it('accepts a normal single-game PGN for import', () => {
     expect(hasMultiplePgnGames('[Event "Game one"]\n\n1. e4 e5 *')).toBe(false)
     expect(pgnImportContentError('[Event "Game one"]\n\n1. e4 e5 *')).toBeNull()
