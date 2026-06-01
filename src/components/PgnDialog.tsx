@@ -65,6 +65,15 @@ const SETUP_CASTLING_OPTIONS: Array<{ right: SetupCastlingRight; label: string; 
     { right: 'q', label: 'Black queenside', short: 'q' },
 ]
 
+function isDialogFocusableElement(element: HTMLElement): boolean {
+    if (element.hasAttribute('disabled') || element.tabIndex === -1) return false
+
+    const style = window.getComputedStyle(element)
+    if (style.display === 'none' || style.visibility === 'hidden') return false
+
+    return element.getClientRects().length > 0
+}
+
 export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, mainLineNodes, gameNodes, evaluations, pgnHeaders }: PgnDialogProps) {
     const [tab, setTab] = useState<'import' | 'fen' | 'export'>('import')
     const [importText, setImportText] = useState('')
@@ -290,7 +299,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
 
         const getFocusable = () =>
             Array.from(panelEl.querySelectorAll<HTMLElement>(focusableSelector))
-                .filter(el => !el.hasAttribute('disabled') && el.tabIndex !== -1)
+                .filter(isDialogFocusableElement)
 
         const focusable = getFocusable()
         focusable[0]?.focus()
