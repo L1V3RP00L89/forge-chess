@@ -17,7 +17,8 @@ const VALID_PGN_RESULTS = new Set(['1-0', '0-1', '1/2-1/2', '*'])
 const PGN_EVAL_COMMENT_PATTERN = /\[%eval\s+[^\]]+\]/gi
 export const PGN_EMPTY_IMPORT_ERROR = 'Paste a PGN game or choose a .pgn file before importing.'
 export const PGN_MULTIPLE_GAMES_ERROR = 'PGN import supports one game at a time. Paste a single game, or split a database file before importing.'
-const PGN_IMPORT_USER_ERRORS = new Set([PGN_EMPTY_IMPORT_ERROR, PGN_MULTIPLE_GAMES_ERROR])
+export const PGN_NO_MOVES_IMPORT_ERROR = 'PGN import needs at least one legal move.'
+const PGN_IMPORT_USER_ERRORS = new Set([PGN_EMPTY_IMPORT_ERROR, PGN_MULTIPLE_GAMES_ERROR, PGN_NO_MOVES_IMPORT_ERROR])
 const QUALITY_EXPORT_LABELS: Record<NonNullable<GameNode['quality']>, string> = {
     best: 'Best',
     good: 'Good',
@@ -387,16 +388,18 @@ export function parsePgnMoveTree(pgnText: string): {
     const rootFen = rootFenFromPgnHeaders(parsed.headers)
     const rootPosition = new Chess(rootFen)
     const evaluations = new Map<string, EvalSnapshot>()
+    const moves = buildImportEntries(
+        parsed.root.variations,
+        rootPosition,
+        evaluations,
+        humanCommentFromPgnComment(parsed.root.comment),
+    )
+    if (!moves.length) throw new Error(PGN_NO_MOVES_IMPORT_ERROR)
 
     return {
         headers,
         rootFen,
-        moves: buildImportEntries(
-            parsed.root.variations,
-            rootPosition,
-            evaluations,
-            humanCommentFromPgnComment(parsed.root.comment),
-        ),
+        moves,
         evaluations,
         result: parsed.result,
     }

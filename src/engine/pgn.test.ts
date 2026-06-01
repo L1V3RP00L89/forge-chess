@@ -4,6 +4,7 @@ import { Chess } from 'chess.js'
 import {
   PGN_EMPTY_IMPORT_ERROR,
   PGN_MULTIPLE_GAMES_ERROR,
+  PGN_NO_MOVES_IMPORT_ERROR,
   exportAnnotatedPgn,
   flattenPgnMainLine,
   formatPgnDate,
@@ -537,6 +538,19 @@ describe('PGN import preflight', () => {
   it('rejects empty PGN imports before resetting the board', () => {
     expect(pgnImportContentError(' \n\t ')).toBe(PGN_EMPTY_IMPORT_ERROR)
     expect(() => parsePgnMoveTree(' \n\t ')).toThrow(PGN_EMPTY_IMPORT_ERROR)
+  })
+
+  it('rejects PGNs that contain headers but no legal moves', () => {
+    const headerOnlyPgn = `
+[Event "Unplayed"]
+[Site "Web Chess"]
+[Result "*"]
+
+*
+`
+
+    expect(pgnImportContentError(headerOnlyPgn)).toBeNull()
+    expect(() => parsePgnMoveTree(headerOnlyPgn)).toThrow(PGN_NO_MOVES_IMPORT_ERROR)
   })
 
   it('gives database-style multi-game files a clear one-game-at-a-time error', () => {
