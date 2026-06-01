@@ -2190,8 +2190,7 @@ function App() {
     const doMove = () => {
       requestAiMove(requestFen, aiDifficulty).then(uciMove => {
         if (cancelled) return
-        aiMoveScheduledRef.current = false
-        setIsAiThinking(false)
+        finishAiMove()
 
         const liveGameMode = gameModeRef.current
         const livePlayerColor = playerColorRef.current
@@ -2222,6 +2221,8 @@ function App() {
           pausedRef.current = true
           setPaused(true)
         }
+      }).catch(() => {
+        if (!cancelled) finishAiMove()
       })
     }
 
