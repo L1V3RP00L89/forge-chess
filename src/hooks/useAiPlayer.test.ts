@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addStoppedSearchBestMoveAck, aiDifficultyCommands, consumeStoppedSearchBestMove, pickBeginnerVarietyMove } from './useAiPlayer'
+import { addStoppedSearchBestMoveAck, aiDifficultyCommands, consumeStoppedSearchBestMove, pickBeginnerVarietyMove, pickExactTablebaseMove } from './useAiPlayer'
 
 describe('AI difficulty UCI commands', () => {
     it('limits strength for beginner-friendly difficulty levels', () => {
@@ -66,5 +66,63 @@ describe('AI beginner move variety', () => {
 
         expect(pickBeginnerVarietyMove(startFen, 1, () => 0.99)).toBeNull()
         expect(pickBeginnerVarietyMove('not a fen', 1, () => 0)).toBeNull()
+    })
+})
+
+describe('AI exact tablebase move selection', () => {
+    it('prefers winning tablebase moves from the player perspective', () => {
+        expect(pickExactTablebaseMove({
+            fen: '8/8/8/8/8/8/4K3/7k w - - 0 1',
+            category: 'win',
+            checkmate: false,
+            stalemate: false,
+            insufficientMaterial: false,
+            fetchedAt: 1,
+            moves: [
+                { uci: 'e2e1', san: 'Ke1', category: 'draw', dtz: 0 },
+                { uci: 'e2f3', san: 'Kf3', category: 'loss', dtz: -2 },
+            ],
+        })).toBe('e2f3')
+    })
+
+    it('uses distance as a tie-break for faster wins and slower losses', () => {
+        expect(pickExactTablebaseMove({
+            fen: '8/8/8/8/8/8/4K3/7k w - - 0 1',
+            category: 'win',
+            checkmate: false,
+            stalemate: false,
+            insufficientMaterial: false,
+            fetchedAt: 1,
+            moves: [
+                { uci: 'e2e3', san: 'Ke3', category: 'loss', dtz: -8 },
+                { uci: 'e2f3', san: 'Kf3', category: 'loss', dtz: -2 },
+            ],
+        })).toBe('e2f3')
+
+        expect(pickExactTablebaseMove({
+            fen: '8/8/8/8/8/8/4K3/7k w - - 0 1',
+            category: 'loss',
+            checkmate: false,
+            stalemate: false,
+            insufficientMaterial: false,
+            fetchedAt: 1,
+            moves: [
+                { uci: 'e2e3', san: 'Ke3', category: 'win', dtz: 2 },
+                { uci: 'e2f3', san: 'Kf3', category: 'win', dtz: 9 },
+            ],
+        })).toBe('e2f3')
+    })
+
+    it('returns null when no exact moves are available', () => {
+        expect(pickExactTablebaseMove(null)).toBeNull()
+        expect(pickExactTablebaseMove({
+            fen: '8/8/8/8/8/8/4K3/7k w - - 0 1',
+            category: 'draw',
+            checkmate: false,
+            stalemate: false,
+            insufficientMaterial: true,
+            fetchedAt: 1,
+            moves: [],
+        })).toBeNull()
     })
 })

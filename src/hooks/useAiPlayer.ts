@@ -2,6 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Chess, type Move } from 'chess.js'
 import { detectEngineCapabilities, resolveProfile } from '../engine/profiles'
 import { createStockfishWorker } from '../engine/stockfishWorker'
+import {
+    fetchTablebase,
+    isTablebaseEligible,
+    tablebaseMoveCategoryForPlayer,
+    type TablebaseCategory,
+    type TablebaseResult,
+} from '../engine/tablebase'
 
 export type AiDifficulty = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
 
@@ -34,6 +41,20 @@ const DIFFICULTY_MOVETIME: Record<AiDifficulty, number> = {
 const BEGINNER_RANDOM_MOVE_CHANCE: Partial<Record<AiDifficulty, number>> = {
     1: 0.38,
     2: 0.20,
+}
+const EXACT_TABLEBASE_DIFFICULTY: AiDifficulty = 8
+const TABLEBASE_AI_TIMEOUT_MS = 2500
+const TABLEBASE_CATEGORY_PRIORITY: Record<TablebaseCategory, number> = {
+    win: 8,
+    'syzygy-win': 7,
+    'maybe-win': 6,
+    'cursed-win': 5,
+    draw: 4,
+    unknown: 3,
+    'blessed-loss': 2,
+    'maybe-loss': 1,
+    'syzygy-loss': 0,
+    loss: 0,
 }
 
 export const DIFFICULTY_LABELS: Record<AiDifficulty, string> = {
@@ -105,6 +126,56 @@ export function pickBeginnerVarietyMove(
         return moveToUci(moves[index]!)
     } catch {
         return null
+    }
+}
+
+function tablebaseDistance(move: { dtm?: number | null; preciseDtz?: number | null; dtz?: number | null }): number | null {
+    const value = move.dtm ?? move.preciseDtz ?? move.dtz
+    return typeof value === 'number' && Number.isFinite(value) ? Math.abs(value) : null
+}
+
+function tablebaseTieBreak(category: TablebaseCategory, move: { dtm?: number | null; preciseDtz?: number | null; dtz?: number | null; zeroing?: boolean }): number {
+    const distance = tablebaseDistance(move)
+    if (distance === null) return move.zeroing ? 1 : 0
+    if (TABLEBASE_CATEGORY_PRIORITY[category] >= TABLEBASE_CATEGORY_PRIORITY.draw) return -distance
+    return distance
+}
+
+export function pickExactTablebaseMove(result: TablebaseResult | null): string | null {
+    if (!result?.moves.length) return null
+
+    const ranked = result.moves
+        .map((move, index) => {
+            const category = tablebaseMoveCategoryForPlayer(move.category)
+            return {
+                category,
+                index,
+                move,
+                priority: TABLEBASE_CATEGORY_PRIORITY[category],
+                tieBreak: tablebaseTieBreak(category, move),
+            }
+        })
+        .sort((a, b) => {
+            if (a.priority !== b.priority) return b.priority - a.priority
+            if (a.tieBreak !== b.tieBreak) return b.tieBreak - a.tieBreak
+            return a.index - b.index
+        })
+
+    return ranked[0]?.move.uci ?? null
+}
+
+async function fetchExactTablebaseMove(fen: string, difficulty: AiDifficulty): Promise<string | null> {
+    if (difficulty !== EXACT_TABLEBASE_DIFFICULTY) return null
+    if (!isTablebaseEligible(fen)) return null
+
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), TABLEBASE_AI_TIMEOUT_MS)
+    try {
+        return pickExactTablebaseMove(await fetchTablebase(fen, controller.signal))
+    } catch {
+        return null
+    } finally {
+        clearTimeout(timeout)
     }
 }
 
@@ -290,35 +361,41 @@ export function useAiPlayer(enabled = true) {
      *  Returns a promise resolving to a UCI move string (e.g. "e2e4") or null. */
     const requestMove = useCallback(
         (fen: string, difficulty: AiDifficulty): Promise<string | null> => {
-            const worker = workerRef.current
             if (!enabled) return Promise.resolve(null)
-            const varietyMove = pickBeginnerVarietyMove(fen, difficulty)
-            if (varietyMove) return Promise.resolve(varietyMove)
-            if (!worker || !isReadyRef.current || resolveRef.current) return Promise.resolve(null)
-            if (ignoredBestMoveCountRef.current > 0) return Promise.resolve(null)
 
-            return new Promise((resolve) => {
-                if (difficultyRef.current !== difficulty) {
-                    difficultyRef.current = difficulty
-                    applyDifficulty(worker, difficulty)
-                }
+            return (async () => {
+                const exactMove = await fetchExactTablebaseMove(fen, difficulty)
+                if (exactMove) return exactMove
 
-                resolveRef.current = resolve
-                setStatus('thinking')
+                const worker = workerRef.current
+                const varietyMove = pickBeginnerVarietyMove(fen, difficulty)
+                if (varietyMove) return varietyMove
+                if (!worker || !isReadyRef.current || resolveRef.current) return null
+                if (ignoredBestMoveCountRef.current > 0) return null
 
-                const movetime = DIFFICULTY_MOVETIME[difficulty]
-                requestTimeoutRef.current = setTimeout(() => {
-                    ignoredBestMoveCountRef.current = addStoppedSearchBestMoveAck(ignoredBestMoveCountRef.current)
-                    setStatus('stopping')
-                    clearStopAckTimeout()
-                    stopAckTimeoutRef.current = setTimeout(releaseStoppedSearch, STOPPED_SEARCH_ACK_TIMEOUT_MS)
-                    try { worker.postMessage('stop') } catch { /* worker may already be gone */ }
-                    settleRequest(null)
-                }, movetime + 10_000)
-                worker.postMessage(`position fen ${fen}`)
-                // Per docs: "go movetime N" is the clean way to get a single best move
-                worker.postMessage(`go movetime ${movetime}`)
-            })
+                return new Promise((resolve) => {
+                    if (difficultyRef.current !== difficulty) {
+                        difficultyRef.current = difficulty
+                        applyDifficulty(worker, difficulty)
+                    }
+
+                    resolveRef.current = resolve
+                    setStatus('thinking')
+
+                    const movetime = DIFFICULTY_MOVETIME[difficulty]
+                    requestTimeoutRef.current = setTimeout(() => {
+                        ignoredBestMoveCountRef.current = addStoppedSearchBestMoveAck(ignoredBestMoveCountRef.current)
+                        setStatus('stopping')
+                        clearStopAckTimeout()
+                        stopAckTimeoutRef.current = setTimeout(releaseStoppedSearch, STOPPED_SEARCH_ACK_TIMEOUT_MS)
+                        try { worker.postMessage('stop') } catch { /* worker may already be gone */ }
+                        settleRequest(null)
+                    }, movetime + 10_000)
+                    worker.postMessage(`position fen ${fen}`)
+                    // Per docs: "go movetime N" is the clean way to get a single best move
+                    worker.postMessage(`go movetime ${movetime}`)
+                })
+            })()
         },
         [applyDifficulty, clearStopAckTimeout, enabled, releaseStoppedSearch, settleRequest],
     )
