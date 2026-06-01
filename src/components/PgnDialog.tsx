@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import type { GameNode } from '../hooks/useGameTree'
 import type { EvalSnapshot } from '../engine/analysis'
+import { validateFenForAnalysis } from '../engine/fen'
 import { exportAnnotatedPgn, type PgnExportOptions } from '../engine/pgn'
 import {
     createEmptyPositionSetup,
@@ -146,16 +147,6 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
         }
     }
 
-    const handleLoadFen = () => {
-        const result = onLoadFen(fenText)
-        if (result.ok) {
-            setFenText('')
-            closeDialog()
-            return
-        }
-        setError(result.error ?? 'Could not load that FEN.')
-    }
-
     const setExportOption = (key: keyof PgnExportOptions, value: boolean) => {
         setExportOptions(options => ({ ...options, [key]: value }))
         setCopyStatus('idle')
@@ -194,6 +185,32 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
             : '',
         [evaluations, exportOptions, gameNodes, mainLineNodes, pgnHeaders, tab],
     )
+    const fenValidation = useMemo(
+        () => fenText.trim() ? validateFenForAnalysis(fenText) : null,
+        [fenText],
+    )
+    const fenValidationError = fenValidation && !fenValidation.ok ? fenValidation.error : null
+    const fenShareValidation = useMemo(
+        () => validateFenForAnalysis(fenTextForShareLink(fenText, currentFen)),
+        [currentFen, fenText],
+    )
+    const canLoadFen = Boolean(fenText.trim()) && !fenValidationError
+    const canCopyShareLink = fenShareValidation.ok
+
+    const handleLoadFen = () => {
+        if (fenValidationError) {
+            setError(fenValidationError)
+            return
+        }
+
+        const result = onLoadFen(fenText)
+        if (result.ok) {
+            setFenText('')
+            closeDialog()
+            return
+        }
+        setError(result.error ?? 'Could not load that FEN.')
+    }
 
     const handleCopy = async () => {
         try {
@@ -235,6 +252,12 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
     const handleCopyShareLink = async () => {
         resetFeedback()
         const fenToShare = fenTextForShareLink(fenText, currentFen)
+        const validation = validateFenForAnalysis(fenToShare)
+        if (!validation.ok) {
+            setError(validation.error)
+            return
+        }
+
         try {
             await navigator.clipboard.writeText(buildFenShareUrl(fenToShare, window.location.href))
             setCopyStatus('link-copied')
@@ -426,7 +449,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                 <button type="button" className="btn-cancel" onClick={handleCopyCurrentFen}>
                                     {copyStatus === 'fen-copied' ? 'Copied FEN' : 'Copy Current FEN'}
                                 </button>
-                                <button type="button" className="btn-cancel" onClick={handleCopyShareLink}>
+                                <button type="button" className="btn-cancel" onClick={handleCopyShareLink} disabled={!canCopyShareLink}>
                                     <IconClipboard /> {copyStatus === 'link-copied' ? 'Copied Link' : 'Copy Share Link'}
                                 </button>
                             </div>
@@ -575,15 +598,18 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                     setError(null)
                                     setCopyStatus('idle')
                                 }}
-                                aria-invalid={Boolean(error)}
+                                aria-invalid={Boolean(error || fenValidationError)}
                             />
                             {error && <p className="dialog-error" role="alert">{error}</p>}
+                            {!error && fenValidationError && (
+                                <p className="dialog-error" role="status">{fenValidationError}</p>
+                            )}
                             {copyStatus === 'failed' && (
                                 <p className="dialog-error" role="alert">Clipboard access failed. The current FEN is in the text box.</p>
                             )}
                             <div className="dialog-actions">
                                 <button type="button" className="btn-cancel" onClick={closeDialog}>Cancel</button>
-                                <button type="button" className="btn-start" onClick={handleLoadFen} disabled={!fenText.trim()}>
+                                <button type="button" className="btn-start" onClick={handleLoadFen} disabled={!canLoadFen}>
                                     Load & Analyze
                                 </button>
                             </div>

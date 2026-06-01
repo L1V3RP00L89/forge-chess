@@ -39,7 +39,7 @@ import {
 import { parseCandidateMoveInput } from './engine/candidateMoves'
 import { type AnalyzeMode, type UciGoLimits } from './engine/uci'
 import { flattenPgnMainLine, parsePgnMoveTree } from './engine/pgn'
-import { hasLegalKingPlacement } from './engine/fen'
+import { FEN_PARSE_ERROR, hasLegalKingPlacement, validateFenForAnalysis } from './engine/fen'
 import { buildImportSweepTargets, countImportSweepCandidates, type ImportSweepTarget } from './engine/importSweep'
 import {
   normalizeOptionalIntegerInput,
@@ -2573,13 +2573,14 @@ function App() {
   )
 
   const handleFenLoad = useCallback((fenText: string, options?: FenLoadOptions) => {
+    const validation = validateFenForAnalysis(fenText)
+    if (!validation.ok) {
+      return { ok: false, error: validation.error }
+    }
+
     try {
       cancelSampleLoad()
-      const loaded = new Chess(fenText.trim())
-      const rootFen = loaded.fen()
-      if (!hasLegalKingPlacement(rootFen)) {
-        return { ok: false, error: 'Invalid FEN: kings cannot be adjacent or missing.' }
-      }
+      const rootFen = validation.fen
 
       const shouldAnalyzeAfterLoad = options?.forceAnalysis ?? engineEnabled
       if (options?.forceAnalysis) {
@@ -2608,7 +2609,7 @@ function App() {
       requestBoardReveal()
       return { ok: true }
     } catch {
-      return { ok: false, error: 'Failed to parse FEN. Check piece placement, side to move, castling rights, and counters.' }
+      return { ok: false, error: FEN_PARSE_ERROR }
     }
   }, [cancelPendingAiMove, cancelSampleLoad, clearBatchReview, clearImportSweep, engineEnabled, game, gameTree, newGame, requestBoardReveal, setPgnHeaders])
 

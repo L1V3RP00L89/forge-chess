@@ -283,7 +283,8 @@
     accent-color: var(--accent, #3fb950);
 }
 
-.pgn-dialog .btn-start:disabled {
+.pgn-dialog .btn-start:disabled,
+.pgn-dialog .btn-cancel:disabled {
     opacity: 0.5;
     cursor: not-allowed;
     background: var(--bg-elevated);

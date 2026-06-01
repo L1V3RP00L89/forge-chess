@@ -1,3 +1,12 @@
+import { Chess, validateFen } from 'chess.js'
+
+export const FEN_PARSE_ERROR = 'Failed to parse FEN. Check piece placement, side to move, castling rights, and counters.'
+export const FEN_KING_PLACEMENT_ERROR = 'Invalid FEN: kings cannot be adjacent or missing.'
+
+export type FenValidationResult =
+  | { ok: true; fen: string }
+  | { ok: false; error: string }
+
 type BoardSquare = {
   file: number
   rank: number
@@ -35,4 +44,26 @@ export function hasLegalKingPlacement(fen: string): boolean {
   const fileDistance = Math.abs(white.file - black.file)
   const rankDistance = Math.abs(white.rank - black.rank)
   return Math.max(fileDistance, rankDistance) > 1
+}
+
+export function validateFenForAnalysis(fenText: string): FenValidationResult {
+  const trimmed = fenText.trim()
+  const syntax = validateFen(trimmed)
+  if (!syntax.ok) {
+    return {
+      ok: false,
+      error: /king/i.test(syntax.error ?? '') ? FEN_KING_PLACEMENT_ERROR : FEN_PARSE_ERROR,
+    }
+  }
+
+  try {
+    const fen = new Chess(trimmed).fen()
+    if (!hasLegalKingPlacement(fen)) {
+      return { ok: false, error: FEN_KING_PLACEMENT_ERROR }
+    }
+
+    return { ok: true, fen }
+  } catch {
+    return { ok: false, error: FEN_PARSE_ERROR }
+  }
 }
