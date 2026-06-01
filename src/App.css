@@ -3319,6 +3319,10 @@ body.resizing * {
     display: none;
   }
 
+  .app-shell[data-workspace-mode="play"] .left {
+    display: none !important;
+  }
+
   .top-mode-pills[aria-label="Game mode"] .gc-pill {
     flex: 1 1 auto;
     min-width: 0;
