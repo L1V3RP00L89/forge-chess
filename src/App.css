@@ -717,6 +717,11 @@ body.resizing * {
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
+.board-surface {
+  width: min-content;
+  max-width: 100%;
+}
+
 /* Eval bar + score label wrapper */
 .eval-bar-wrap {
   position: relative;

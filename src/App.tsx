@@ -877,8 +877,11 @@ function App() {
   const canGoBack = currentPathNodes.length > 1
   const canGoForward = gameTree.current.children.length > 0
   const appModalOpen = showNewGameDialog || showPgnDialog
+  const promotionDialogOpen = pendingPromotion !== null
+  const topChromeHidden = appModalOpen || promotionDialogOpen
+  const backgroundUiHidden = appModalOpen || settingsOpen || promotionDialogOpen
   const shortcutsSuspended =
-    appModalOpen || settingsOpen || pendingPromotion !== null
+    appModalOpen || settingsOpen || promotionDialogOpen
 
   useEffect(() => {
     if (workspaceMode !== 'analysis') return
@@ -2937,8 +2940,8 @@ function App() {
       <nav
         className="skip-links"
         aria-label="Skip links"
-        aria-hidden={appModalOpen || settingsOpen ? true : undefined}
-        inert={appModalOpen || settingsOpen ? true : undefined}
+        aria-hidden={backgroundUiHidden ? true : undefined}
+        inert={backgroundUiHidden ? true : undefined}
       >
         <a href="#chessboard-stage">Skip to board</a>
         <a href="#analysis-panel">Skip to analysis</a>
@@ -2947,8 +2950,8 @@ function App() {
       {/* ── Top bar ── */}
       <section
         className={`panel top ${topPanelOpen ? '' : 'hidden'}`}
-        aria-hidden={appModalOpen ? true : undefined}
-        inert={appModalOpen ? true : undefined}
+        aria-hidden={topChromeHidden ? true : undefined}
+        inert={topChromeHidden ? true : undefined}
       >
         <div className="panel-inner">
           <div className="panel-content compact-grid">
@@ -3375,8 +3378,8 @@ function App() {
           tabIndex={0}
           aria-expanded={topPanelOpen}
           aria-label={topPanelOpen ? 'Collapse top bar' : 'Expand top bar'}
-          aria-hidden={settingsOpen ? true : undefined}
-          inert={settingsOpen ? true : undefined}
+          aria-hidden={settingsOpen || promotionDialogOpen ? true : undefined}
+          inert={settingsOpen || promotionDialogOpen ? true : undefined}
           onClick={toggleTopPanel}
           onKeyDown={event => activateOnKeyboard(event, toggleTopPanel)}
           title="Toggle top bar"
@@ -3394,8 +3397,8 @@ function App() {
         {/* ── Left panel (winrate graph) ── */}
         <section
           className={`panel left ${leftPanelCollapsed ? 'panel-collapsed' : ''}`}
-          aria-hidden={appModalOpen ? true : undefined}
-          inert={appModalOpen ? true : undefined}
+          aria-hidden={appModalOpen || promotionDialogOpen ? true : undefined}
+          inert={appModalOpen || promotionDialogOpen ? true : undefined}
           style={{ width: leftWidth }}
         >
           <div
@@ -3588,39 +3591,45 @@ function App() {
                 )
               })()}
               <div className="board-area" onKeyDown={handleBoardKeyDown}>
-                <Chessboard
-                  options={{
-                    position: fen,
-                    boardOrientation: orientation,
-                    onPieceDrop: ({ sourceSquare, targetSquare, piece }) => {
-                      if (!targetSquare) return false
-                      setSelectedSquare(null)
-                      setLegalTargets([])
-                      return onPieceDrop(sourceSquare as Square, targetSquare as Square, piece.pieceType)
-                    },
-                    onSquareClick: ({ square }) => onSquareClick(square as Square),
-                    squareStyles: {
-                      ...(selectedSquare ? { [selectedSquare]: { backgroundColor: 'rgba(255,215,0,0.55)', boxShadow: 'inset 0 0 0 3px rgba(255,200,0,0.9)' } } : {}),
-                      ...Object.fromEntries(legalTargets.map(sq => [sq, {
-                        background: game.get(sq)
-                          ? 'radial-gradient(circle, rgba(255,100,0,0.5) 60%, transparent 60%)'
-                          : 'radial-gradient(circle, rgba(0,0,0,0.25) 28%, transparent 28%)',
-                        borderRadius: '50%',
-                      }])),
-                    },
-                    arrows,
-                    allowDrawingArrows: false,
-                    allowDragging: !boardInputLocked,
-                    darkSquareStyle: { backgroundColor: '#b58863' },
-                    lightSquareStyle: { backgroundColor: '#f0d9b5' },
-                    boardStyle: {
-                      width: `${Math.max(260, boardWidth)}px`,
-                      maxWidth: '100%',
-                      borderRadius: 12,
-                      boxShadow: '0 8px 40px rgba(0, 0, 0, 0.60), 0 2px 8px rgba(0, 0, 0, 0.40)',
-                    },
-                  }}
-                />
+                <div
+                  className="board-surface"
+                  aria-hidden={promotionDialogOpen ? true : undefined}
+                  inert={promotionDialogOpen ? true : undefined}
+                >
+                  <Chessboard
+                    options={{
+                      position: fen,
+                      boardOrientation: orientation,
+                      onPieceDrop: ({ sourceSquare, targetSquare, piece }) => {
+                        if (!targetSquare) return false
+                        setSelectedSquare(null)
+                        setLegalTargets([])
+                        return onPieceDrop(sourceSquare as Square, targetSquare as Square, piece.pieceType)
+                      },
+                      onSquareClick: ({ square }) => onSquareClick(square as Square),
+                      squareStyles: {
+                        ...(selectedSquare ? { [selectedSquare]: { backgroundColor: 'rgba(255,215,0,0.55)', boxShadow: 'inset 0 0 0 3px rgba(255,200,0,0.9)' } } : {}),
+                        ...Object.fromEntries(legalTargets.map(sq => [sq, {
+                          background: game.get(sq)
+                            ? 'radial-gradient(circle, rgba(255,100,0,0.5) 60%, transparent 60%)'
+                            : 'radial-gradient(circle, rgba(0,0,0,0.25) 28%, transparent 28%)',
+                          borderRadius: '50%',
+                        }])),
+                      },
+                      arrows,
+                      allowDrawingArrows: false,
+                      allowDragging: !boardInputLocked,
+                      darkSquareStyle: { backgroundColor: '#b58863' },
+                      lightSquareStyle: { backgroundColor: '#f0d9b5' },
+                      boardStyle: {
+                        width: `${Math.max(260, boardWidth)}px`,
+                        maxWidth: '100%',
+                        borderRadius: 12,
+                        boxShadow: '0 8px 40px rgba(0, 0, 0, 0.60), 0 2px 8px rgba(0, 0, 0, 0.40)',
+                      },
+                    }}
+                  />
+                </div>
                 {pendingPromotion && (
                   <div
                     className="promotion-overlay"
@@ -3698,8 +3707,8 @@ function App() {
         <aside
           id="analysis-panel"
           className={`panel right ${rightPanelCollapsed ? 'panel-collapsed' : ''}`}
-          aria-hidden={appModalOpen ? true : undefined}
-          inert={appModalOpen ? true : undefined}
+          aria-hidden={appModalOpen || promotionDialogOpen ? true : undefined}
+          inert={appModalOpen || promotionDialogOpen ? true : undefined}
           style={{ width: rightWidth }}
           tabIndex={-1}
         >
@@ -4487,7 +4496,11 @@ function App() {
       </div>
 
       {/* ── Bottom bar ── */}
-      <section className={`panel bottom ${bottomPanelOpen ? '' : 'hidden'}`}>
+      <section
+        className={`panel bottom ${bottomPanelOpen ? '' : 'hidden'}`}
+        aria-hidden={backgroundUiHidden ? true : undefined}
+        inert={backgroundUiHidden ? true : undefined}
+      >
         <div
           className="resize-handle resize-handle-top"
           role="button"
