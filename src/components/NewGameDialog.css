@@ -745,6 +745,16 @@
 
 }
 
+@media (max-width: 620px) {
+    .dialog-quick-actions .btn-cancel,
+    .dialog-actions .btn-cancel,
+    .dialog-actions .btn-start,
+    .dialog-export-options .dialog-check-option,
+    .fen-counter-field input {
+        min-height: 44px;
+    }
+}
+
 .thinking-dots {
     display: flex;
     gap: 3px;
