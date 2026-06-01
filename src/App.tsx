@@ -562,6 +562,37 @@ function isPromotionMove(chess: Chess, from: Square, to: Square): boolean {
   return chess.moves({ square: from, verbose: true }).some(move => move.to === to && move.flags.includes('p'))
 }
 
+function syncRenderedBoardAccessibility(chess: Chess, selectedSquare: Square | null, legalTargets: Square[]) {
+  const legalTargetSet = new Set(legalTargets)
+
+  for (const square of BOARD_SQUARES) {
+    const squareEl = document.getElementById(`chessboard-square-${square}`)
+    if (!squareEl) continue
+
+    const label = describeBoardSquare(chess, square, { selectedSquare, legalTargets })
+    squareEl.setAttribute('aria-label', label)
+    squareEl.setAttribute('title', label)
+
+    for (const interactiveEl of squareEl.querySelectorAll<HTMLElement>('button, [role="button"]')) {
+      interactiveEl.setAttribute('aria-label', label)
+      interactiveEl.setAttribute('title', label)
+    }
+
+    const shouldExposeEmptyTarget = !squareEl.querySelector('button, [role="button"]')
+      && Boolean(selectedSquare)
+      && legalTargetSet.has(square)
+    if (shouldExposeEmptyTarget) {
+      squareEl.setAttribute('role', 'button')
+      squareEl.setAttribute('tabindex', '0')
+      squareEl.setAttribute('data-webchess-a11y-target', 'true')
+    } else if (squareEl.getAttribute('data-webchess-a11y-target') === 'true') {
+      squareEl.removeAttribute('role')
+      squareEl.removeAttribute('tabindex')
+      squareEl.removeAttribute('data-webchess-a11y-target')
+    }
+  }
+}
+
 function uniqueSquares(squares: Square[]): Square[] {
   return Array.from(new Set(squares))
 }
@@ -2263,32 +2294,15 @@ function App() {
   ])
 
   useEffect(() => {
-    const legalTargetSet = new Set(legalTargets)
+    const sync = () => syncRenderedBoardAccessibility(game, selectedSquare, legalTargets)
+    const frame = window.requestAnimationFrame(sync)
+    const settleTimer = window.setTimeout(sync, 360)
 
-    for (const square of BOARD_SQUARES) {
-      const squareEl = document.getElementById(`chessboard-square-${square}`)
-      if (!squareEl) continue
+    sync()
 
-      const label = describeBoardSquare(game, square, { selectedSquare, legalTargets })
-      squareEl.setAttribute('aria-label', label)
-      squareEl.setAttribute('title', label)
-
-      const interactiveEl = squareEl.querySelector<HTMLElement>('button, [role="button"]')
-      if (interactiveEl) {
-        interactiveEl.setAttribute('aria-label', label)
-        interactiveEl.setAttribute('title', label)
-      }
-
-      const shouldExposeEmptyTarget = !interactiveEl && Boolean(selectedSquare) && legalTargetSet.has(square)
-      if (shouldExposeEmptyTarget) {
-        squareEl.setAttribute('role', 'button')
-        squareEl.setAttribute('tabindex', '0')
-        squareEl.setAttribute('data-webchess-a11y-target', 'true')
-      } else if (squareEl.getAttribute('data-webchess-a11y-target') === 'true') {
-        squareEl.removeAttribute('role')
-        squareEl.removeAttribute('tabindex')
-        squareEl.removeAttribute('data-webchess-a11y-target')
-      }
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(settleTimer)
     }
   }, [fen, game, legalTargets, selectedSquare])
 
