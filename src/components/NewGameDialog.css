@@ -79,6 +79,112 @@
     margin: 0 0 0.65rem;
 }
 
+.fen-setup-card {
+    display: grid;
+    gap: 0.45rem;
+    margin: 0 0 0.65rem;
+    padding: 0.5rem;
+    border: 1px solid var(--border-subtle, rgba(240, 246, 252, 0.06));
+    border-radius: var(--radius-md, 8px);
+    background: rgba(8, 10, 14, 0.38);
+}
+
+.fen-setup-palette {
+    display: grid;
+    grid-template-columns: repeat(13, minmax(0, 1fr));
+    gap: 0.24rem;
+}
+
+.fen-piece-btn {
+    min-width: 0;
+    min-height: 28px;
+    padding: 0;
+    border: 1px solid var(--border-subtle, rgba(240, 246, 252, 0.06));
+    border-radius: var(--radius-xs, 4px);
+    background: var(--bg-elevated, #1c2128);
+    color: var(--text-primary, #e6edf3);
+    font-size: 0.98rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.fen-piece-btn.eraser {
+    color: var(--text-tertiary, #6e7681);
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.fen-piece-btn.active {
+    border-color: rgba(125, 239, 222, 0.62);
+    background: var(--accent-subtle, rgba(63, 185, 80, 0.12));
+    color: var(--accent, #3fb950);
+}
+
+.fen-setup-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 12.5rem) minmax(6.4rem, 1fr);
+    gap: 0.55rem;
+    align-items: start;
+}
+
+.fen-setup-board {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    aspect-ratio: 1;
+    width: min(100%, 12.5rem);
+    border: 1px solid rgba(240, 246, 252, 0.12);
+    border-radius: var(--radius-sm, 6px);
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.32);
+}
+
+.fen-setup-square {
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #f0d9b5;
+    color: #f8fafc;
+    font-size: clamp(0.95rem, 5vw, 1.35rem);
+    line-height: 1;
+    display: grid;
+    place-items: center;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.72);
+    cursor: pointer;
+}
+
+.fen-setup-square:nth-child(16n + 2),
+.fen-setup-square:nth-child(16n + 4),
+.fen-setup-square:nth-child(16n + 6),
+.fen-setup-square:nth-child(16n + 8),
+.fen-setup-square:nth-child(16n + 9),
+.fen-setup-square:nth-child(16n + 11),
+.fen-setup-square:nth-child(16n + 13),
+.fen-setup-square:nth-child(16n + 15) {
+    background: #b58863;
+}
+
+.fen-setup-square.black-piece {
+    color: #16191f;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.38);
+}
+
+.fen-setup-controls {
+    display: grid;
+    gap: 0.4rem;
+}
+
+.fen-side-toggle {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.fen-side-btn {
+    min-height: 34px;
+    padding: 0.32rem 0.42rem;
+}
+
 .dialog-check-option {
     display: inline-flex;
     align-items: center;
@@ -110,6 +216,15 @@
     border-color: var(--border-default);
     color: var(--text-secondary);
     box-shadow: none;
+}
+
+.pgn-dialog {
+    max-width: 560px;
+}
+
+.pgn-dialog .fen-textarea {
+    height: 96px;
+    min-height: 82px;
 }
 
 /* ── Dialog backdrop ───────────────────────────────── */
@@ -234,6 +349,23 @@
 
 @media (max-width: 620px) {
     .dialog-export-options {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .fen-setup-palette {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .fen-setup-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .fen-setup-board {
+        width: min(100%, 15rem);
+        justify-self: center;
+    }
+
+    .fen-side-toggle {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
@@ -519,6 +651,10 @@
         padding-bottom: calc(1.2rem + env(safe-area-inset-bottom));
         background: var(--bg-surface, #161b22);
         z-index: 2;
+    }
+
+    .pgn-dialog .dialog-actions {
+        position: static;
     }
 }
 

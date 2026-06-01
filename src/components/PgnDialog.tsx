@@ -2,6 +2,21 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type ChangeEv
 import type { GameNode } from '../hooks/useGameTree'
 import type { EvalSnapshot } from '../engine/analysis'
 import { exportAnnotatedPgn, type PgnExportOptions } from '../engine/pgn'
+import {
+    createEmptyPositionSetup,
+    createStartingPositionSetup,
+    parsePositionSetupFen,
+    positionSetupToFen,
+    SETUP_BOARD_SQUARES,
+    SETUP_PIECE_OPTIONS,
+    setupPieceGlyph,
+    setupPieceLabel,
+    updateSetupSquare,
+    updateSetupTurn,
+    type PositionSetup,
+    type SetupPiece,
+    type SetupTurn,
+} from '../engine/positionSetup'
 import { buildFenShareUrl } from '../engine/shareLink'
 import { IconDownload, IconClipboard, IconUpload } from './icons'
 import { MAX_PGN_IMPORT_BYTES, PGN_IMPORT_LIMIT_MESSAGE, pgnImportLengthError } from './pgnImportLimits'
@@ -41,6 +56,8 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
     const [error, setError] = useState<string | null>(null)
     const [copyStatus, setCopyStatus] = useState<CopyStatus>('idle')
     const [exportOptions, setExportOptions] = useState(DEFAULT_EXPORT_OPTIONS)
+    const [setup, setSetup] = useState<PositionSetup>(() => parsePositionSetupFen(currentFen) ?? createStartingPositionSetup())
+    const [selectedSetupPiece, setSelectedSetupPiece] = useState<SetupPiece | null>('P')
     const panelRef = useRef<HTMLDivElement>(null)
     const importFileInputRef = useRef<HTMLInputElement>(null)
     const [importFileName, setImportFileName] = useState<string | null>(null)
@@ -127,6 +144,27 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
         setCopyStatus('idle')
     }
 
+    const syncFenTextAndSetup = useCallback((nextFen: string) => {
+        setFenText(nextFen)
+        const parsed = parsePositionSetupFen(nextFen)
+        if (parsed) setSetup(parsed)
+    }, [])
+
+    const applySetupChange = useCallback((updater: (current: PositionSetup) => PositionSetup) => {
+        setSetup(current => {
+            const next = updater(current)
+            setFenText(positionSetupToFen(next))
+            return next
+        })
+        resetFeedback()
+    }, [resetFeedback])
+
+    const loadSetupPreset = useCallback((nextSetup: PositionSetup) => {
+        setSetup(nextSetup)
+        setFenText(positionSetupToFen(nextSetup))
+        resetFeedback()
+    }, [resetFeedback])
+
     const exportText = useMemo(
         () => tab === 'export'
             ? exportAnnotatedPgn(
@@ -163,12 +201,12 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
 
     const handleUseCurrentFen = () => {
         resetFeedback()
-        setFenText(currentFen)
+        syncFenTextAndSetup(currentFen)
     }
 
     const handleCopyCurrentFen = async () => {
         resetFeedback()
-        setFenText(currentFen)
+        syncFenTextAndSetup(currentFen)
         try {
             await navigator.clipboard.writeText(currentFen)
             setCopyStatus('fen-copied')
@@ -179,7 +217,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
 
     const handleCopyShareLink = async () => {
         resetFeedback()
-        setFenText(currentFen)
+        syncFenTextAndSetup(currentFen)
         try {
             await navigator.clipboard.writeText(buildFenShareUrl(currentFen, window.location.href))
             setCopyStatus('link-copied')
@@ -362,6 +400,12 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                 <button type="button" className="btn-cancel" onClick={handleUseCurrentFen}>
                                     Use Current Position
                                 </button>
+                                <button type="button" className="btn-cancel" onClick={() => loadSetupPreset(createStartingPositionSetup())}>
+                                    Start Position
+                                </button>
+                                <button type="button" className="btn-cancel" onClick={() => loadSetupPreset(createEmptyPositionSetup())}>
+                                    Clear Board
+                                </button>
                                 <button type="button" className="btn-cancel" onClick={handleCopyCurrentFen}>
                                     {copyStatus === 'fen-copied' ? 'Copied FEN' : 'Copy Current FEN'}
                                 </button>
@@ -369,13 +413,81 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                     <IconClipboard /> {copyStatus === 'link-copied' ? 'Copied Link' : 'Copy Share Link'}
                                 </button>
                             </div>
+                            <div className="fen-setup-card" aria-label="Position setup">
+                                <div className="fen-setup-palette" aria-label="Piece palette">
+                                    {SETUP_PIECE_OPTIONS.map(option => (
+                                        <button
+                                            key={option.piece}
+                                            type="button"
+                                            className={`fen-piece-btn ${selectedSetupPiece === option.piece ? 'active' : ''}`}
+                                            aria-pressed={selectedSetupPiece === option.piece}
+                                            aria-label={`Select ${option.label}`}
+                                            title={option.label}
+                                            onClick={() => setSelectedSetupPiece(option.piece)}
+                                        >
+                                            {option.glyph}
+                                        </button>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        className={`fen-piece-btn eraser ${selectedSetupPiece === null ? 'active' : ''}`}
+                                        aria-pressed={selectedSetupPiece === null}
+                                        aria-label="Select empty square eraser"
+                                        title="Clear square"
+                                        onClick={() => setSelectedSetupPiece(null)}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                                <div className="fen-setup-grid">
+                                    <div className="fen-setup-board" role="group" aria-label="Editable chessboard">
+                                        {SETUP_BOARD_SQUARES.map(square => {
+                                            const piece = setup.pieces[square]
+                                            const squareLabel = piece ? setupPieceLabel(piece) : 'empty square'
+                                            const actionLabel = selectedSetupPiece
+                                                ? `place ${setupPieceLabel(selectedSetupPiece)}`
+                                                : 'clear square'
+                                            return (
+                                                <button
+                                                    key={square}
+                                                    type="button"
+                                                    className={`fen-setup-square ${piece && piece === piece.toLowerCase() ? 'black-piece' : ''}`}
+                                                    aria-label={`${square}, ${squareLabel}, ${actionLabel}`}
+                                                    onClick={() => applySetupChange(current => updateSetupSquare(current, square, selectedSetupPiece))}
+                                                >
+                                                    {piece ? setupPieceGlyph(piece) : ''}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                    <div className="fen-setup-controls">
+                                        <span className="dialog-label">Side</span>
+                                        <div className="fen-side-toggle" aria-label="Side to move">
+                                            {([
+                                                { value: 'w', label: 'White' },
+                                                { value: 'b', label: 'Black' },
+                                            ] as Array<{ value: SetupTurn; label: string }>).map(option => (
+                                                <button
+                                                    key={option.value}
+                                                    type="button"
+                                                    className={`mode-card fen-side-btn ${setup.turn === option.value ? 'selected' : ''}`}
+                                                    aria-pressed={setup.turn === option.value}
+                                                    onClick={() => applySetupChange(current => updateSetupTurn(current, option.value))}
+                                                >
+                                                    <strong>{option.label}</strong>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             <textarea
                                 id={fenTextId}
-                                className="input-textarea"
+                                className="input-textarea fen-textarea"
                                 placeholder="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
                                 value={fenText}
                                 onChange={e => {
-                                    setFenText(e.target.value)
+                                    syncFenTextAndSetup(e.target.value)
                                     setError(null)
                                     setCopyStatus('idle')
                                 }}
