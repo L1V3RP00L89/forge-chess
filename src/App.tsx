@@ -39,7 +39,7 @@ import {
 import { parseCandidateMoveInput } from './engine/candidateMoves'
 import { type AnalyzeMode, type UciGoLimits } from './engine/uci'
 import { flattenPgnMainLine, parsePgnMoveTree } from './engine/pgn'
-import { FEN_PARSE_ERROR, hasLegalKingPlacement, validateFenForAnalysis } from './engine/fen'
+import { FEN_PARSE_ERROR, validateFenForAnalysis } from './engine/fen'
 import { buildImportSweepTargets, countImportSweepCandidates, type ImportSweepTarget } from './engine/importSweep'
 import {
   normalizeOptionalIntegerInput,
@@ -654,12 +654,8 @@ function loadSharedFenFromUrl(): string | null {
   const sharedFen = parseFenShareHash(window.location.hash)
   if (!sharedFen) return null
 
-  try {
-    const fen = new Chess(sharedFen).fen()
-    return hasLegalKingPlacement(fen) ? fen : null
-  } catch {
-    return null
-  }
+  const validation = validateFenForAnalysis(sharedFen)
+  return validation.ok ? validation.fen : null
 }
 
 function App() {
