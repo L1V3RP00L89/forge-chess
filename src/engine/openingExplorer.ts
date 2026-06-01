@@ -1,4 +1,5 @@
 import { withBoundedMapEntry } from '../hooks/cacheLimit'
+import { fetchLichessResource } from './lichessQueue'
 
 export type OpeningDatabaseSource = 'masters' | 'lichess'
 export type OpeningSpeed = 'bullet' | 'blitz' | 'rapid' | 'classical'
@@ -362,7 +363,7 @@ export async function fetchOpeningExplorer(
     throw new Error(AUTH_REQUIRED_MESSAGE)
   }
 
-  const response = await fetch(buildUrl(request), {
+  const response = await fetchLichessResource(buildUrl(request), {
     signal,
     headers: authHeaders(request.authToken),
   })

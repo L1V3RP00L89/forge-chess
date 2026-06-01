@@ -1,4 +1,5 @@
 import { withBoundedMapEntry } from '../hooks/cacheLimit'
+import { fetchLichessResource } from './lichessQueue'
 
 export type TablebaseCategory =
   | 'win'
@@ -398,7 +399,7 @@ export async function fetchTablebase(fen: string, signal?: AbortSignal): Promise
   const cached = readCacheEntry(fen)
   if (cached) return cached.payload
 
-  const response = await fetch(buildUrl(fen), {
+  const response = await fetchLichessResource(buildUrl(fen), {
     signal,
     headers: { Accept: 'application/json' },
   })

@@ -1,3 +1,5 @@
+import { fetchLichessResource } from './lichessQueue'
+
 export type SamplePgnRequest = {
   id: string
   lichessGameId: string
@@ -27,7 +29,7 @@ export async function fetchSamplePgn(
   sample: SamplePgnRequest,
   signal?: AbortSignal,
 ): Promise<string> {
-  const response = await fetch(buildSamplePgnUrl(sample.lichessGameId), {
+  const response = await fetchLichessResource(buildSamplePgnUrl(sample.lichessGameId), {
     signal,
     headers: { Accept: 'application/x-chess-pgn' },
   })

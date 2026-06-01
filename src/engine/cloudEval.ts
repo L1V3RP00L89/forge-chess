@@ -1,5 +1,6 @@
 import type { EvalSnapshot } from './analysis'
 import { withBoundedMapEntry } from '../hooks/cacheLimit'
+import { fetchLichessResource } from './lichessQueue'
 
 export type CloudEvalRequest = {
   fen: string
@@ -257,7 +258,7 @@ export async function fetchCloudEvaluation(
   const cached = readCacheEntry(request)
   if (cached) return cached.payload
 
-  const response = await fetch(buildUrl(request), {
+  const response = await fetchLichessResource(buildUrl(request), {
     signal,
     headers: { Accept: 'application/json' },
   })
