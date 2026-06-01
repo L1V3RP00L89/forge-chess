@@ -669,6 +669,24 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
       }
     }
 
+    const failWorker = (reason: string, queueMessage: string) => {
+      isReadyRef.current = false
+      isSearchingRef.current = false
+      stopRequestedRef.current = false
+      pendingAnalyzeRef.current = null
+      newGamePendingRef.current = false
+      setActiveGoCommand('')
+      setStatus('error')
+      rejectQueuedCommands(queueMessage)
+      if (workerRef.current === worker) workerRef.current = null
+      try {
+        worker?.terminate()
+      } catch {
+        // Ignore shutdown errors from workers that are already gone.
+      }
+      applyFallback(reason)
+    }
+
     try {
       const created = createStockfishWorker(profile)
       worker = created.worker
@@ -726,11 +744,11 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
         dispatchQueuedLine(line)
 
         if (line.startsWith('__BOOT_ERROR__:')) {
-          setStatus('error')
-          applyFallback(`Failed to load ${profile.name}: ${line.replace('__BOOT_ERROR__:', '').trim()}.`)
-          rejectQueuedCommands(`Engine bootstrap failed for ${profile.name}.`)
-          worker.terminate()
-          workerRef.current = null
+          const message = line.replace('__BOOT_ERROR__:', '').trim()
+          failWorker(
+            `Failed to load ${profile.name}: ${message}.`,
+            `Engine bootstrap failed for ${profile.name}.`,
+          )
           return
         }
 
@@ -818,20 +836,10 @@ export function useStockfishEngine(selectedProfile: EngineProfileId = 'auto', en
     worker.onerror = (event) => {
       if (currentSession !== bootSessionRef.current) return
       const message = event.message || 'Unknown worker error.'
-      setStatus('error')
-      rejectQueuedCommands(`Engine worker error while running ${profile.name}: ${message}`)
-
-      if (profile.id !== 'lite-single-local') {
-        const fallback = resolveProfile('lite-single-local', capabilities)
-        setFallbackOverride({
-          selected: selectedProfile,
-          profile: 'lite-single-local',
-        })
-        setActiveProfile(fallback)
-        setProfileMessage(`Failed to load ${profile.name}: ${message} Fell back to ${fallback.name}.`)
-      } else {
-        setProfileMessage(`Failed to load ${profile.name}: ${message}`)
-      }
+      failWorker(
+        `Engine worker error while running ${profile.name}: ${message}.`,
+        `Engine worker error while running ${profile.name}: ${message}`,
+      )
     }
 
     send('uci')
