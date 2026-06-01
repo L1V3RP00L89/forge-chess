@@ -39,7 +39,7 @@ import { parseCandidateMoveInput } from './engine/candidateMoves'
 import { type AnalyzeMode, type UciGoLimits } from './engine/uci'
 import { flattenPgnMainLine, parsePgnMoveTree } from './engine/pgn'
 import { hasLegalKingPlacement } from './engine/fen'
-import { buildImportSweepTargets, type ImportSweepTarget } from './engine/importSweep'
+import { buildImportSweepTargets, countImportSweepCandidates, type ImportSweepTarget } from './engine/importSweep'
 import {
   normalizeOptionalIntegerInput,
   normalizeRequiredIntegerInput,
@@ -100,6 +100,7 @@ type OpeningRatingPresetId = 'all' | 'club' | 'advanced'
 type SampleLibraryFilter = 'all' | HistoricalSampleFormat
 type PromotionPiece = 'q' | 'r' | 'b' | 'n'
 type PendingPromotion = { from: Square; to: Square }
+type ImportSweepProgress = { done: number; total: number; sampledFrom?: number }
 
 const LICHESS_TOKEN_PAGE_URL = 'https://lichess.org/account/oauth/token/create?'
 const SAMPLE_PGN_CACHE_LIMIT = 12
@@ -726,7 +727,7 @@ function App() {
   const [isImportingGame, setIsImportingGame] = useState(false)
   const [pendingShallowAnalyzeFen, setPendingShallowAnalyzeFen] = useState<string | null>(null)
   const [pendingPonderFen, setPendingPonderFen] = useState<string | null>(null)
-  const [importSweepProgress, setImportSweepProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 })
+  const [importSweepProgress, setImportSweepProgress] = useState<ImportSweepProgress>({ done: 0, total: 0 })
   const skipFullAnalyzeFenRef = useRef<string | null>(null)
   const importSweepQueueRef = useRef<ImportSweepTarget[]>([])
   const activeImportSweepRef = useRef<ImportSweepTarget | null>(null)
@@ -1386,6 +1387,7 @@ function App() {
       activeImportSweepRef.current = null
       setImportSweepProgress(previous => ({
         total: previous.total,
+        sampledFrom: previous.sampledFrom,
         done: Math.min(previous.total, previous.done + 1),
       }))
     }
@@ -2483,8 +2485,13 @@ function App() {
       if (shouldAnalyzeAfterLoad) {
         setPendingShallowAnalyzeFen(finalFen)
         const sweepTargets = buildImportSweepTargets(mainLineEntries, rootFen, IMPORT_SWEEP_TARGET_LIMIT)
+        const sweepCandidateCount = countImportSweepCandidates(mainLineEntries)
         importSweepQueueRef.current = sweepTargets
-        setImportSweepProgress({ done: 0, total: sweepTargets.length })
+        setImportSweepProgress({
+          done: 0,
+          total: sweepTargets.length,
+          sampledFrom: sweepCandidateCount > sweepTargets.length ? sweepCandidateCount : undefined,
+        })
       } else {
         setPendingShallowAnalyzeFen(null)
         clearImportSweep()
@@ -3400,6 +3407,9 @@ function App() {
                 {isImportSweepActive && (
                   <p className="panel-copy small sample-sweep-copy">
                     Background graph sampling: {importSweepProgress.done}/{importSweepProgress.total}
+                    {importSweepProgress.sampledFrom
+                      ? ` sampled from ${importSweepProgress.sampledFrom} positions`
+                      : ''}
                   </p>
                 )}
                 <div className="sample-game-list">

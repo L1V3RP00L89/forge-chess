@@ -32,6 +32,10 @@ function sampledIndexes(count: number, limit: number): number[] {
   return [...selected].sort((a, b) => a - b)
 }
 
+export function countImportSweepCandidates(entries: ImportSweepEntry[]): number {
+  return entries.length
+}
+
 export function buildImportSweepTargets(
   entries: ImportSweepEntry[],
   rootFen: string,

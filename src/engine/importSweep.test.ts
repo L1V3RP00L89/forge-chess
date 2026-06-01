@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildImportSweepTargets, type ImportSweepEntry } from './importSweep'
+import { buildImportSweepTargets, countImportSweepCandidates, type ImportSweepEntry } from './importSweep'
 
 function entry(index: number): ImportSweepEntry {
   return {
@@ -13,6 +13,7 @@ describe('import sweep target selection', () => {
     const targets = buildImportSweepTargets([entry(1), entry(2), entry(3)], 'root-fen')
 
     expect(targets.map(target => target.fen)).toEqual(['root-fen', 'fen-1', 'fen-2'])
+    expect(countImportSweepCandidates([entry(1), entry(2), entry(3)])).toBe(3)
   })
 
   it('samples long imports evenly and caps the background engine queue', () => {
