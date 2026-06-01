@@ -43,6 +43,7 @@ const TABLEBASE_URL = 'https://tablebase.lichess.org/standard'
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000
 const CACHE_STORAGE_KEY = 'webchess:tablebase-cache:v1'
 const CACHE_ENTRY_LIMIT = 80
+const BOARD_FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const
 const CATEGORY_VALUES = new Set<TablebaseCategory>([
   'win',
   'unknown',
@@ -56,10 +57,29 @@ const CATEGORY_VALUES = new Set<TablebaseCategory>([
   'loss',
 ])
 const UCI_MOVE_REGEX = /^[a-h][1-8][a-h][1-8][qrbn]?$/i
+const MATERIAL_VALUES: Record<string, number> = {
+  p: 1,
+  n: 3,
+  b: 3,
+  r: 5,
+  q: 9,
+  k: 0,
+}
 
 type CacheEntry = {
   expiresAt: number
   payload: TablebaseResult
+}
+
+type PawnSquare = {
+  file: number
+  rank: number
+}
+
+type BoardSummary = {
+  pieceCount: number
+  material: Record<'b' | 'w', number>
+  pawns: Record<'b' | 'w', PawnSquare[]>
 }
 
 let responseCache = new Map<string, CacheEntry>()
@@ -120,14 +140,68 @@ export function normalizeTablebaseFen(fen: string): string {
   return parts.length >= 4 ? [...parts.slice(0, 4), '0', '1'].join(' ') : fen.trim()
 }
 
-export function tablebasePieceCount(fen: string): number {
+function summarizeBoard(fen: string): BoardSummary {
   const board = normalizeTablebaseFen(fen).split(' ')[0] ?? ''
-  return [...board].filter(char => /[prnbqk]/i.test(char)).length
+  const summary: BoardSummary = {
+    pieceCount: 0,
+    material: { b: 0, w: 0 },
+    pawns: { b: [], w: [] },
+  }
+
+  let file = 0
+  let rank = 8
+  for (const char of board) {
+    if (char === '/') {
+      file = 0
+      rank -= 1
+      continue
+    }
+    if (/^[1-8]$/.test(char)) {
+      file += Number(char)
+      continue
+    }
+
+    const piece = char.toLowerCase()
+    if (!Object.prototype.hasOwnProperty.call(MATERIAL_VALUES, piece)) {
+      file += 1
+      continue
+    }
+
+    const color = char === piece ? 'b' : 'w'
+    summary.pieceCount += 1
+    summary.material[color] += MATERIAL_VALUES[piece] ?? 0
+    if (piece === 'p' && file >= 0 && file < BOARD_FILES.length && rank >= 1 && rank <= 8) {
+      summary.pawns[color].push({ file, rank })
+    }
+    file += 1
+  }
+
+  return summary
+}
+
+export function tablebasePieceCount(fen: string): number {
+  return summarizeBoard(fen).pieceCount
+}
+
+function hasOpposingPawnPair(summary: BoardSummary): boolean {
+  return summary.pawns.w.some(whitePawn =>
+    summary.pawns.b.some(blackPawn =>
+      whitePawn.file === blackPawn.file && whitePawn.rank < blackPawn.rank,
+    ),
+  )
+}
+
+function isOp1EightPieceEligible(summary: BoardSummary): boolean {
+  return summary.pieceCount === 8
+    && summary.material.w > 1
+    && summary.material.b > 1
+    && hasOpposingPawnPair(summary)
 }
 
 export function isTablebaseEligible(fen: string): boolean {
-  const count = tablebasePieceCount(fen)
-  return count > 0 && count <= 7
+  const summary = summarizeBoard(fen)
+  return (summary.pieceCount > 0 && summary.pieceCount <= 7)
+    || isOp1EightPieceEligible(summary)
 }
 
 function readStorageCache(): Record<string, unknown> {

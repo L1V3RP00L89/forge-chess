@@ -20,6 +20,17 @@ describe('tablebase client', () => {
     expect(isTablebaseEligible('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')).toBe(false)
   })
 
+  it('allows practical 8-piece op1 tablebase positions with opposing pawns', () => {
+    const op1Fen = 'r3k3/7p/6p1/8/6P1/8/7P/R3K3 w - - 0 1'
+    const noOpposingPairFen = 'r3k3/7p/6p1/8/P7/8/1P6/R3K3 w - - 0 1'
+    const lopsidedOp1Fen = '4k3/p7/8/8/8/8/P7/RNBQK3 w - - 0 1'
+
+    expect(tablebasePieceCount(op1Fen)).toBe(8)
+    expect(isTablebaseEligible(op1Fen)).toBe(true)
+    expect(isTablebaseEligible(noOpposingPairFen)).toBe(false)
+    expect(isTablebaseEligible(lopsidedOp1Fen)).toBe(false)
+  })
+
   it('keeps the halfmove clock in tablebase keys for 50-move-rule accuracy', () => {
     const fenA = '8/8/8/8/8/8/4K3/6k1 w - - 0 1'
     const fenB = '8/8/8/8/8/8/4K3/6k1 w - - 42 99'
@@ -110,6 +121,29 @@ describe('tablebase client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [url] = fetchMock.mock.calls[0] as [string]
     expect(new URL(url).searchParams.get('fen')).toBe(normalizeTablebaseFen('8/8/8/8/8/8/4K3/6k1 w - - 0 1'))
+  })
+
+  it('fetches supported 8-piece op1 tablebase candidates', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        category: 'draw',
+        dtc: 12,
+        moves: [{ uci: 'a1a2', san: 'Ra2', category: 'draw' }],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const fen = 'r3k3/7p/6p1/8/6P1/8/7P/R3K3 w - - 0 1'
+    await expect(fetchTablebase(fen)).resolves.toMatchObject({
+      category: 'draw',
+      dtc: 12,
+      moves: [{ uci: 'a1a2', san: 'Ra2', category: 'draw' }],
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [url] = fetchMock.mock.calls[0] as [string]
+    expect(new URL(url).searchParams.get('fen')).toBe(normalizeTablebaseFen(fen))
   })
 
   it('reuses tablebase responses across positions that only differ by fullmove number', async () => {
