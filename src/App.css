@@ -3628,8 +3628,13 @@ body.resizing * {
   }
 
   .sample-game-actions button {
-    min-height: 2.5rem;
+    min-height: 44px;
     padding: 0.42rem 0.6rem;
+  }
+
+  .sample-filter-row .mode-pill {
+    min-width: 44px;
+    min-height: 44px;
   }
 
   .sample-game-row header strong {
