@@ -432,6 +432,17 @@ function tablebaseMoveAriaLabel(move: TablebaseMove): string {
   return summary ? `${move.san}: ${summary}. UCI ${move.uci}` : `${move.san}. UCI ${move.uci}`
 }
 
+function DialogLoadingFallback({ label }: { label: string }) {
+  return (
+    <div className="lazy-dialog-backdrop">
+      <div className="lazy-dialog-panel" role="dialog" aria-modal="true" aria-label={label} aria-live="polite">
+        <span className="lazy-dialog-spinner" aria-hidden="true" />
+        <span>{label}</span>
+      </div>
+    </div>
+  )
+}
+
 function bestMoveLabel(fen: string, uci: string | null | undefined): string {
   if (!uci) return '...'
   return uciToSan(fen, uci) ?? uci
@@ -916,6 +927,7 @@ function App() {
   const promotionDialogOpen = pendingPromotion !== null
   const topChromeHidden = appModalOpen || promotionDialogOpen
   const backgroundUiHidden = appModalOpen || settingsOpen || promotionDialogOpen
+  const dialogLoadingLabel = showNewGameDialog ? 'Loading new game...' : 'Loading import tools...'
   const shortcutsSuspended =
     appModalOpen || settingsOpen || promotionDialogOpen
 
@@ -3793,7 +3805,7 @@ function App() {
           </div>
         </section>
 
-        <Suspense fallback={null}>
+        <Suspense fallback={<DialogLoadingFallback label={dialogLoadingLabel} />}>
           {showNewGameDialog && (
             <NewGameDialog
               key={`${gameMode}-${playerColor}-${aiDifficulty}`}
