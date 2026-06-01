@@ -1876,6 +1876,11 @@ function App() {
       .slice(0, 5),
     [visibleReviewRows],
   )
+  const criticalMomentsEmptyCopy = visibleReviewRows.length === 0
+    ? 'Run Review Game after a line is analyzed to surface the biggest turning points.'
+    : reviewAccuracy.pendingMoves > 0
+      ? 'Review Game is still collecting enough depth to identify the biggest turning points.'
+      : 'No major swings found in this reviewed line.'
 
   useEffect(() => {
     if (workspaceMode !== 'analysis') return
@@ -4361,7 +4366,7 @@ function App() {
                       </div>
                     ) : (
                       <p className="panel-copy small">
-                        Run Review Game after a line is analyzed to surface the biggest turning points.
+                        {criticalMomentsEmptyCopy}
                       </p>
                     )}
                   </div>
