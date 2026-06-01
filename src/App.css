@@ -3523,7 +3523,7 @@ body.resizing * {
   .wc-speed-pill,
   .mode-pill,
   .analysis-tab-btn {
-    min-height: 40px;
+    min-height: 44px;
     padding: 0.4rem 0.8rem;
     font-size: 0.85rem;
   }
@@ -3532,7 +3532,7 @@ body.resizing * {
   .panel .wc-speed-pill,
   .panel .mode-pill,
   .panel .analysis-tab-btn {
-    min-height: 40px;
+    min-height: 44px;
     padding: 0.4rem 0.8rem;
     font-size: 0.85rem;
   }
