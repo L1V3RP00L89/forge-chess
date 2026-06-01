@@ -2,17 +2,23 @@ import { describe, expect, it } from 'vitest'
 import { selectCoachBestMove } from './coach'
 
 describe('coach move selection', () => {
-  it('prioritizes live engine and cloud moves over tablebase fallbacks', () => {
+  it('prioritizes exact tablebase moves over heuristic engine sources', () => {
     expect(selectCoachBestMove({
       engine: 'e2e4',
       cloud: 'd2d4',
       last: 'g1f3',
       tablebase: 'a7a8q',
-    })).toBe('e2e4')
+    })).toBe('a7a8q')
+  })
 
+  it('uses live engine and cloud moves when no tablebase move is available', () => {
+    expect(selectCoachBestMove({
+      engine: 'e2e4',
+      cloud: 'd2d4',
+      last: 'g1f3',
+    })).toBe('e2e4')
     expect(selectCoachBestMove({
       cloud: 'd2d4',
-      tablebase: 'a7a8q',
     })).toBe('d2d4')
   })
 

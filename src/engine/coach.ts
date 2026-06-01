@@ -18,8 +18,8 @@ export function selectCoachBestMove({
   last,
   tablebase,
 }: CoachMoveSources): string | null {
-  return normalizeUciMove(engine)
+  return normalizeUciMove(tablebase)
+    ?? normalizeUciMove(engine)
     ?? normalizeUciMove(cloud)
     ?? normalizeUciMove(last)
-    ?? normalizeUciMove(tablebase)
 }
