@@ -3,6 +3,7 @@ import {
   cloudEvalRequestKey,
   fetchCloudEvaluation,
   getCachedCloudEvaluation,
+  hasCachedCloudEvaluationMiss,
   normalizeCloudEvalFen,
   normalizeCloudEvalMultiPv,
   type CloudEvalResult,
@@ -35,8 +36,11 @@ export function useCloudEvaluation({ fen, multiPv, enabled }: UseCloudEvaluation
     status: CloudEvalStatus
   }>({ error: null, key: '', status: 'idle' })
   const cached = enabled ? getCachedCloudEvaluation({ fen: normalizedFen, multiPv: normalizedMultiPv }) : null
+  const cachedMissing = enabled
+    ? hasCachedCloudEvaluationMiss({ fen: normalizedFen, multiPv: normalizedMultiPv })
+    : false
   const result = evaluations.get(currentKey) ?? cached
-  const missing = enabled && missingKeys.has(currentKey)
+  const missing = enabled && (missingKeys.has(currentKey) || cachedMissing)
   const status: CloudEvalStatus = !enabled
     ? 'idle'
     : result

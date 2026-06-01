@@ -28,7 +28,7 @@ const UCI_MOVE_REGEX = /^[a-h][1-8][a-h][1-8][qrbn]?$/i
 
 type CacheEntry = {
   expiresAt: number
-  payload: CloudEvalResult
+  payload: CloudEvalResult | null
 }
 
 let responseCache = new Map<string, CacheEntry>()
@@ -146,16 +146,17 @@ function parseCacheEntry(raw: unknown): CacheEntry | null {
   if (!raw || typeof raw !== 'object') return null
   const entry = raw as Record<string, unknown>
   if (!isFiniteNumber(entry.expiresAt)) return null
+  if (entry.payload === null) return { expiresAt: entry.expiresAt, payload: null }
   const payload = parseCachedResult(entry.payload)
   return payload ? { expiresAt: entry.expiresAt, payload } : null
 }
 
-function readCached(request: CloudEvalRequest): CloudEvalResult | null {
+function readCacheEntry(request: CloudEvalRequest): CacheEntry | null {
   const key = cloudEvalRequestKey(request)
   const cached = responseCache.get(key)
   const now = Date.now()
   if (cached) {
-    if (cached.expiresAt > now) return cached.payload
+    if (cached.expiresAt > now) return cached
     responseCache.delete(key)
   }
 
@@ -164,7 +165,11 @@ function readCached(request: CloudEvalRequest): CloudEvalResult | null {
   if (stored.expiresAt <= now) return null
 
   responseCache = withBoundedMapEntry(responseCache, key, stored, CACHE_ENTRY_LIMIT)
-  return stored.payload
+  return stored
+}
+
+function readCached(request: CloudEvalRequest): CloudEvalResult | null {
+  return readCacheEntry(request)?.payload ?? null
 }
 
 function writeCached(request: CloudEvalRequest, payload: CloudEvalResult) {
@@ -172,6 +177,16 @@ function writeCached(request: CloudEvalRequest, payload: CloudEvalResult) {
   const entry = {
     expiresAt: Date.now() + CACHE_TTL_MS,
     payload,
+  }
+  responseCache = withBoundedMapEntry(responseCache, key, entry, CACHE_ENTRY_LIMIT)
+  writeStorageCacheEntry(key, entry)
+}
+
+function writeCachedMissing(request: CloudEvalRequest) {
+  const key = cloudEvalRequestKey(request)
+  const entry: CacheEntry = {
+    expiresAt: Date.now() + CACHE_TTL_MS,
+    payload: null,
   }
   responseCache = withBoundedMapEntry(responseCache, key, entry, CACHE_ENTRY_LIMIT)
   writeStorageCacheEntry(key, entry)
@@ -231,12 +246,16 @@ export function getCachedCloudEvaluation(request: CloudEvalRequest): CloudEvalRe
   return readCached(request)
 }
 
+export function hasCachedCloudEvaluationMiss(request: CloudEvalRequest): boolean {
+  return readCacheEntry(request)?.payload === null
+}
+
 export async function fetchCloudEvaluation(
   request: CloudEvalRequest,
   signal?: AbortSignal,
 ): Promise<CloudEvalResult | null> {
-  const cached = readCached(request)
-  if (cached) return cached
+  const cached = readCacheEntry(request)
+  if (cached) return cached.payload
 
   const response = await fetch(buildUrl(request), {
     signal,
@@ -244,7 +263,10 @@ export async function fetchCloudEvaluation(
   })
   throwIfAborted(signal)
 
-  if (response.status === 404) return null
+  if (response.status === 404) {
+    writeCachedMissing(request)
+    return null
+  }
   if (response.status === 429) {
     throw new Error('Lichess cloud eval rate limit reached; try again in a minute.')
   }

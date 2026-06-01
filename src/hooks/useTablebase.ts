@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   fetchTablebase,
   getCachedTablebase,
+  hasCachedTablebaseMiss,
   isTablebaseEligible,
   normalizeTablebaseFen,
   tablebasePieceCount,
@@ -23,6 +24,7 @@ export function useTablebase({ fen, enabled, debounceMs = 280 }: UseTablebaseArg
   const pieceCount = useMemo(() => tablebasePieceCount(fenKey), [fenKey])
   const eligible = enabled && isTablebaseEligible(fenKey)
   const cached = eligible ? getCachedTablebase(fenKey) : null
+  const cachedMissing = eligible ? hasCachedTablebaseMiss(fenKey) : false
   const [resultByFen, setResultByFen] = useState<Record<string, TablebaseResult>>({})
   const [missingByFen, setMissingByFen] = useState<Record<string, true>>({})
   const [requestState, setRequestState] = useState<{
@@ -32,7 +34,7 @@ export function useTablebase({ fen, enabled, debounceMs = 280 }: UseTablebaseArg
   }>({ error: null, fenKey: '', status: 'idle' })
 
   const result = resultByFen[fenKey] ?? cached ?? null
-  const missing = eligible && Boolean(missingByFen[fenKey])
+  const missing = eligible && (Boolean(missingByFen[fenKey]) || cachedMissing)
   const status: TablebaseStatus = !enabled
     ? 'idle'
     : !eligible

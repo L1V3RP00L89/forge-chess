@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import {
   fetchTablebase,
+  hasCachedTablebaseMiss,
   isTablebaseEligible,
   normalizeTablebaseFen,
   parseTablebaseResponse,
@@ -268,6 +269,34 @@ describe('tablebase client', () => {
 
     await expect(fetchTablebase(fen)).resolves.toEqual(payload)
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('persists missing tablebase responses to avoid repeated 404 requests', async () => {
+    const fen = '8/8/8/8/8/8/5K2/7k w - - 0 1'
+    let storageRaw: string | null = null
+    const localStorageMock = {
+      getItem: vi.fn(() => storageRaw),
+      setItem: vi.fn((_: string, nextValue: string) => {
+        storageRaw = nextValue
+      }),
+    }
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+    })
+
+    vi.stubGlobal('window', { localStorage: localStorageMock })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchTablebase(fen)).resolves.toBeNull()
+    await expect(fetchTablebase(fen)).resolves.toBeNull()
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(hasCachedTablebaseMiss(fen)).toBe(true)
+    expect(localStorageMock.setItem).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(storageRaw ?? '{}')[normalizeTablebaseFen(fen)]).toMatchObject({
+      payload: null,
+    })
   })
 
   it('ignores malformed browser storage entries before fetching fresh tablebase data', async () => {

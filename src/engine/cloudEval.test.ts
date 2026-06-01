@@ -4,6 +4,7 @@ import {
   cloudEvalToSnapshot,
   cloudLineToSideToMoveScore,
   fetchCloudEvaluation,
+  hasCachedCloudEvaluationMiss,
   normalizeCloudEvalFen,
   normalizeCloudEvalMultiPv,
   parseCloudEvalResponse,
@@ -176,6 +177,34 @@ describe('cloud eval parsing', () => {
 
     await expect(fetchCloudEvaluation(request)).resolves.toEqual(payload)
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('persists missing cloud eval responses to avoid repeated 404 requests', async () => {
+    const request = { fen: '8/8/8/8/8/8/5K2/7k w - - 0 1', multiPv: 1 }
+    let storageRaw: string | null = null
+    const localStorageMock = {
+      getItem: vi.fn(() => storageRaw),
+      setItem: vi.fn((_: string, nextValue: string) => {
+        storageRaw = nextValue
+      }),
+    }
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+    })
+
+    vi.stubGlobal('window', { localStorage: localStorageMock })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchCloudEvaluation(request)).resolves.toBeNull()
+    await expect(fetchCloudEvaluation(request)).resolves.toBeNull()
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(hasCachedCloudEvaluationMiss(request)).toBe(true)
+    expect(localStorageMock.setItem).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(storageRaw ?? '{}')[cloudEvalRequestKey(request)]).toMatchObject({
+      payload: null,
+    })
   })
 
   it('ignores malformed browser storage entries before fetching fresh cloud evals', async () => {

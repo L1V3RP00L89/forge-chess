@@ -68,7 +68,7 @@ const MATERIAL_VALUES: Record<string, number> = {
 
 type CacheEntry = {
   expiresAt: number
-  payload: TablebaseResult
+  payload: TablebaseResult | null
 }
 
 type PawnSquare = {
@@ -282,16 +282,17 @@ function parseCacheEntry(raw: unknown): CacheEntry | null {
   if (!raw || typeof raw !== 'object') return null
   const entry = raw as Record<string, unknown>
   if (!isFiniteNumber(entry.expiresAt)) return null
+  if (entry.payload === null) return { expiresAt: entry.expiresAt, payload: null }
   const payload = parseCachedResult(entry.payload)
   return payload ? { expiresAt: entry.expiresAt, payload } : null
 }
 
-function readCached(fen: string): TablebaseResult | null {
+function readCacheEntry(fen: string): CacheEntry | null {
   const key = normalizeTablebaseFen(fen)
   const now = Date.now()
   const cached = responseCache.get(key)
   if (cached) {
-    if (cached.expiresAt > now) return cached.payload
+    if (cached.expiresAt > now) return cached
     responseCache.delete(key)
   }
 
@@ -299,7 +300,11 @@ function readCached(fen: string): TablebaseResult | null {
   if (!stored) return null
   if (stored.expiresAt <= now) return null
   responseCache = withBoundedMapEntry(responseCache, key, stored, CACHE_ENTRY_LIMIT)
-  return stored.payload
+  return stored
+}
+
+function readCached(fen: string): TablebaseResult | null {
+  return readCacheEntry(fen)?.payload ?? null
 }
 
 function writeCached(fen: string, payload: TablebaseResult) {
@@ -307,6 +312,16 @@ function writeCached(fen: string, payload: TablebaseResult) {
   const entry = {
     expiresAt: Date.now() + CACHE_TTL_MS,
     payload,
+  }
+  responseCache = withBoundedMapEntry(responseCache, key, entry, CACHE_ENTRY_LIMIT)
+  writeStorageCacheEntry(key, entry)
+}
+
+function writeCachedMissing(fen: string) {
+  const key = normalizeTablebaseFen(fen)
+  const entry: CacheEntry = {
+    expiresAt: Date.now() + CACHE_TTL_MS,
+    payload: null,
   }
   responseCache = withBoundedMapEntry(responseCache, key, entry, CACHE_ENTRY_LIMIT)
   writeStorageCacheEntry(key, entry)
@@ -373,11 +388,15 @@ export function getCachedTablebase(fen: string): TablebaseResult | null {
   return readCached(fen)
 }
 
+export function hasCachedTablebaseMiss(fen: string): boolean {
+  return readCacheEntry(fen)?.payload === null
+}
+
 export async function fetchTablebase(fen: string, signal?: AbortSignal): Promise<TablebaseResult | null> {
   if (!isTablebaseEligible(fen)) return null
 
-  const cached = readCached(fen)
-  if (cached) return cached
+  const cached = readCacheEntry(fen)
+  if (cached) return cached.payload
 
   const response = await fetch(buildUrl(fen), {
     signal,
@@ -385,7 +404,10 @@ export async function fetchTablebase(fen: string, signal?: AbortSignal): Promise
   })
   throwIfAborted(signal)
 
-  if (response.status === 404) return null
+  if (response.status === 404) {
+    writeCachedMissing(fen)
+    return null
+  }
   if (response.status === 429) {
     throw new Error('Lichess tablebase rate limit reached; try again in a minute.')
   }
