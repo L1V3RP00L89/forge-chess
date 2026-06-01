@@ -82,6 +82,7 @@ import {
   graphTickStep,
   graphWidthForIndex,
 } from './components/graphLayout'
+import { formatGraphAxisLabel, formatGraphPositionLabel } from './components/graphLabels'
 import { IconBot, IconBarChart, IconSearch, IconSwords, IconAlert, IconKing, IconRefresh, IconFlip, IconDownload, IconUsers, IconZap, IconSettings, IconPlay, IconStop, IconTrendingUp } from './components/icons'
 import './App.css'
 
@@ -4622,21 +4623,8 @@ function EngineOptionControl({ option, onSetOption, disabled = false }: EngineOp
 
 // ── Winrate graph ──────────────────────────────────────────────────────────────
 
-function formatMoveAxisLabel(index: number): string {
-  const moveNumber = index / 2
-  return Number.isInteger(moveNumber) ? String(moveNumber) : moveNumber.toFixed(1)
-}
-
 function clampGraphIndex(index: number, maxIndex: number): number {
   return Math.min(Math.max(index, 0), maxIndex)
-}
-
-function formatGraphPositionLabel(index: number): string {
-  if (index <= 0) return 'Start position'
-
-  const moveNumber = Math.ceil(index / 2)
-  const side = index % 2 === 1 ? "White's" : "Black's"
-  return `After ${side} move ${moveNumber}`
 }
 
 function graphKeyboardTarget(key: string, currentIndex: number, maxIndex: number): number | null {
@@ -4698,6 +4686,7 @@ const WinrateGraph = memo(function WinrateGraph({ points, currentIndex, onNaviga
   const xTickStep = graphTickStep(maxIndex)
   const isNavigable = Boolean(onNavigate && maxIndex > 0)
   const selectedIndex = clampGraphIndex(currentIndex ?? maxIndex, maxIndex)
+  const selectedPoint = points.find(point => point.index === selectedIndex)
 
   const handleClick = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!isNavigable || !onNavigate) return
@@ -4741,7 +4730,7 @@ const WinrateGraph = memo(function WinrateGraph({ points, currentIndex, onNaviga
           aria-valuemin={isNavigable ? 0 : undefined}
           aria-valuemax={isNavigable ? maxIndex : undefined}
           aria-valuenow={isNavigable ? selectedIndex : undefined}
-          aria-valuetext={isNavigable ? formatGraphPositionLabel(selectedIndex) : undefined}
+          aria-valuetext={isNavigable ? formatGraphPositionLabel(selectedPoint, selectedIndex) : undefined}
           onClick={handleClick}
           onKeyDown={handleKeyDown}
           style={{ cursor: isNavigable ? 'pointer' : 'default' }}
@@ -4779,7 +4768,7 @@ const WinrateGraph = memo(function WinrateGraph({ points, currentIndex, onNaviga
               return (
                 <g key={`x-${p.index}`}>
                   <line x1={x} x2={x} y1={height - padBottom} y2={height - padBottom + 6} stroke="rgba(240, 246, 252, 0.2)" strokeWidth="1" />
-                  <text x={x} y={height - padBottom + 20} className="graph-grid-text" textAnchor="middle">{formatMoveAxisLabel(p.index)}</text>
+                  <text x={x} y={height - padBottom + 20} className="graph-grid-text" textAnchor="middle">{formatGraphAxisLabel(p)}</text>
                 </g>
               )
             }
@@ -4843,6 +4832,7 @@ const WdlProgressGraph = memo(function WdlProgressGraph({ points, currentIndex, 
   const blackPath = buildPath((p) => p.black)
   const isNavigable = Boolean(onNavigate && maxIndex > 0)
   const selectedIndex = clampGraphIndex(currentIndex ?? maxIndex, maxIndex)
+  const selectedPoint = points.find(point => point.index === selectedIndex)
 
   const handleClick = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!isNavigable || !onNavigate) return
@@ -4886,7 +4876,7 @@ const WdlProgressGraph = memo(function WdlProgressGraph({ points, currentIndex, 
           aria-valuemin={isNavigable ? 0 : undefined}
           aria-valuemax={isNavigable ? maxIndex : undefined}
           aria-valuenow={isNavigable ? selectedIndex : undefined}
-          aria-valuetext={isNavigable ? formatGraphPositionLabel(selectedIndex) : undefined}
+          aria-valuetext={isNavigable ? formatGraphPositionLabel(selectedPoint, selectedIndex) : undefined}
           onClick={handleClick}
           onKeyDown={handleKeyDown}
           style={{ cursor: isNavigable ? 'pointer' : 'default' }}
@@ -4918,7 +4908,7 @@ const WdlProgressGraph = memo(function WdlProgressGraph({ points, currentIndex, 
               return (
                 <g key={`wdl-x-${p.index}`}>
                   <line x1={x} x2={x} y1={height - padBottom} y2={height - padBottom + 6} stroke="rgba(240, 246, 252, 0.2)" strokeWidth="1" />
-                  <text x={x} y={height - padBottom + 20} className="graph-grid-text" textAnchor="middle">{formatMoveAxisLabel(p.index)}</text>
+                  <text x={x} y={height - padBottom + 20} className="graph-grid-text" textAnchor="middle">{formatGraphAxisLabel(p)}</text>
                 </g>
               )
             }
