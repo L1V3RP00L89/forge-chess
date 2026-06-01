@@ -3472,6 +3472,24 @@ body.resizing * {
     transition: all 140ms ease;
   }
 
+  .top .compact-grid .settings-body button:not(.btn-icon-only),
+  .top .settings-menu .settings-body .advanced-settings>summary {
+    height: auto;
+    min-height: 44px;
+  }
+
+  .top .settings-menu .settings-body .switch-control {
+    min-height: 44px;
+    padding: 0.25rem 0;
+    box-sizing: border-box;
+  }
+
+  .top .settings-menu .settings-body .control input[type="range"],
+  .top .settings-menu .settings-body .engine-option-row input,
+  .top .settings-menu .settings-body .engine-option-row select {
+    min-height: 44px;
+  }
+
   @media (hover: hover) and (pointer: fine) {
     .settings-close-btn:hover {
       background: var(--bg-card-hover);
