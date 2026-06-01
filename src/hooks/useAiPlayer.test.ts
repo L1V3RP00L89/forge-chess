@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { aiDifficultyCommands, consumeStoppedSearchBestMove } from './useAiPlayer'
+import { addStoppedSearchBestMoveAck, aiDifficultyCommands, consumeStoppedSearchBestMove } from './useAiPlayer'
 
 describe('AI difficulty UCI commands', () => {
     it('limits strength for beginner-friendly difficulty levels', () => {
@@ -36,5 +36,12 @@ describe('AI stopped-search bestmove routing', () => {
         expect(consumeStoppedSearchBestMove(-1)).toEqual({ ignore: false, remaining: 0 })
         expect(consumeStoppedSearchBestMove(Number.NaN)).toEqual({ ignore: false, remaining: 0 })
         expect(consumeStoppedSearchBestMove(2.8)).toEqual({ ignore: true, remaining: 1 })
+    })
+
+    it('records one pending bestmove acknowledgement for every stopped search', () => {
+        expect(addStoppedSearchBestMoveAck(0)).toBe(1)
+        expect(addStoppedSearchBestMoveAck(-1)).toBe(1)
+        expect(addStoppedSearchBestMoveAck(Number.NaN)).toBe(1)
+        expect(addStoppedSearchBestMoveAck(2.8)).toBe(3)
     })
 })

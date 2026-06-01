@@ -73,6 +73,11 @@ export function consumeStoppedSearchBestMove(pendingStoppedSearches: number): {
     return { ignore: true, remaining: Math.max(0, Math.floor(pendingStoppedSearches) - 1) }
 }
 
+export function addStoppedSearchBestMoveAck(pendingStoppedSearches: number): number {
+    if (!Number.isFinite(pendingStoppedSearches) || pendingStoppedSearches <= 0) return 1
+    return Math.floor(pendingStoppedSearches) + 1
+}
+
 export function useAiPlayer(enabled = true) {
     const workerRef = useRef<Worker | null>(null)
     const isReadyRef = useRef(false)
@@ -239,7 +244,7 @@ export function useAiPlayer(enabled = true) {
         clearRequestTimeout()
         if (resolveRef.current) {
             if (worker) {
-                ignoredBestMoveCountRef.current += 1
+                ignoredBestMoveCountRef.current = addStoppedSearchBestMoveAck(ignoredBestMoveCountRef.current)
                 setStatus('stopping')
                 clearStopAckTimeout()
                 stopAckTimeoutRef.current = setTimeout(releaseStoppedSearch, STOPPED_SEARCH_ACK_TIMEOUT_MS)
@@ -271,15 +276,19 @@ export function useAiPlayer(enabled = true) {
 
                 const movetime = DIFFICULTY_MOVETIME[difficulty]
                 requestTimeoutRef.current = setTimeout(() => {
+                    ignoredBestMoveCountRef.current = addStoppedSearchBestMoveAck(ignoredBestMoveCountRef.current)
+                    setStatus('stopping')
+                    clearStopAckTimeout()
+                    stopAckTimeoutRef.current = setTimeout(releaseStoppedSearch, STOPPED_SEARCH_ACK_TIMEOUT_MS)
                     try { worker.postMessage('stop') } catch { /* worker may already be gone */ }
-                    finishRequest(null, 'ready')
+                    settleRequest(null)
                 }, movetime + 10_000)
                 worker.postMessage(`position fen ${fen}`)
                 // Per docs: "go movetime N" is the clean way to get a single best move
                 worker.postMessage(`go movetime ${movetime}`)
             })
         },
-        [applyDifficulty, enabled, finishRequest],
+        [applyDifficulty, clearStopAckTimeout, enabled, releaseStoppedSearch, settleRequest],
     )
 
     return { status, requestMove, setDifficulty, cancelRequest, profileName }
