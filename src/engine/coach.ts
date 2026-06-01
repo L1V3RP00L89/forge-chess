@@ -23,3 +23,12 @@ export function selectCoachBestMove({
     ?? normalizeUciMove(cloud)
     ?? normalizeUciMove(last)
 }
+
+export function isExactTablebaseCoachMove(
+  selectedMove: string | null | undefined,
+  tablebaseMove: string | null | undefined,
+): boolean {
+  const selected = normalizeUciMove(selectedMove)
+  const tablebase = normalizeUciMove(tablebaseMove)
+  return Boolean(selected && tablebase && selected === tablebase)
+}

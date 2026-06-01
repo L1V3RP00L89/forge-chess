@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { selectCoachBestMove } from './coach'
+import { isExactTablebaseCoachMove, selectCoachBestMove } from './coach'
 
 describe('coach move selection', () => {
   it('prioritizes exact tablebase moves over heuristic engine sources', () => {
@@ -37,5 +37,11 @@ describe('coach move selection', () => {
       cloud: 'not-a-move',
       tablebase: 'g6g1',
     })).toBe('g6g1')
+  })
+
+  it('detects exact tablebase coach recommendations', () => {
+    expect(isExactTablebaseCoachMove('G6G1', 'g6g1')).toBe(true)
+    expect(isExactTablebaseCoachMove('e2e4', 'g6g1')).toBe(false)
+    expect(isExactTablebaseCoachMove('(none)', 'g6g1')).toBe(false)
   })
 })

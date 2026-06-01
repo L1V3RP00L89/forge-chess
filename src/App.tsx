@@ -56,7 +56,7 @@ import type { TablebaseCategory, TablebaseMove, TablebaseResult } from './engine
 import { tablebaseMoveCategoryForPlayer } from './engine/tablebase'
 import { BOARD_SQUARES, describeBoardSquare, isBoardSquare } from './engine/boardAccessibility'
 import { isBoardInputLocked } from './engine/boardInput'
-import { selectCoachBestMove } from './engine/coach'
+import { isExactTablebaseCoachMove, selectCoachBestMove } from './engine/coach'
 import { engineLabCommandBlockMessage, engineLabCommandSafetyMessage } from './engine/labCommands'
 import { defaultOrientationForGameMode } from './engine/playMode'
 import { useStockfishEngine } from './hooks/useStockfishEngine'
@@ -1429,19 +1429,28 @@ function App() {
     last: currentLastBestMove,
     tablebase: tablebaseTopMove,
   })
+  const coachBestMoveIsTablebase = isExactTablebaseCoachMove(coachBestMove, tablebaseTopMove)
   const coachBestMoveText = bestMoveLabel(fen, coachBestMove)
-  const coachReplyMove = coachLine?.pv[1] ?? currentCloudEval?.pvs[0]?.moves[1] ?? currentLastPonderMove ?? null
+  const coachReplyMove = coachBestMoveIsTablebase
+    ? null
+    : coachLine?.pv[1] ?? currentCloudEval?.pvs[0]?.moves[1] ?? currentLastPonderMove ?? null
   const coachReplyMoveText = ponderMoveLabel(fen, coachBestMove, coachReplyMove)
   const coachDepth = coachLine?.depth ?? currentCloudEval?.depth
-  const coachDepthLabel = coachDepth ? `D${coachDepth}` : tablebase.result ? 'TB exact' : status
+  const coachDepthLabel = coachBestMoveIsTablebase ? 'TB exact' : coachDepth ? `D${coachDepth}` : tablebase.result ? 'TB exact' : status
   const engineTelemetry = engineTelemetryLabel(coachLine)
-  const coachLineSan = coachLine
-    ? pvToSan(coachLine.fen ?? fen, coachLine, 6)
-    : currentCloudEval?.pvs[0]
-      ? pvToSan(fen, { multipv: 1, depth: currentCloudEval.depth, pv: currentCloudEval.pvs[0].moves }, 6)
-      : tablebaseTopMove
-        ? bestMoveLabel(fen, tablebaseTopMove)
-        : ''
+  const coachTablebaseLine = tablebaseTopMove
+    ? [
+      bestMoveLabel(fen, tablebaseTopMove),
+      tablebase.result?.moves[0] ? tablebaseMoveSummary(tablebase.result.moves[0]) : null,
+    ].filter(Boolean).join(' · ')
+    : ''
+  const coachLineSan = coachBestMoveIsTablebase
+    ? coachTablebaseLine
+    : coachLine
+      ? pvToSan(coachLine.fen ?? fen, coachLine, 6)
+      : currentCloudEval?.pvs[0]
+        ? pvToSan(fen, { multipv: 1, depth: currentCloudEval.depth, pv: currentCloudEval.pvs[0].moves }, 6)
+        : coachTablebaseLine
   const currentEngineBestUci = currentFenLines.find(line => line.multipv === 1)?.pv[0] ?? null
   const engineBookAgreement = currentEngineBestUci && openingTopBookMove
     ? currentEngineBestUci === openingTopBookMove.uci
