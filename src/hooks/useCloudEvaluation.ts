@@ -3,6 +3,7 @@ import {
   cloudEvalRequestKey,
   fetchCloudEvaluation,
   getCachedCloudEvaluation,
+  normalizeCloudEvalFen,
   normalizeCloudEvalMultiPv,
   type CloudEvalResult,
 } from '../engine/cloudEval'
@@ -21,9 +22,10 @@ const LOCAL_CLOUD_EVAL_LIMIT = 120
 
 export function useCloudEvaluation({ fen, multiPv, enabled }: UseCloudEvaluationOptions) {
   const normalizedMultiPv = normalizeCloudEvalMultiPv(multiPv)
+  const normalizedFen = useMemo(() => normalizeCloudEvalFen(fen), [fen])
   const currentKey = useMemo(
-    () => cloudEvalRequestKey({ fen, multiPv: normalizedMultiPv }),
-    [fen, normalizedMultiPv],
+    () => cloudEvalRequestKey({ fen: normalizedFen, multiPv: normalizedMultiPv }),
+    [normalizedFen, normalizedMultiPv],
   )
   const [evaluations, setEvaluations] = useState<Map<string, CloudEvalResult>>(new Map())
   const [missingKeys, setMissingKeys] = useState<Map<string, true>>(new Map())
@@ -32,7 +34,7 @@ export function useCloudEvaluation({ fen, multiPv, enabled }: UseCloudEvaluation
     key: string
     status: CloudEvalStatus
   }>({ error: null, key: '', status: 'idle' })
-  const cached = enabled ? getCachedCloudEvaluation({ fen, multiPv: normalizedMultiPv }) : null
+  const cached = enabled ? getCachedCloudEvaluation({ fen: normalizedFen, multiPv: normalizedMultiPv }) : null
   const result = evaluations.get(currentKey) ?? cached
   const missing = enabled && missingKeys.has(currentKey)
   const status: CloudEvalStatus = !enabled
@@ -49,7 +51,7 @@ export function useCloudEvaluation({ fen, multiPv, enabled }: UseCloudEvaluation
   useEffect(() => {
     if (!enabled || cached || missing) return
 
-    const request = { fen, multiPv: normalizedMultiPv }
+    const request = { fen: normalizedFen, multiPv: normalizedMultiPv }
     const controller = new AbortController()
     const timer = window.setTimeout(() => {
       setRequestState({ error: null, key: currentKey, status: 'loading' })
@@ -88,7 +90,7 @@ export function useCloudEvaluation({ fen, multiPv, enabled }: UseCloudEvaluation
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [cached, currentKey, enabled, fen, missing, normalizedMultiPv])
+  }, [cached, currentKey, enabled, missing, normalizedFen, normalizedMultiPv])
 
   return {
     error,
