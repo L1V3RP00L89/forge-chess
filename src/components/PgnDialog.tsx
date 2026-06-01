@@ -539,6 +539,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                                         >
                                                             <input
                                                                 type="checkbox"
+                                                                aria-label={option.label}
                                                                 checked={hasSetupCastlingRight(setup, option.right)}
                                                                 disabled={!canCastle}
                                                                 onChange={event => {
