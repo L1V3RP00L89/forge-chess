@@ -3658,6 +3658,9 @@ body.resizing * {
   }
 
   .switch-control {
+    min-height: 44px;
+    padding: 0.25rem 0;
+    box-sizing: border-box;
     margin-bottom: 1rem;
   }
 
@@ -4122,9 +4125,15 @@ body.resizing * {
   .right .engine-option-row select,
   .app-shell .panel.right .engine-option-row input,
   .app-shell .panel.right .engine-option-row select,
+  .app-shell .panel.right :is(input:not([type="range"]):not([type="checkbox"]):not([type="radio"]), select, textarea),
+  .app-shell .panel.right .engine-lab-card button,
   .right .opening-source-toggle .mode-pill,
   .right .opening-speed-toggle .mode-pill {
     min-height: 44px;
+  }
+
+  .app-shell .panel.right .engine-lab-card button {
+    min-width: 44px;
   }
 
   .panel .wc-btn,
