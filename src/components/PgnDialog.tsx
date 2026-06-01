@@ -24,6 +24,7 @@ import {
 } from '../engine/positionSetup'
 import { buildFenShareUrl } from '../engine/shareLink'
 import { IconDownload, IconClipboard, IconUpload } from './icons'
+import { fenTextForShareLink } from './pgnDialogHelpers'
 import { MAX_PGN_IMPORT_BYTES, PGN_IMPORT_LIMIT_MESSAGE, pgnImportLengthError } from './pgnImportLimits'
 
 // Using existing styles from NewGameDialog to maintain design consistency
@@ -232,9 +233,9 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
 
     const handleCopyShareLink = async () => {
         resetFeedback()
-        syncFenTextAndSetup(currentFen)
+        const fenToShare = fenTextForShareLink(fenText, currentFen)
         try {
-            await navigator.clipboard.writeText(buildFenShareUrl(currentFen, window.location.href))
+            await navigator.clipboard.writeText(buildFenShareUrl(fenToShare, window.location.href))
             setCopyStatus('link-copied')
         } catch {
             setCopyStatus('failed')
