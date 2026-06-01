@@ -115,7 +115,8 @@ export function tablebaseMoveCategoryForPlayer(category: TablebaseCategory): Tab
 }
 
 export function normalizeTablebaseFen(fen: string): string {
-  return fen.trim().replace(/\s+/g, ' ')
+  const parts = fen.trim().split(/\s+/g)
+  return parts.length >= 4 ? parts.slice(0, 4).join(' ') : fen.trim()
 }
 
 export function tablebasePieceCount(fen: string): number {

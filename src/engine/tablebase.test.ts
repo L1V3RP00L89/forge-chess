@@ -20,6 +20,14 @@ describe('tablebase client', () => {
     expect(isTablebaseEligible('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1')).toBe(false)
   })
 
+  it('normalizes tablebase keys to the FEN fields that define the lookup position', () => {
+    const fenA = '8/8/8/8/8/8/4K3/6k1 w - - 0 1'
+    const fenB = '8/8/8/8/8/8/4K3/6k1 w - - 42 99'
+
+    expect(normalizeTablebaseFen(fenA)).toBe('8/8/8/8/8/8/4K3/6k1 w - -')
+    expect(normalizeTablebaseFen(fenA)).toBe(normalizeTablebaseFen(fenB))
+  })
+
   it('labels move categories from the player perspective', () => {
     expect(tablebaseMoveCategoryForPlayer('loss')).toBe('win')
     expect(tablebaseMoveCategoryForPlayer('syzygy-loss')).toBe('syzygy-win')
@@ -53,7 +61,7 @@ describe('tablebase client', () => {
     })
 
     expect(parsed).toEqual({
-      fen,
+      fen: normalizeTablebaseFen(fen),
       category: 'win',
       dtz: 1,
       preciseDtz: 1,
@@ -100,6 +108,26 @@ describe('tablebase client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [url] = fetchMock.mock.calls[0] as [string]
     expect(new URL(url).searchParams.get('fen')).toBe(normalizeTablebaseFen('8/8/8/8/8/8/4K3/6k1 w - - 0 1'))
+  })
+
+  it('reuses tablebase responses across positions that only differ by move counters', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        category: 'draw',
+        moves: [],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchTablebase('8/8/8/8/8/8/2K5/6k1 w - - 0 1')).resolves.toMatchObject({
+      category: 'draw',
+    })
+    await expect(fetchTablebase('8/8/8/8/8/8/2K5/6k1 w - - 37 82')).resolves.toMatchObject({
+      category: 'draw',
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('does not cache a response aborted during parsing', async () => {
