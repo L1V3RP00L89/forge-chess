@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchOpeningExplorer, hasOpeningExplorerAuthToken, prefetchOpeningExplorer } from './openingExplorer'
+import {
+  fetchOpeningExplorer,
+  hasOpeningExplorerAuthToken,
+  normalizeOpeningExplorerFenKey,
+  prefetchOpeningExplorer,
+} from './openingExplorer'
 
 describe('opening explorer client', () => {
   afterEach(() => {
@@ -22,6 +27,14 @@ describe('opening explorer client', () => {
     expect(hasOpeningExplorerAuthToken('Bearer   ')).toBe(false)
     expect(hasOpeningExplorerAuthToken('Bearer test-token')).toBe(true)
     expect(hasOpeningExplorerAuthToken('test-token')).toBe(true)
+  })
+
+  it('normalizes opening cache keys to board-state FEN fields', () => {
+    const fenA = '8/8/8/8/8/8/4K3/6k1 w - - 0 1'
+    const fenB = '8/8/8/8/8/8/4K3/6k1 w - - 14 72'
+
+    expect(normalizeOpeningExplorerFenKey(fenA)).toBe('8/8/8/8/8/8/4K3/6k1 w - -')
+    expect(normalizeOpeningExplorerFenKey(fenA)).toBe(normalizeOpeningExplorerFenKey(fenB))
   })
 
   it('sends bearer auth, normalizes filters, and caches responses by position', async () => {
@@ -49,7 +62,11 @@ describe('opening explorer client', () => {
     }
 
     const first = await fetchOpeningExplorer(request)
-    const second = await fetchOpeningExplorer({ ...request, authToken: 'Bearer other-token' })
+    const second = await fetchOpeningExplorer({
+      ...request,
+      fen: '8/8/8/8/8/8/4K3/6k1 w - - 42 99',
+      authToken: 'Bearer other-token',
+    })
 
     expect(first.white).toBe(10)
     expect(second).toBe(first)

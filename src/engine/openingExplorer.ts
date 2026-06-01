@@ -151,6 +151,12 @@ function normalizeFen(fen: string | undefined): string {
   return fen?.trim().replace(/\s+/g, ' ') ?? ''
 }
 
+export function normalizeOpeningExplorerFenKey(fen: string | undefined): string {
+  const normalized = normalizeFen(fen)
+  const parts = normalized.split(/\s+/g)
+  return parts.length >= 4 ? parts.slice(0, 4).join(' ') : normalized
+}
+
 function normalizeAuthToken(authToken: string | undefined): string {
   const trimmed = authToken?.trim() ?? ''
   return trimmed.replace(/^Bearer(?:\s+|$)/i, '').trim()
@@ -166,7 +172,7 @@ function authHeaders(authToken: string | undefined): HeadersInit {
 }
 
 function requestCacheKey(request: OpeningExplorerRequest): string {
-  const fen = normalizeFen(request.fen)
+  const fen = normalizeOpeningExplorerFenKey(request.fen)
   const moves = normalizeMoves(request.moves)
   const speeds = (request.speeds ?? []).slice().sort().join(',')
   const ratings = clampUniqueInts(request.ratings, 400, 3200).sort((a, b) => a - b).join(',')

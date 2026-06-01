@@ -3,6 +3,7 @@ import {
   fetchOpeningExplorer,
   getCachedOpeningExplorer,
   hasOpeningExplorerAuthToken,
+  normalizeOpeningExplorerFenKey,
   type OpeningDatabaseSource,
   type OpeningExplorerResponse,
   type OpeningSpeed,
@@ -34,7 +35,8 @@ const LOCAL_OPENING_ERROR_LIMIT = 40
 export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplorerState {
   const enabled = args.enabled ?? true
   const debounceMs = args.debounceMs ?? 250
-  const fenKey = args.fen?.trim().replace(/\s+/g, ' ') ?? ''
+  const fenInput = args.fen?.trim().replace(/\s+/g, ' ') ?? ''
+  const fenKey = normalizeOpeningExplorerFenKey(args.fen)
   const movesKey = args.moves.map(move => move.trim().toLowerCase()).filter(Boolean).join(',')
   const speedsKey = (args.speeds ?? []).slice().sort().join(',')
   const ratingsKey = (args.ratings ?? []).slice().sort((a, b) => a - b).join(',')
@@ -58,7 +60,7 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
   const cachedData = enabled
     ? getCachedOpeningExplorer({
         source: args.source,
-        fen: fenKey || undefined,
+        fen: fenInput || undefined,
         moves: normalizedMoves,
         speeds: normalizedSpeeds,
         ratings: normalizedRatings,
@@ -72,7 +74,7 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
     if (hasLocalData) return
     if (getCachedOpeningExplorer({
       source: args.source,
-      fen: fenKey || undefined,
+      fen: fenInput || undefined,
       moves: normalizedMoves,
       speeds: normalizedSpeeds,
       ratings: normalizedRatings,
@@ -86,7 +88,7 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
       void fetchOpeningExplorer(
         {
           source: args.source,
-          fen: fenKey || undefined,
+          fen: fenInput || undefined,
           moves: normalizedMoves,
           speeds: normalizedSpeeds,
           ratings: normalizedRatings,
@@ -121,6 +123,7 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
     authKey,
     debounceMs,
     enabled,
+    fenInput,
     fenKey,
     hasAuth,
     hasLocalData,
@@ -137,7 +140,7 @@ export function useOpeningExplorer(args: UseOpeningExplorerArgs): OpeningExplore
   const loading = enabled && !authRequired && !data && !error
   const stale = enabled && Boolean(data) && !getCachedOpeningExplorer({
     source: args.source,
-    fen: fenKey || undefined,
+    fen: fenInput || undefined,
     moves: normalizedMoves,
     speeds: normalizedSpeeds,
     ratings: normalizedRatings,
