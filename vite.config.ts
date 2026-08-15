@@ -16,4 +16,13 @@ export default defineConfig({
   preview: {
     headers: crossOriginIsolationHeaders,
   },
+  worker: {
+    format: 'es',
+  },
+  optimizeDeps: {
+    // Vite's dep pre-bundler copies this Emscripten glue module without its
+    // sibling .wasm file, breaking the glue's self-relative wasm fetch.
+    // Serve it straight from node_modules instead.
+    exclude: ['@journeyapps/wa-sqlite'],
+  },
 })
