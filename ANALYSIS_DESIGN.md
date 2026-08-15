@@ -259,7 +259,7 @@ Also support user-drawn arrows (right-click drag) via `onSquareRightClick`.
 
 ## GitHub Pages Deployment Notes
 
-- `vite.config.ts`: `base: '/web-chess/'`
+- `vite.config.ts`: `base: '/forge-chess/'`
 - Since GitHub Pages doesn't set COOP/COEP headers, multi-threaded Stockfish won't work.
 - Default auto-profile: `lite-single` (7MB WASM, no CORS needed, works on gh-pages)
 - CDN full-single profile remains available as opt-in (113MB)

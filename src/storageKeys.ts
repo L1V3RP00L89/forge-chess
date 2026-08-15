@@ -1,1 +1,1 @@
-export const ANALYSIS_SETTINGS_STORAGE_KEY = 'webchess:analysis-settings:v1'
+export const ANALYSIS_SETTINGS_STORAGE_KEY = 'forgechess:analysis-settings:v1'

@@ -1,6 +1,6 @@
 {
-    "name": "Web Chess",
-    "short_name": "Web Chess",
+    "name": "Forge Chess",
+    "short_name": "Forge Chess",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0d1117",

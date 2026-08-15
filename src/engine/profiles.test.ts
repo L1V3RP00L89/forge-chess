@@ -3,8 +3,8 @@ import { deriveWasmPath, engineProfiles, toAbsoluteAssetUrl, workerMainUrlWithWa
 
 describe('engine profile worker URLs', () => {
   it('derives the matching wasm asset path from a Stockfish worker script', () => {
-    expect(deriveWasmPath('/web-chess/engine/stockfish-18-lite-single.js')).toBe(
-      '/web-chess/engine/stockfish-18-lite-single.wasm',
+    expect(deriveWasmPath('/forge-chess/engine/stockfish-18-lite-single.js')).toBe(
+      '/forge-chess/engine/stockfish-18-lite-single.wasm',
     )
     expect(deriveWasmPath('https://cdn.example/stockfish-18.js?v=18')).toBe(
       'https://cdn.example/stockfish-18.wasm?v=18',
@@ -12,14 +12,14 @@ describe('engine profile worker URLs', () => {
   })
 
   it('builds absolute asset URLs from the deployed app base', () => {
-    expect(toAbsoluteAssetUrl('/web-chess/engine/stockfish-18-lite-single.js', 'https://example.test/web-chess/')).toBe(
-      'https://example.test/web-chess/engine/stockfish-18-lite-single.js',
+    expect(toAbsoluteAssetUrl('/forge-chess/engine/stockfish-18-lite-single.js', 'https://example.test/forge-chess/')).toBe(
+      'https://example.test/forge-chess/engine/stockfish-18-lite-single.js',
     )
   })
 
   it('passes the absolute wasm path through the Stockfish.js main-worker hash', () => {
-    expect(workerMainUrlWithWasmHash('/web-chess/engine/stockfish-18-lite-single.js', 'https://example.test/web-chess/')).toBe(
-      'https://example.test/web-chess/engine/stockfish-18-lite-single.js#https%3A%2F%2Fexample.test%2Fweb-chess%2Fengine%2Fstockfish-18-lite-single.wasm',
+    expect(workerMainUrlWithWasmHash('/forge-chess/engine/stockfish-18-lite-single.js', 'https://example.test/forge-chess/')).toBe(
+      'https://example.test/forge-chess/engine/stockfish-18-lite-single.js#https%3A%2F%2Fexample.test%2Fforge-chess%2Fengine%2Fstockfish-18-lite-single.wasm',
     )
   })
 

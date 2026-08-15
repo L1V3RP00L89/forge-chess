@@ -9,7 +9,7 @@ const crossOriginIsolationHeaders = {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/web-chess/',
+  base: '/forge-chess/',
   server: {
     headers: crossOriginIsolationHeaders,
   },

@@ -3091,7 +3091,7 @@ function App() {
           <div className="panel-content compact-grid">
             <div className="app-brand" aria-hidden={settingsOpen ? true : undefined}>
               <span className="app-brand-icon"><IconKing /></span>
-              <span className="app-brand-text">Web Chess</span>
+              <span className="app-brand-text">Forge Chess</span>
             </div>
             <div
               className="mobile-actions"

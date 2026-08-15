@@ -23,7 +23,7 @@ export type CloudEvalResult = {
 
 const CLOUD_EVAL_URL = 'https://lichess.org/api/cloud-eval'
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000
-const CACHE_STORAGE_KEY = 'webchess:cloud-eval-cache:v1'
+const CACHE_STORAGE_KEY = 'forgechess:cloud-eval-cache:v1'
 const CACHE_ENTRY_LIMIT = 120
 const UCI_MOVE_REGEX = /^[a-h][1-8][a-h][1-8][qrbn]?$/i
 

@@ -1,4 +1,4 @@
-# Web Chess 1.0
+# Forge Chess 1.0
 
 A browser chess app for playing, importing, and reviewing games with Stockfish-powered analysis.
 
@@ -51,7 +51,7 @@ The Lichess Opening Explorer endpoints require API authentication. Create a pers
 1. **Clone the repository:**
    ```bash
    git clone <repo-url>
-   cd web-chess
+   cd forge-chess
    ```
 
 2. **Install dependencies:**

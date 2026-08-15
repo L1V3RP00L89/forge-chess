@@ -72,7 +72,7 @@ describe('PGN export helpers', () => {
     const loader = new Chess()
     loader.loadPgn(pgn)
 
-    expect(pgn).toContain('[Site "Web Chess"]')
+    expect(pgn).toContain('[Site "Forge Chess"]')
     expect(pgn).toContain('[SetUp "1"]')
     expect(pgn).toContain(`[FEN "${rootFen}"]`)
     expect(pgn).toContain('1... c5')
@@ -543,7 +543,7 @@ describe('PGN import preflight', () => {
   it('rejects PGNs that contain headers but no legal moves', () => {
     const headerOnlyPgn = `
 [Event "Unplayed"]
-[Site "Web Chess"]
+[Site "Forge Chess"]
 [Result "*"]
 
 *

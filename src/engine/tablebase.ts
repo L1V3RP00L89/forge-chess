@@ -42,7 +42,7 @@ export type TablebaseResult = {
 
 const TABLEBASE_URL = 'https://tablebase.lichess.org/standard'
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000
-const CACHE_STORAGE_KEY = 'webchess:tablebase-cache:v1'
+const CACHE_STORAGE_KEY = 'forgechess:tablebase-cache:v1'
 const CACHE_ENTRY_LIMIT = 80
 const BOARD_FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const
 const CATEGORY_VALUES = new Set<TablebaseCategory>([

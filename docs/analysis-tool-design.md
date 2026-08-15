@@ -1,4 +1,4 @@
-# Web Chess Analysis Tool Design (GitHub Pages + Stockfish.js 18)
+# Forge Chess Analysis Tool Design (GitHub Pages + Stockfish.js 18)
 
 ## Product intent
 

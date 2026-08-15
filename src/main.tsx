@@ -34,7 +34,7 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryS
     return (
       <main className="app-error-shell" role="alert">
         <section className="app-error-card">
-          <p className="app-error-kicker">Web Chess</p>
+          <p className="app-error-kicker">Forge Chess</p>
           <h1>Something went wrong.</h1>
           <p>
             The board could not finish rendering. Reload the app, or reset saved workspace settings if the issue
