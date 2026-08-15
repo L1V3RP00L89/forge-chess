@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@journeyapps/wa-sqlite": "^2.0.3",
     "chess.js": "^1.4.0",
     "coi-serviceworker": "^0.1.7",
     "react": "^19.2.0",
