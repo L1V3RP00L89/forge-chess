@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { AiDifficulty } from '../hooks/useAiPlayer'
-import { DIFFICULTY_LABELS } from '../hooks/useAiPlayer'
+import { DIFFICULTY_ELO, DIFFICULTY_LABELS } from '../hooks/useAiPlayer'
 
 export type GameMode = 'human-vs-human' | 'human-vs-ai' | 'ai-vs-ai'
 export type PlayerColor = 'white' | 'black'
@@ -231,7 +231,10 @@ export function NewGameDialog({
                                     />
                                 ))}
                             </div>
-                            <p className="difficulty-desc">{DIFFICULTY_DESCRIPTIONS[difficulty]}</p>
+                            <p className="difficulty-desc">
+                                {DIFFICULTY_DESCRIPTIONS[difficulty]}
+                                <span className="difficulty-elo">~{DIFFICULTY_ELO[difficulty]} ELO</span>
+                            </p>
                         </div>
                     )}
                 </div>

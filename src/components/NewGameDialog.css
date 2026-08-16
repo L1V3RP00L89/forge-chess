@@ -610,6 +610,13 @@
     line-height: 1.45;
 }
 
+.difficulty-elo {
+    margin-left: 0.5em;
+    font-family: var(--font-mono);
+    color: var(--accent, #3fb950);
+    opacity: 0.75;
+}
+
 /* ── Actions ───────────────────────────────────────── */
 .dialog-actions {
     display: flex;

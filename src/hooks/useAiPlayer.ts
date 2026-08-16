@@ -12,7 +12,7 @@ export type AiDifficulty = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8
 
 // Per Stockfish.js docs: UCI_LimitStrength + UCI_Elo (range 1320-3190)
 // Skill Level alone is coarser (0-20) so we use Elo for a richer difficulty curve.
-const DIFFICULTY_ELO: Record<AiDifficulty, number> = {
+export const DIFFICULTY_ELO: Record<AiDifficulty, number> = {
     1: 1320,
     2: 1500,
     3: 1700,
