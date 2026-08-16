@@ -3922,14 +3922,6 @@ function App() {
                         ? `${aiPlayer.profileName} play engine is ${playEngineStatus} at ${aiDifficultyLabel} difficulty.`
                         : 'Analysis engine is on standby. Use this view for clean gameplay and move navigation.'}
                     </p>
-                    <label className="switch-control">
-                      <input
-                        type="checkbox"
-                        checked={showBoardArrows}
-                        onChange={event => setShowBoardArrows(event.target.checked)}
-                      />
-                      <span>Show board arrow overlays</span>
-                    </label>
                     <button type="button" onClick={() => handleWorkspaceModeChange('analysis')}>
                       Switch to Analysis mode
                     </button>

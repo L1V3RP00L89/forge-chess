@@ -12,7 +12,7 @@
   --border-subtle: rgba(255, 255, 255, 0.055);
   --border-default: rgba(255, 255, 255, 0.10);
   --border-strong: rgba(255, 255, 255, 0.18);
-  --border-accent: rgba(52, 211, 153, 0.35);
+  --border-accent: rgba(244, 63, 94, 0.35);
 
   /* ── Text ──────────────────────────────────────── */
   --text-primary: #f2f3f5;
@@ -21,12 +21,12 @@
   --text-heading: #ffffff;
   --text-muted: #626977;
 
-  /* ── Accent (emerald glow) ─────────────────────── */
-  --accent: #2dd4bf;
-  --accent-hover: #34d399;
-  --accent-muted: #0f766e;
-  --accent-subtle: rgba(45, 212, 191, 0.14);
-  --accent-glow: rgba(45, 212, 191, 0.26);
+  /* ── Accent (red glow) ─────────────────────── */
+  --accent: #f43f5e;
+  --accent-hover: #fb7185;
+  --accent-muted: #9f1239;
+  --accent-subtle: rgba(244, 63, 94, 0.14);
+  --accent-glow: rgba(244, 63, 94, 0.26);
 
   /* ── Semantic ──────────────────────────────────── */
   --danger: #ef4444;
