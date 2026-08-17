@@ -31,7 +31,7 @@ Grounded in what's already shipped (565 commits, spanning 2026-01-29 to 2026-06-
 | M2  | Mobile/responsive polish (touch targets, dialog layout, panel collapsing)                                                                    | **Ongoing** — most recent commit stream before the gap was mobile-focused `fix:`/`style:` work         | Dara → Priya         |
 | M3  | Re-baseline after the dormant period                                                                                                         | **Done** — `npm audit` (0 vulnerabilities), lint, tests (192/192), and build all verified clean as of 2026-08-17 | Priya                |
 | M4  | Coach-mode pedagogy pass — audit plain-language guidance against what an adult improver actually needs (plans/patterns over raw eval)        | **Scoped, Renee's pushback folded in** — Critical Moments cap blocked on M5's selection criteria, rest is unblocked | Renee → Priya → Dara |
-| M5  | Review/accuracy framing pass — reframe critical-moment surfacing around "worth an adult's limited study time" rather than raw centipawn loss | **Scoped** — see M5 Detail below; unblocks M4's Critical Moments cap once shipped                      | Renee → Priya        |
+| M5  | Review/accuracy framing pass — reframe critical-moment surfacing around "worth an adult's limited study time" rather than raw centipawn loss | **Scoped, Renee's pushback folded in** — ready to build; unblocks M4's Critical Moments cap once shipped | Renee → Priya        |
 | M6  | Opening explorer presentation — thin, memorable repertoire framing vs. theory-dump                                                           | **Not started**                                                                                        | Renee → Dara → Priya |
 | M7  | Full-strength CDN engine profile completion (113MB builds, opt-in, LFS-aware deploy)                                                         | **Partially shipped** — commit history shows LFS/CDN work already done; confirm it's still functioning | Priya                |
 | M8  | Training feature — built-in habit-tracking/coaching plan (see below)                                                                         | **In progress** — DB foundation wired in (games recorded on completion/import); post-review journal modal shipped; Training tab and drill queue not yet started | Renee → Dara → Priya |
@@ -78,21 +78,25 @@ Scoped to unblock M4's Critical Moments cap, which needs this milestone's select
 - Win-probability conversion already exists (`cpToWhiteWinrate`, `src/engine/analysis.ts:426-430`) but is only used for the winrate graph — it's never joined onto review rows. WDL data exists per-position but isn't persisted per move either.
 - The Review tab (where Critical Moments lives) is **not gated by Coach/Pro mode** — whatever M5 ships has to work for both audiences, not just one.
 
-**Renee's criteria for "worth studying":**
+**Renee's criteria for "worth studying" (revised after her own pushback — see below):**
 - **Rank by win-probability swing, not raw centipawn swing.** A 100cp swing from +200 to +300 barely changes the outcome; the same 100cp swing from +20 to -80 flips the game. Cp-magnitude ranking treats those as identical — that's the core framing bug the article's "worth an adult's limited study time" line is pointing at.
-- **Suppress already-decided positions.** If the position was already crushing (or already lost) *before* the flagged move — say, mover's win probability was already ≥92% or ≤8% — don't surface it. A blunder that throws away a position already lost teaches nothing; this is the exact "blunder in an already-lost position" example from the M4 pushback, generalized into the shared rule M4 needs.
-- **Surface the turning point, not the pile-up.** If a game has several similar-severity mistakes after the position is already decided, only the first one (the actual turning point) is worth showing — later ones are noise from the same already-lost thread.
-- **Cap tied to time control, not a flat 5.** Replace the hardcoded cap of 5 with the same tiered cap M4 needs (default 3, dropping to 1 for blitz/bullet) — this is the literal shared function M4 is blocked on.
+- **Suppress a moment only if win probability stays on the same side before *and* after the move.** Not "before-move win probability was already ≥92%/≤8%" alone — that would suppress a player throwing away a 95%-winning position, which is exactly backwards: conversion technique (holding a won game) is one of the most common, most fixable gaps separating a 1400 from a 1800, and it has to surface, not get hidden. Suppress only when both before- and after-move win probability sit on the same extreme side (still crushing, or still lost) — the moment a move flips which side is practically winning, it's a turning point regardless of how lopsided the position looked beforehand.
+- **Compute win probability relative to the side to move, not fixed to White.** The existing `cpToWhiteWinrate` is White-POV; the suppression/ranking logic needs a side-to-move-relative conversion or it breaks asymmetrically for Black. Correctness requirement, not a framing preference.
+- **Surface every genuine turning point, dedupe the pile-up.** Don't collapse to "only the first flagged moment" — a game can have more than one real turning point (equal → small edge → the actual decisive blunder later), and "first only" risks showing the minor one and hiding the decisive one. Instead, dedupe consecutive same-severity moments *within* a single already-decided stretch, but let a new moment through whenever win probability re-enters contested range or flips again.
+- **Cap tied to time control, not a flat 5 — and treated as a ceiling, not a target.** Replace the hardcoded cap of 5 with the same tiered cap M4 needs (default 3, dropping to 1 for blitz/bullet). If a short or lopsided game only has one real turning point, show one — don't pad the list to hit the cap.
 
 **M5 scope, concretely:**
-- Extend the review pipeline to compute win probability (via the existing `cpToWhiteWinrate`) before and after each move, not just `deltaCp` — Priya.
+- Extend the review pipeline to compute win probability (via `cpToWhiteWinrate`, converted to side-to-move-relative) before and after each move, not just `deltaCp` — Priya.
 - Replace the Critical Moments sort key with win-probability swing instead of raw `deltaCp` magnitude.
-- Add already-decided suppression using the before-move win-probability threshold above.
-- Replace the hardcoded cap-of-5 with a shared, time-control-aware cap function — this becomes the function M4's own cap reuses, closing that dependency.
+- Add same-side-before-and-after suppression per the corrected rule above (not before-move-only).
+- Add turning-point dedupe within already-decided stretches, rather than a blanket "first moment only" cutoff.
+- Replace the hardcoded cap-of-5 with a shared, time-control-aware ceiling function — this becomes the function M4's own cap reuses, closing that dependency.
 - No UI/visual redesign needed for M5 itself — same Critical Moments card, re-ranked and re-capped. Dara isn't required to scope this pass; only Priya's implementation changes.
 - Explicitly out of scope: any change to how individual moves are labeled (`qualityFromDelta`'s best/good/inaccuracy/mistake/blunder buckets stay as-is) — this pass changes *which* moments get surfaced, not how a single move is graded.
 
-**Owner sequencing:** Renee's criteria above are final pending her own review pass (this was scoped through the same audit-and-propose process as M4, not yet circulated back to her for confirmation); Priya implements once confirmed. Ships before M4's Critical Moments cap, which depends on this.
+**Renee's pushback (2026-08-17):** caught a real bug in the original suppression rule — before-move-only thresholding would have hidden "threw away a winning position" moments, which are exactly the ones worth surfacing most. Fixed by requiring win probability to stay on the same side before *and* after the move, plus a note that win-probability conversion must be side-to-move-relative (correctness issue, not just framing). Also softened "first turning point only" into dedupe-with-reentry, since a game can have more than one genuine turning point. Approved with those changes folded in above.
+
+**Owner sequencing:** Priya implements the criteria above as revised. Ships before M4's Critical Moments cap, which depends on this.
 
 ## M8 Detail — Training Feature
 
