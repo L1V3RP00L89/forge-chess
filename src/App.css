@@ -1632,6 +1632,73 @@ body.resizing * {
   color: var(--text-tertiary);
 }
 
+.coach-locked {
+  grid-column: span 2;
+  min-width: 0;
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(5, 5, 5, 0.24);
+  padding: 0.38rem 0.44rem;
+}
+
+.coach-locked span {
+  display: block;
+  margin-bottom: 0.12rem;
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.coach-locked strong {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.coach-reveal-controls {
+  margin-top: 0.5rem;
+}
+
+.coach-reveal-btn {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  border-radius: var(--radius-sm);
+  background: rgba(45, 212, 191, 0.08);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.coach-reveal-btn:hover {
+  background: rgba(45, 212, 191, 0.16);
+}
+
+.coach-reveal-outcome {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.coach-reveal-outcome button {
+  flex: 1;
+  padding: 0.34rem 0.5rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.coach-reveal-outcome button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .coach-card .coach-opening {
   margin-top: 0.38rem;
   color: var(--text-tertiary);

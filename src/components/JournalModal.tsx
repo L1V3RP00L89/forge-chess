@@ -7,6 +7,8 @@ import './NewGameDialog.css'
 
 type JournalModalProps = {
     open: boolean
+    /** How many "went well" / "to work on" prompts to ask for — 1 for blitz/bullet games, 2 otherwise. */
+    promptCount: 1 | 2
     onSkip: () => void
     onSave: (entry: JournalEntryInput) => void
 }
@@ -27,7 +29,7 @@ function isDialogFocusableElement(element: HTMLElement): boolean {
     return element.getClientRects().length > 0
 }
 
-export function JournalModal({ open, onSkip, onSave }: JournalModalProps) {
+export function JournalModal({ open, promptCount, onSkip, onSave }: JournalModalProps) {
     const [entry, setEntry] = useState<JournalEntryInput>(EMPTY_ENTRY)
     const panelRef = useRef<HTMLDivElement>(null)
     const titleId = useId()
@@ -131,7 +133,9 @@ export function JournalModal({ open, onSkip, onSave }: JournalModalProps) {
 
                 <div className="dialog-body">
                     <div className="dialog-section">
-                        <label className="dialog-label" htmlFor={positive1Id}>Two things that went well</label>
+                        <label className="dialog-label" htmlFor={positive1Id}>
+                            {promptCount === 1 ? 'One thing that went well' : 'Two things that went well'}
+                        </label>
                         <textarea
                             id={positive1Id}
                             className="input-textarea journal-field"
@@ -139,17 +143,21 @@ export function JournalModal({ open, onSkip, onSave }: JournalModalProps) {
                             value={entry.positive1}
                             onChange={e => setField('positive1', e.target.value)}
                         />
-                        <textarea
-                            className="input-textarea journal-field"
-                            aria-label="Second thing that went well"
-                            placeholder="e.g. Stayed calm in a worse endgame"
-                            value={entry.positive2}
-                            onChange={e => setField('positive2', e.target.value)}
-                        />
+                        {promptCount === 2 && (
+                            <textarea
+                                className="input-textarea journal-field"
+                                aria-label="Second thing that went well"
+                                placeholder="e.g. Stayed calm in a worse endgame"
+                                value={entry.positive2}
+                                onChange={e => setField('positive2', e.target.value)}
+                            />
+                        )}
                     </div>
 
                     <div className="dialog-section">
-                        <label className="dialog-label" htmlFor={improve1Id}>Two things to work on</label>
+                        <label className="dialog-label" htmlFor={improve1Id}>
+                            {promptCount === 1 ? 'One thing to work on' : 'Two things to work on'}
+                        </label>
                         <textarea
                             id={improve1Id}
                             className="input-textarea journal-field"
@@ -157,13 +165,15 @@ export function JournalModal({ open, onSkip, onSave }: JournalModalProps) {
                             value={entry.improve1}
                             onChange={e => setField('improve1', e.target.value)}
                         />
-                        <textarea
-                            className="input-textarea journal-field"
-                            aria-label="Second thing to work on"
-                            placeholder="e.g. Rushed the opening moves"
-                            value={entry.improve2}
-                            onChange={e => setField('improve2', e.target.value)}
-                        />
+                        {promptCount === 2 && (
+                            <textarea
+                                className="input-textarea journal-field"
+                                aria-label="Second thing to work on"
+                                placeholder="e.g. Rushed the opening moves"
+                                value={entry.improve2}
+                                onChange={e => setField('improve2', e.target.value)}
+                            />
+                        )}
                     </div>
 
                     <div className="dialog-actions">

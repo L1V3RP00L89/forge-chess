@@ -531,6 +531,23 @@ export function selectCriticalMoments(rows: ReviewRow[], limit: number): ReviewR
     .slice(0, Math.max(0, limit))
 }
 
+// PGN TimeControl: "9000" (seconds), "9000+30" (+increment), or "40/9000"
+// (moves/seconds — the base clock is the number AFTER the slash, not the
+// move count before it). "-" or missing means unknown.
+function baseTimeControlSeconds(timeControl?: string): number | null {
+  const firstPhase = (timeControl ?? '').trim().split(':')[0]
+  const secondsPart = firstPhase.includes('/') ? firstPhase.split('/')[1] : firstPhase
+  const base = /^\d+/.exec(secondsPart ?? '')?.[0]
+  if (!base) return null
+  const baseSeconds = Number(base)
+  return Number.isFinite(baseSeconds) && baseSeconds > 0 ? baseSeconds : null
+}
+
+function isBlitzOrBulletTimeControl(timeControl?: string): boolean {
+  const baseSeconds = baseTimeControlSeconds(timeControl)
+  return baseSeconds !== null && baseSeconds < 600
+}
+
 /**
  * Ceiling for how many Critical Moments to surface, not a target — fewer
  * genuine candidates just means a shorter list. Blitz/bullet games get a
@@ -538,16 +555,16 @@ export function selectCriticalMoments(rows: ReviewRow[], limit: number): ReviewR
  * (including unknown/unlabeled time controls) gets the standard cap.
  */
 export function criticalMomentsLimitForTimeControl(timeControl?: string): number {
-  // PGN TimeControl: "9000" (seconds), "9000+30" (+increment), or
-  // "40/9000" (moves/seconds — the base clock is the number AFTER the
-  // slash, not the move count before it). "-" means unknown.
-  const firstPhase = (timeControl ?? '').trim().split(':')[0]
-  const secondsPart = firstPhase.includes('/') ? firstPhase.split('/')[1] : firstPhase
-  const base = /^\d+/.exec(secondsPart ?? '')?.[0]
-  if (!base) return 3
-  const baseSeconds = Number(base)
-  if (!Number.isFinite(baseSeconds) || baseSeconds <= 0) return 3
-  return baseSeconds < 600 ? 1 : 3
+  return isBlitzOrBulletTimeControl(timeControl) ? 1 : 3
+}
+
+/**
+ * How many "went well" / "to work on" prompts the post-game journal should
+ * ask for. Mirrors the Critical Moments cap so a blitz game doesn't get
+ * asked for 2-and-2 takeaways when only 1 was worth surfacing in review.
+ */
+export function journalPromptCountForTimeControl(timeControl?: string): 1 | 2 {
+  return isBlitzOrBulletTimeControl(timeControl) ? 1 : 2
 }
 
 export function buildWdlSeries(

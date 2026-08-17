@@ -11,6 +11,7 @@ import {
   formatWhitePovEvaluation,
   isTerminalPositionFen,
   isReviewEvaluationSufficient,
+  journalPromptCountForTimeControl,
   mergeEvaluationSnapshot,
   scoreToCp,
   selectCriticalMoments,
@@ -446,6 +447,18 @@ describe('review analysis helpers', () => {
     it('defaults to the standard cap for unknown or missing time controls', () => {
       expect(criticalMomentsLimitForTimeControl('-')).toBe(3)
       expect(criticalMomentsLimitForTimeControl(undefined)).toBe(3)
+    })
+  })
+
+  describe('journal prompt count for time control', () => {
+    it('scales down to a single prompt for blitz/bullet games', () => {
+      expect(journalPromptCountForTimeControl('180+2')).toBe(1)
+      expect(journalPromptCountForTimeControl('40/180')).toBe(1)
+    })
+
+    it('keeps the standard two prompts for longer or unknown time controls', () => {
+      expect(journalPromptCountForTimeControl('600+5')).toBe(2)
+      expect(journalPromptCountForTimeControl(undefined)).toBe(2)
     })
   })
 

@@ -10,6 +10,7 @@ import {
   formatWhitePovEvaluation,
   isReviewEvaluationSufficient,
   isTerminalPositionFen,
+  journalPromptCountForTimeControl,
   mergeEvaluationSnapshot,
   pvToSan,
   scoreToCp,
@@ -73,6 +74,7 @@ import { useTablebase } from './hooks/useTablebase'
 import { ANALYSIS_SETTINGS_STORAGE_KEY } from './storageKeys'
 import type { GameMode, PlayerColor } from './components/NewGameDialog'
 import { WatchControls } from './components/WatchControls'
+import { emitCoachRevealEvent, type CoachRevealTier } from './engine/coachEvents'
 import { TrainingView } from './components/TrainingView'
 import { AI_SPEED_MS, type AiSpeed } from './components/aiSpeed'
 import { WdlBar } from './components/WdlBar'
@@ -1535,6 +1537,68 @@ function App() {
     openingTopBookMove?.uci,
     tablebaseTopMove,
   )
+
+  // ── Coach card staged reveal (M4) ─────────────────────
+  // Coach mode withholds the answer behind three tiers — plan/idea tags,
+  // then a destination-square nudge, then the full move/reply/line — so a
+  // sub-1400 player gets productive struggle instead of a spoiler curtain.
+  // Pro mode is unaffected: it's an explicit opt-in to full transparency.
+  const coachRevealGated = analysisExperience === 'beginner'
+  const coachRevealDestinationSquare = coachBestMove && coachBestMove.length >= 4
+    ? coachBestMove.slice(2, 4)
+    : null
+  const coachRevealTierRef = useRef<CoachRevealTier>(0)
+  // Captured once, when the user first engages the reveal (tier 0 → 1) —
+  // not continuously synced from the live coachBestMove/fen, which can
+  // already reflect the *next* position by the time a cleanup runs.
+  const coachRevealSnapshotRef = useRef<{ fen: string; bestMoveUci: string | null } | null>(null)
+  const coachRevealOutcomeRecordedRef = useRef(false)
+  const [coachRevealTier, setCoachRevealTierState] = useState<CoachRevealTier>(0)
+  const [coachRevealOutcomeGiven, setCoachRevealOutcomeGiven] = useState(false)
+
+  useEffect(() => {
+    coachRevealTierRef.current = 0
+    coachRevealSnapshotRef.current = null
+    coachRevealOutcomeRecordedRef.current = false
+    setCoachRevealTierState(0)
+    setCoachRevealOutcomeGiven(false)
+
+    return () => {
+      // Leaving this position: if the user engaged the reveal but never
+      // said whether they'd found the move themselves, log it as unrated
+      // rather than dropping the signal on the floor (M8 hook).
+      if (coachRevealTierRef.current > 0 && !coachRevealOutcomeRecordedRef.current && coachRevealSnapshotRef.current) {
+        emitCoachRevealEvent({
+          ...coachRevealSnapshotRef.current,
+          tier: coachRevealTierRef.current,
+          outcome: 'unrated',
+        })
+      }
+    }
+  }, [fen])
+
+  const revealNextCoachTier = useCallback(() => {
+    if (!coachRevealSnapshotRef.current) {
+      coachRevealSnapshotRef.current = { fen, bestMoveUci: coachBestMove }
+    }
+    setCoachRevealTierState(tier => {
+      const next = Math.min(3, tier + 1) as CoachRevealTier
+      coachRevealTierRef.current = next
+      return next
+    })
+  }, [fen, coachBestMove])
+
+  const recordCoachRevealOutcome = useCallback((outcome: 'found' | 'missed') => {
+    coachRevealOutcomeRecordedRef.current = true
+    setCoachRevealOutcomeGiven(true)
+    emitCoachRevealEvent({
+      ...(coachRevealSnapshotRef.current ?? { fen, bestMoveUci: coachBestMove }),
+      tier: coachRevealTierRef.current,
+      outcome,
+    })
+  }, [fen, coachBestMove])
+
+  const effectiveCoachRevealTier: CoachRevealTier = coachRevealGated ? coachRevealTier : 3
 
   const toggleOpeningSpeed = useCallback((speed: OpeningSpeed) => {
     setOpeningSpeeds(previous => {
@@ -3864,6 +3928,7 @@ function App() {
           {showJournalModal && (
             <JournalModal
               open
+              promptCount={journalPromptCountForTimeControl(pgnHeaders.TimeControl)}
               onSkip={() => setShowJournalModal(false)}
               onSave={(entry) => {
                 recordJournalEntry(currentGameId, entry)
@@ -3998,26 +4063,43 @@ function App() {
                         <span>Position</span>
                         <strong>{coachEvaluation}</strong>
                       </div>
-                      <div>
-                        <span>Best move</span>
-                        <strong title={coachBestMove ?? undefined}>{coachBestMoveText}</strong>
-                      </div>
-                      <div>
-                        <span>Reply</span>
-                        <strong title={coachReplyMove ?? undefined}>{coachReplyMoveText}</strong>
-                      </div>
-                      <div>
-                        <span>Depth</span>
-                        <strong>{coachDepthLabel}</strong>
-                      </div>
+                      {effectiveCoachRevealTier >= 3 ? (
+                        <>
+                          <div>
+                            <span>Best move</span>
+                            <strong title={coachBestMove ?? undefined}>{coachBestMoveText}</strong>
+                          </div>
+                          <div>
+                            <span>Reply</span>
+                            <strong title={coachReplyMove ?? undefined}>{coachReplyMoveText}</strong>
+                          </div>
+                          <div>
+                            <span>Depth</span>
+                            <strong>{coachDepthLabel}</strong>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="coach-locked" aria-live="polite">
+                          <span>Best move</span>
+                          <strong>
+                            {effectiveCoachRevealTier === 2 && coachRevealDestinationSquare
+                              ? `Something's worth doing on ${coachRevealDestinationSquare}`
+                              : 'Think it through first'}
+                          </strong>
+                        </div>
+                      )}
                     </div>
-                    <p>{coachLineSan || 'Start analysis to get a candidate line.'}</p>
+                    {effectiveCoachRevealTier >= 3 && (
+                      <p>{coachLineSan || 'Start analysis to get a candidate line.'}</p>
+                    )}
                     {coachMoveInsight && (
                       <div className="coach-insight">
-                        <div className="coach-tags" aria-label="Best move traits">
-                          {coachMoveInsight.tags.map(tag => <span key={tag}>{tag}</span>)}
-                        </div>
-                        <p>{coachMoveInsight.summary}</p>
+                        {effectiveCoachRevealTier >= 1 && (
+                          <div className="coach-tags" aria-label="Best move traits">
+                            {coachMoveInsight.tags.map(tag => <span key={tag}>{tag}</span>)}
+                          </div>
+                        )}
+                        {effectiveCoachRevealTier >= 3 && <p>{coachMoveInsight.summary}</p>}
                         {analysisExperience === 'pro' && (
                           <div className="coach-metrics">
                             {coachMoveInsight.gapLabel && <span>Margin {coachMoveInsight.gapLabel}</span>}
@@ -4025,6 +4107,22 @@ function App() {
                               <span>Book {engineBookAgreement ? 'match' : 'differs'}</span>
                             )}
                             {tablebase.result?.moves[0]?.uci === coachBestMove && <span>TB exact</span>}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {coachRevealGated && (
+                      <div className="coach-reveal-controls">
+                        {effectiveCoachRevealTier < 3 ? (
+                          <button type="button" className="coach-reveal-btn" onClick={revealNextCoachTier}>
+                            {effectiveCoachRevealTier === 0 && 'Show a hint'}
+                            {effectiveCoachRevealTier === 1 && 'Show more'}
+                            {effectiveCoachRevealTier === 2 && 'Show the move'}
+                          </button>
+                        ) : !coachRevealOutcomeGiven && (
+                          <div className="coach-reveal-outcome" aria-label="Did you find this move yourself?">
+                            <button type="button" onClick={() => recordCoachRevealOutcome('found')}>I had this</button>
+                            <button type="button" onClick={() => recordCoachRevealOutcome('missed')}>I didn't</button>
                           </div>
                         )}
                       </div>
