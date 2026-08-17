@@ -30,13 +30,39 @@ Grounded in what's already shipped (565 commits, spanning 2026-01-29 to 2026-06-
 | M1  | Core play/analysis/review loop (board, engine worker, PGN/FEN, opening explorer, tablebase, review pass)                                     | **Shipped** — this is the bulk of the 565-commit history                                               | Priya (maintain)     |
 | M2  | Mobile/responsive polish (touch targets, dialog layout, panel collapsing)                                                                    | **Ongoing** — most recent commit stream before the gap was mobile-focused `fix:`/`style:` work         | Dara → Priya         |
 | M3  | Re-baseline after the dormant period                                                                                                         | **Done** — `npm audit` (0 vulnerabilities), lint, tests (192/192), and build all verified clean as of 2026-08-17 | Priya                |
-| M4  | Coach-mode pedagogy pass — audit plain-language guidance against what an adult improver actually needs (plans/patterns over raw eval)        | **Not started**                                                                                        | Renee → Priya        |
+| M4  | Coach-mode pedagogy pass — audit plain-language guidance against what an adult improver actually needs (plans/patterns over raw eval)        | **Scoped** — see M4 Detail below; awaiting Renee/user pushback before implementation                    | Renee → Priya → Dara |
 | M5  | Review/accuracy framing pass — reframe critical-moment surfacing around "worth an adult's limited study time" rather than raw centipawn loss | **Not started**                                                                                        | Renee → Priya        |
 | M6  | Opening explorer presentation — thin, memorable repertoire framing vs. theory-dump                                                           | **Not started**                                                                                        | Renee → Dara → Priya |
 | M7  | Full-strength CDN engine profile completion (113MB builds, opt-in, LFS-aware deploy)                                                         | **Partially shipped** — commit history shows LFS/CDN work already done; confirm it's still functioning | Priya                |
 | M8  | Training feature — built-in habit-tracking/coaching plan (see below)                                                                         | **In progress** — DB foundation wired in (games recorded on completion/import); post-review journal modal shipped; Training tab and drill queue not yet started | Renee → Dara → Priya |
 
 **M3 close-out**: the repo's last commit before this re-baseline was **2026-06-01**; the gap ran roughly 2.5 months with no activity, raising the risk of silent dependency/API drift. Priya re-ran the full quality gate locally on 2026-08-17 (`npm audit`, `npm run lint`, `npm test -- --run`, `npm run build`) — all clean, nothing broke in the gap. CI should be spot-checked on the next push as a final confirmation, but local re-baseline is complete.
+
+## M4 Detail — Coach-Mode Pedagogy Pass
+
+Sourced directly from a real coach's take on 2026-era AI chess tools (`Team Inbox/ChessGoals - 2026 The AI Era.md`, shared by Kris 2026-08-17). Priya audited the current codebase line by line against the article's five principles, with UI implications flagged for Dara — first-pass scope below, awaiting Renee's pushback before implementation starts.
+
+**The five principles, checked against what's actually built:**
+
+1. **Over-analysis is the enemy** — 1–3 takeaways per game (1 for blitz), not paragraphs of AI text between every move.
+   Audit: the review pass (`src/engine/analysis.ts`) already reports numeric quality labels and centipawn deltas — no prose anywhere. But nothing caps how many critical moments get surfaced; the Critical Moments list currently shows every flagged move, not the top 1–3. **Real gap.**
+2. **Massive courses are bad** — focus and structure over 1000-line theory dumps.
+   Audit: no course/theory-content system exists in the app today. This bears on M6 (opening explorer), not M4 — noted for cross-reference, no M4 action.
+3. **Engines should guide, not spoon-feed** — the user should work through *why* a move is correct, not just be handed the answer.
+   Audit: Coach mode already hides engine-internals chrome (MultiPV, cloud eval, raw UCI, analyze presets), but it still directly displays the engine's best move, its predicted reply, and up to 6 plies of the top line, plus a one-sentence rule-based explanation (`describeBestMove`). That's the opposite of the ask — the answer is visible before the user has reasoned about the position themselves. **This is the main M4 finding.**
+4. **Curated human-designed repertoires** beat live theory databases.
+   Audit: doesn't exist in the app at all — the opening explorer is a live Lichess/masters database browser, not curated lines. This is M6's job in full; no code overlap with M4.
+5. **Active learning** — manually recording your own takeaways beats passively scrolling AI-generated suggestions.
+   Audit: the shipped `JournalModal` ("2 things that went well" / "2 things to work on") already matches this closely — manual free-text entry, nothing AI-generated to passively scroll. Likely needs only a copy/framing pass, not structural change.
+
+**M4 scope, concretely:**
+- Cap Critical Moments to a small default in Coach mode (e.g. 3, dropping to 1 for blitz/bullet time controls) rather than listing every flagged move — Priya.
+- Add a reveal-gated Coach card: show only the eval signal by default, with the best move, predicted reply, and top line hidden behind an explicit "Show the answer" action — Dara owns the interaction pattern, Priya the state/logic.
+- Gate `describeBestMove`'s one-sentence explanation behind the same reveal, rather than surfacing it alongside a hidden move.
+- No change to the review pass's underlying analysis/data model — this is a disclosure/presentation pass, not new analysis capability.
+- Explicitly out of scope for M4: opening repertoires (M6) and any course/theory content system (not planned).
+
+**Owner sequencing:** Renee reviews this scope against the article and adult-improver pedagogy before build starts; Dara owns the reveal-gate interaction and the redesigned Critical Moments list; Priya implements the takeaway cap and reveal-state logic.
 
 ## M8 Detail — Training Feature
 
