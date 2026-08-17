@@ -66,10 +66,12 @@ import { useGameTree, type GameNode } from './hooks/useGameTree'
 import { useOpening } from './hooks/useOpening'
 import { useCloudEvaluation } from './hooks/useCloudEvaluation'
 import { useOpeningExplorer } from './hooks/useOpeningExplorer'
+import { derivePlayModeResult, useTrainingDb } from './hooks/useTrainingDb'
 import { useTablebase } from './hooks/useTablebase'
 import { ANALYSIS_SETTINGS_STORAGE_KEY } from './storageKeys'
 import type { GameMode, PlayerColor } from './components/NewGameDialog'
 import { WatchControls } from './components/WatchControls'
+import { TrainingView } from './components/TrainingView'
 import { AI_SPEED_MS, type AiSpeed } from './components/aiSpeed'
 import { WdlBar } from './components/WdlBar'
 import { HorizontalWdlBar } from './components/HorizontalWdlBar'
@@ -84,7 +86,7 @@ import {
   graphWidthForIndex,
 } from './components/graphLayout'
 import { formatGraphAxisLabel, formatGraphPositionLabel } from './components/graphLabels'
-import { IconBot, IconBarChart, IconSearch, IconSwords, IconAlert, IconKing, IconRefresh, IconFlip, IconDownload, IconUsers, IconZap, IconSettings, IconPlay, IconStop, IconTrendingUp } from './components/icons'
+import { IconBot, IconBarChart, IconSearch, IconSwords, IconAlert, IconKing, IconRefresh, IconFlip, IconDownload, IconZap, IconSettings, IconPlay, IconStop, IconTrendingUp, IconCrown } from './components/icons'
 import './App.css'
 
 const NewGameDialog = lazy(() =>
@@ -92,6 +94,9 @@ const NewGameDialog = lazy(() =>
 )
 const PgnDialog = lazy(() =>
   import('./components/PgnDialog').then(module => ({ default: module.PgnDialog })),
+)
+const JournalModal = lazy(() =>
+  import('./components/JournalModal').then(module => ({ default: module.JournalModal })),
 )
 
 type Orientation = 'white' | 'black'
@@ -677,6 +682,10 @@ function App() {
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(initialWorkspaceMode)
   const engineEnabled = workspaceMode === 'analysis'
 
+  // ── Top-level view (Training landing vs. the app shell) ──
+  // A shared FEN link should drop straight into analysis, not the Training landing page.
+  const [activeView, setActiveView] = useState<'training' | 'app'>(sharedInitialFen ? 'app' : 'training')
+
   // ── Layout ───────────────────────────────────────────
   const [topPanelOpen, setTopPanelOpen] = useState(true)
   const [leftWidth, setLeftWidth] = useState(initialWorkspaceMode === 'play' ? 0 : DEFAULT_LEFT_PANEL_WIDTH)
@@ -756,6 +765,7 @@ function App() {
   // ── Game mode ────────────────────────────────────────
   const [showNewGameDialog, setShowNewGameDialog] = useState(false)
   const [showPgnDialog, setShowPgnDialog] = useState(false)
+  const [showJournalModal, setShowJournalModal] = useState(false)
   const [gameMode, setGameMode] = useState<GameMode>('human-vs-human')
   const [playerColor, setPlayerColor] = useState<PlayerColor>('white')
   const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>(4)
@@ -885,7 +895,7 @@ function App() {
   const opening = useOpening(openingFenPath, shouldLoadOpeningNames)
   const canGoBack = currentPathNodes.length > 1
   const canGoForward = gameTree.current.children.length > 0
-  const appModalOpen = showNewGameDialog || showPgnDialog
+  const appModalOpen = showNewGameDialog || showPgnDialog || showJournalModal
   const promotionDialogOpen = pendingPromotion !== null
   const topChromeHidden = appModalOpen || promotionDialogOpen
   const backgroundUiHidden = appModalOpen || settingsOpen || promotionDialogOpen
@@ -1052,6 +1062,27 @@ function App() {
   } = useStockfishEngine(engineProfile, engineEnabled)
   const analysisStatusAnnouncement = `${engineName}. ${status}. ${analysisExperience === 'beginner' ? 'Coach view' : 'Pro view'}.`
 
+  // ── Training DB (M8 foundation) ──────────────────────
+  const { recordGame, recordJournalEntry } = useTrainingDb()
+  const [currentGameId, setCurrentGameId] = useState<number | null>(null)
+  const recordedGameRef = useRef(false)
+  useEffect(() => {
+    if (workspaceMode !== 'play') return
+    if (!game.isGameOver()) {
+      recordedGameRef.current = false
+      return
+    }
+    if (recordedGameRef.current) return
+    recordedGameRef.current = true
+    const result = derivePlayModeResult({
+      isCheckmate: game.isCheckmate(),
+      isStalemate: game.isStalemate(),
+      isDraw: game.isDraw(),
+      turn: game.turn(),
+    })
+    recordGame(game.pgn(), result).then(setCurrentGameId)
+  }, [fen, game, recordGame, workspaceMode])
+
   // ── Batch Review ─────────────────────────────────────
   const [isBatchReviewing, setIsBatchReviewing] = useState(false)
   const [batchReviewProgress, setBatchReviewProgress] = useState({ done: 0, total: 0 })
@@ -1179,6 +1210,16 @@ function App() {
     showWdl,
     status,
   ])
+
+  // ── Journal prompt on review completion ──────────────
+  const wasBatchReviewingRef = useRef(false)
+  useEffect(() => {
+    const wasBatchReviewing = wasBatchReviewingRef.current
+    wasBatchReviewingRef.current = isBatchReviewing
+    if (!wasBatchReviewing || isBatchReviewing) return
+    const { done, total } = batchReviewProgress
+    if (total > 0 && done === total) setShowJournalModal(true)
+  }, [batchReviewProgress, isBatchReviewing])
 
   const aiEnabled = workspaceMode === 'play' && (gameMode === 'human-vs-ai' || gameMode === 'ai-vs-ai')
   const aiPlayer = useAiPlayer(aiEnabled)
@@ -2674,12 +2715,13 @@ function App() {
       cancelPendingAiMove()
       setIsImportingGame(false)
       requestBoardReveal()
+      recordGame(pgnText, importedGame.result ?? importedGame.headers.Result ?? null).then(setCurrentGameId)
       return { ok: true }
     } catch (error) {
       setIsImportingGame(false)
       return { ok: false, error: pgnImportUserErrorMessage(error) ?? 'Failed to parse PGN. Check the move text, headers, and move numbers.' }
     }
-  }, [cancelPendingAiMove, cancelSampleLoad, clearBatchReview, clearBoardSelection, clearImportSweep, engineEnabled, game, gameTree, newGame, requestBoardReveal, setPgnHeaders])
+  }, [cancelPendingAiMove, cancelSampleLoad, clearBatchReview, clearBoardSelection, clearImportSweep, engineEnabled, game, gameTree, newGame, recordGame, requestBoardReveal, setPgnHeaders])
 
   const handleAnalysisPgnImport = useCallback(
     (pgnText: string) => handlePgnImport(pgnText, { analyzeAfterLoad: true }),
@@ -2808,6 +2850,7 @@ function App() {
       setIsImportingGame(false)
       setPendingPromotion(null)
       clearBoardSelection()
+      setCurrentGameId(null)
       pausedRef.current = false
       setPaused(false)
       gameTree.reset()
@@ -2818,22 +2861,6 @@ function App() {
     [cancelPendingAiMove, cancelSampleLoad, clearBatchReview, clearBoardSelection, clearImportSweep, game, gameTree, newGame, requestBoardReveal, setAiPlayerDifficulty, setPgnHeaders],
   )
 
-  // ── Mode switch mid-game ──────────────────────────────
-  const handleModeChange = useCallback((mode: GameMode) => {
-    cancelPendingAiMove()
-    setGameMode(mode)
-    setOrientation(defaultOrientationForGameMode(mode, playerColor))
-    if (workspaceMode !== 'play') {
-      cancelStaleBackgroundAnalysis()
-      setWorkspaceMode('play')
-    }
-    if (mode === 'ai-vs-ai') clearBoardSelection()
-    if (pausedRef.current) {
-      pausedRef.current = false
-      setPaused(false)
-    }
-    setFen(f => f)
-  }, [cancelPendingAiMove, cancelStaleBackgroundAnalysis, clearBoardSelection, playerColor, workspaceMode])
 
   const navigateMoveListAndPause = useCallback((chess: Chess) => {
     navigateAndPause(chess)
@@ -3069,6 +3096,10 @@ function App() {
   })
 
   // ─────────────────────────────────────────────────────
+  if (activeView === 'training') {
+    return <TrainingView onOpenApp={() => setActiveView('app')} />
+  }
+
   return (
     <main className="app-shell" data-workspace-mode={workspaceMode}>
       <nav
@@ -3132,30 +3163,14 @@ function App() {
                     {label}
                   </button>
                 ))}
-              </div>
-
-              {/* Game mode switcher */}
-              <span className="toolbar-divider desktop-only" />
-              <div className="top-mode-pills" aria-label="Game mode">
-                {([
-                  { id: 'human-vs-human', label: 'Human vs Human', title: 'Local board for two players', icon: <IconUsers /> },
-                  { id: 'human-vs-ai', label: 'Human vs AI', title: 'Play against the engine', icon: <IconBot /> },
-                  { id: 'ai-vs-ai', label: 'AI vs AI', title: 'Watch two engines play', icon: <IconZap /> },
-                ] as const).map(({ id, label, title, icon }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    className={`gc-pill ${gameMode === id ? 'gc-pill-active' : ''}`}
-                    aria-pressed={gameMode === id}
-                    title={title}
-                    onClick={() => {
-                      if (id !== gameMode || workspaceMode !== 'play') handleModeChange(id)
-                    }}
-                  >
-                    <span className="gc-pill-icon">{icon}</span>
-                    {label}
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  className="gc-pill"
+                  onClick={() => setActiveView('training')}
+                >
+                  <span className="gc-pill-icon"><IconCrown /></span>
+                  Training
+                </button>
               </div>
             </div>
 
@@ -3841,6 +3856,17 @@ function App() {
               gameNodes={gameTree.nodesSnapshot}
               evaluations={evaluationsByFen}
               pgnHeaders={pgnHeaders}
+            />
+          )}
+
+          {showJournalModal && (
+            <JournalModal
+              open
+              onSkip={() => setShowJournalModal(false)}
+              onSave={(entry) => {
+                recordJournalEntry(currentGameId, entry)
+                setShowJournalModal(false)
+              }}
             />
           )}
         </Suspense>

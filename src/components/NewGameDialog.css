@@ -322,6 +322,16 @@
     min-height: 82px;
 }
 
+.journal-modal {
+    max-width: 480px;
+}
+
+.journal-modal .journal-field {
+    height: 64px;
+    min-height: 56px;
+    margin-top: 0.4rem;
+}
+
 /* ── Dialog backdrop ───────────────────────────────── */
 .dialog-backdrop {
     position: fixed;
