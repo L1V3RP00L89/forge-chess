@@ -30,8 +30,8 @@ Grounded in what's already shipped (565 commits, spanning 2026-01-29 to 2026-06-
 | M1  | Core play/analysis/review loop (board, engine worker, PGN/FEN, opening explorer, tablebase, review pass)                                     | **Shipped** — this is the bulk of the 565-commit history                                               | Priya (maintain)     |
 | M2  | Mobile/responsive polish (touch targets, dialog layout, panel collapsing)                                                                    | **Ongoing** — most recent commit stream before the gap was mobile-focused `fix:`/`style:` work         | Dara → Priya         |
 | M3  | Re-baseline after the dormant period                                                                                                         | **Done** — `npm audit` (0 vulnerabilities), lint, tests (192/192), and build all verified clean as of 2026-08-17 | Priya                |
-| M4  | Coach-mode pedagogy pass — audit plain-language guidance against what an adult improver actually needs (plans/patterns over raw eval)        | **Scoped** — see M4 Detail below; awaiting Renee/user pushback before implementation                    | Renee → Priya → Dara |
-| M5  | Review/accuracy framing pass — reframe critical-moment surfacing around "worth an adult's limited study time" rather than raw centipawn loss | **Not started**                                                                                        | Renee → Priya        |
+| M4  | Coach-mode pedagogy pass — audit plain-language guidance against what an adult improver actually needs (plans/patterns over raw eval)        | **Scoped, Renee's pushback folded in** — Critical Moments cap blocked on M5's selection criteria, rest is unblocked | Renee → Priya → Dara |
+| M5  | Review/accuracy framing pass — reframe critical-moment surfacing around "worth an adult's limited study time" rather than raw centipawn loss | **Scoped** — see M5 Detail below; unblocks M4's Critical Moments cap once shipped                      | Renee → Priya        |
 | M6  | Opening explorer presentation — thin, memorable repertoire framing vs. theory-dump                                                           | **Not started**                                                                                        | Renee → Dara → Priya |
 | M7  | Full-strength CDN engine profile completion (113MB builds, opt-in, LFS-aware deploy)                                                         | **Partially shipped** — commit history shows LFS/CDN work already done; confirm it's still functioning | Priya                |
 | M8  | Training feature — built-in habit-tracking/coaching plan (see below)                                                                         | **In progress** — DB foundation wired in (games recorded on completion/import); post-review journal modal shipped; Training tab and drill queue not yet started | Renee → Dara → Priya |
@@ -67,6 +67,32 @@ Sourced directly from a real coach's take on 2026-era AI chess tools (`Team Inbo
 **Renee's pushback (2026-08-17):** approved with the three changes above folded in — staged reveal instead of binary, cap logic shared with M5 rather than built twice, and journal count scaled to game length. Full review keeps `describeBestMove`'s eventual rewrite (once unblocked) grounded in plans/patterns rather than generic move commentary — flagged for a later content pass once the reveal ships, not blocking this scope.
 
 **Owner sequencing:** M5's critical-moment selection criteria lands first; then Dara builds the staged reveal interaction and the redesigned Critical Moments list; Priya implements the takeaway cap, reveal-state logic, and journal count scaling.
+
+## M5 Detail — Review/Accuracy Framing Pass
+
+Scoped to unblock M4's Critical Moments cap, which needs this milestone's selection criteria rather than duplicating its own. Priya audited the current review pipeline; Renee defines what "worth an adult's limited study time" actually means in terms of the data available.
+
+**What exists today** (`src/App.tsx:1929-1936`, `src/engine/analysis.ts`):
+- The Critical Moments list is already curated, not a raw dump — it filters to `inaccuracy`/`mistake`/`blunder`, sorts by **raw centipawn loss** (most cp lost first), and hard-caps at 5.
+- No awareness of game phase, material, or whether the position was already decided before the flagged move — a blunder played in a position that was already 95%-winning or 95%-lost gets ranked identically to one in a balanced position.
+- Win-probability conversion already exists (`cpToWhiteWinrate`, `src/engine/analysis.ts:426-430`) but is only used for the winrate graph — it's never joined onto review rows. WDL data exists per-position but isn't persisted per move either.
+- The Review tab (where Critical Moments lives) is **not gated by Coach/Pro mode** — whatever M5 ships has to work for both audiences, not just one.
+
+**Renee's criteria for "worth studying":**
+- **Rank by win-probability swing, not raw centipawn swing.** A 100cp swing from +200 to +300 barely changes the outcome; the same 100cp swing from +20 to -80 flips the game. Cp-magnitude ranking treats those as identical — that's the core framing bug the article's "worth an adult's limited study time" line is pointing at.
+- **Suppress already-decided positions.** If the position was already crushing (or already lost) *before* the flagged move — say, mover's win probability was already ≥92% or ≤8% — don't surface it. A blunder that throws away a position already lost teaches nothing; this is the exact "blunder in an already-lost position" example from the M4 pushback, generalized into the shared rule M4 needs.
+- **Surface the turning point, not the pile-up.** If a game has several similar-severity mistakes after the position is already decided, only the first one (the actual turning point) is worth showing — later ones are noise from the same already-lost thread.
+- **Cap tied to time control, not a flat 5.** Replace the hardcoded cap of 5 with the same tiered cap M4 needs (default 3, dropping to 1 for blitz/bullet) — this is the literal shared function M4 is blocked on.
+
+**M5 scope, concretely:**
+- Extend the review pipeline to compute win probability (via the existing `cpToWhiteWinrate`) before and after each move, not just `deltaCp` — Priya.
+- Replace the Critical Moments sort key with win-probability swing instead of raw `deltaCp` magnitude.
+- Add already-decided suppression using the before-move win-probability threshold above.
+- Replace the hardcoded cap-of-5 with a shared, time-control-aware cap function — this becomes the function M4's own cap reuses, closing that dependency.
+- No UI/visual redesign needed for M5 itself — same Critical Moments card, re-ranked and re-capped. Dara isn't required to scope this pass; only Priya's implementation changes.
+- Explicitly out of scope: any change to how individual moves are labeled (`qualityFromDelta`'s best/good/inaccuracy/mistake/blunder buckets stay as-is) — this pass changes *which* moments get surfaced, not how a single move is graded.
+
+**Owner sequencing:** Renee's criteria above are final pending her own review pass (this was scoped through the same audit-and-propose process as M4, not yet circulated back to her for confirmation); Priya implements once confirmed. Ships before M4's Critical Moments cap, which depends on this.
 
 ## M8 Detail — Training Feature
 
