@@ -5,6 +5,7 @@ import {
   buildWdlSeries,
   buildWinrateSeries,
   buildReviewRows,
+  criticalMomentsLimitForTimeControl,
   filterReviewRowsBySide,
   formatWhitePovEvaluation,
   isReviewEvaluationSufficient,
@@ -12,6 +13,7 @@ import {
   mergeEvaluationSnapshot,
   pvToSan,
   scoreToCp,
+  selectCriticalMoments,
   summarizeAccuracy,
   summarizeReview,
   uciToSan,
@@ -1926,13 +1928,13 @@ function App() {
     : reviewGameDisabledReason
       ? `Review Game unavailable. ${reviewGameDisabledReason}`
       : 'Review Game'
+  const criticalMomentsLimit = useMemo(
+    () => criticalMomentsLimitForTimeControl(pgnHeaders.TimeControl),
+    [pgnHeaders.TimeControl],
+  )
   const criticalReviewRows = useMemo(
-    () => visibleReviewRows
-      .filter(row => row.quality === 'inaccuracy' || row.quality === 'mistake' || row.quality === 'blunder')
-      .filter(row => typeof row.deltaCp === 'number')
-      .sort((a, b) => (a.deltaCp ?? 0) - (b.deltaCp ?? 0))
-      .slice(0, 5),
-    [visibleReviewRows],
+    () => selectCriticalMoments(visibleReviewRows, criticalMomentsLimit),
+    [visibleReviewRows, criticalMomentsLimit],
   )
   const criticalMomentsEmptyCopy = visibleReviewRows.length === 0
     ? 'Run Review Game after a line is analyzed to surface the biggest turning points.'

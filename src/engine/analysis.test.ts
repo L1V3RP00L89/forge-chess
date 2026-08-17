@@ -5,16 +5,20 @@ import {
   buildReviewRows,
   buildWdlSeries,
   buildWinrateSeries,
+  cpToWhiteWinrate,
+  criticalMomentsLimitForTimeControl,
   filterReviewRowsBySide,
   formatWhitePovEvaluation,
   isTerminalPositionFen,
   isReviewEvaluationSufficient,
   mergeEvaluationSnapshot,
   scoreToCp,
+  selectCriticalMoments,
   shouldReplaceEvaluationSnapshot,
   summarizeAccuracy,
   summarizeReview,
   uciToSan,
+  type ReviewRow,
 } from './analysis'
 
 describe('review analysis helpers', () => {
@@ -347,6 +351,102 @@ describe('review analysis helpers', () => {
 
     expect(buildWinrateSeries([move], new Map([[rootFen, { cp: Number.NaN }], [afterFen, { cp: Number.POSITIVE_INFINITY }]]), rootFen)).toEqual([])
     expect(buildWdlSeries([move], new Map([[rootFen, { cp: 0, wdl: { w: 1, d: Number.NaN, l: 1 } }]]), rootFen)).toEqual([])
+  })
+
+  it('computes white-POV win probability before and after each reviewed move', () => {
+    const game = new Chess()
+    const rootFen = game.fen()
+    const move = game.move('e4')
+    const afterFen = game.fen()
+
+    const rows = buildReviewRows(
+      [move],
+      new Map([
+        [rootFen, { cp: 30 }],
+        [afterFen, { cp: -20 }],
+      ]),
+      rootFen,
+    )
+
+    // White to move before, cp 30 white-POV; black to move after, cp -20
+    // black-POV which is +20 white-POV.
+    expect(rows[0]?.winrateBefore).toBeCloseTo(cpToWhiteWinrate(30), 5)
+    expect(rows[0]?.winrateAfter).toBeCloseTo(cpToWhiteWinrate(20), 5)
+  })
+
+  describe('critical moments selection (M5)', () => {
+    function row(overrides: Partial<ReviewRow> & Pick<ReviewRow, 'ply' | 'quality' | 'winrateBefore' | 'winrateAfter'>): ReviewRow {
+      return {
+        moveNumber: overrides.ply,
+        sideToMove: 'w',
+        san: `move${overrides.ply}`,
+        uci: `u${overrides.ply}`,
+        confidence: 'standard',
+        ...overrides,
+      }
+    }
+
+    it('suppresses a blunder that stays on the same already-decided side', () => {
+      const rows = [row({ ply: 1, quality: 'blunder', winrateBefore: 3, winrateAfter: 2 })]
+      expect(selectCriticalMoments(rows, 3)).toEqual([])
+    })
+
+    it('keeps a move that throws away an already-winning position', () => {
+      const rows = [row({ ply: 1, quality: 'blunder', winrateBefore: 96, winrateAfter: 5 })]
+      expect(selectCriticalMoments(rows, 3)).toHaveLength(1)
+    })
+
+    it('keeps a move into contested range even from a decided start', () => {
+      const rows = [row({ ply: 1, quality: 'mistake', winrateBefore: 95, winrateAfter: 40 })]
+      expect(selectCriticalMoments(rows, 3)).toHaveLength(1)
+    })
+
+    it('collapses a pile-up within the same already-decided stretch to the biggest swing', () => {
+      const rows = [
+        row({ ply: 1, quality: 'mistake', winrateBefore: 15, winrateAfter: 4 }),
+        row({ ply: 3, quality: 'blunder', winrateBefore: 4, winrateAfter: 1 }),
+      ]
+      const result = selectCriticalMoments(rows, 3)
+      expect(result).toHaveLength(1)
+      expect(result[0]?.ply).toBe(1)
+    })
+
+    it('treats the cap as a ceiling, not a padding target', () => {
+      const rows = [row({ ply: 1, quality: 'mistake', winrateBefore: 60, winrateAfter: 40 })]
+      expect(selectCriticalMoments(rows, 3)).toHaveLength(1)
+    })
+
+    it('ranks by win-probability swing and caps to the given limit', () => {
+      const rows = [
+        row({ ply: 1, quality: 'mistake', winrateBefore: 55, winrateAfter: 45 }),
+        row({ ply: 2, quality: 'blunder', winrateBefore: 70, winrateAfter: 20 }),
+        row({ ply: 3, quality: 'inaccuracy', winrateBefore: 52, winrateAfter: 48 }),
+      ]
+      expect(selectCriticalMoments(rows, 2).map(r => r.ply)).toEqual([2, 1])
+    })
+  })
+
+  describe('critical moments limit for time control', () => {
+    it('caps blitz/bullet time controls to a single takeaway', () => {
+      expect(criticalMomentsLimitForTimeControl('180+2')).toBe(1)
+      expect(criticalMomentsLimitForTimeControl('60')).toBe(1)
+    })
+
+    it('gives longer time controls the standard cap', () => {
+      expect(criticalMomentsLimitForTimeControl('600+5')).toBe(3)
+      expect(criticalMomentsLimitForTimeControl('1800')).toBe(3)
+    })
+
+    it('reads the seconds after the slash in moves/seconds time controls, not the move count', () => {
+      // "40/180" is 40 moves in 180 seconds — blitz-fast, not 40s.
+      expect(criticalMomentsLimitForTimeControl('40/180')).toBe(1)
+      expect(criticalMomentsLimitForTimeControl('40/9000')).toBe(3)
+    })
+
+    it('defaults to the standard cap for unknown or missing time controls', () => {
+      expect(criticalMomentsLimitForTimeControl('-')).toBe(3)
+      expect(criticalMomentsLimitForTimeControl(undefined)).toBe(3)
+    })
   })
 
   it('formats a single UCI move as SAN for the current position', () => {

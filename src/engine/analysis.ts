@@ -32,6 +32,10 @@ export type ReviewRow = {
   deltaCp?: number
   evalDepth?: number
   confidence: 'pending' | 'shallow' | 'standard' | 'deep'
+  /** White-POV win probability (0-100) of the position before this move. */
+  winrateBefore?: number
+  /** White-POV win probability (0-100) of the position after this move. */
+  winrateAfter?: number
 }
 
 export type AccuracySummary = {
@@ -306,6 +310,8 @@ export function buildReviewRows(
       : typeof evalDepth === 'number' && evalDepth >= 20
         ? 'deep'
         : 'standard'
+    const winrateBefore = cpToWhiteWinrate(normalizeWhitePovCp(beforeFen, before))
+    const winrateAfter = cpToWhiteWinrate(normalizeWhitePovCp(afterFen, after))
 
     return {
       ply: index + 1,
@@ -319,6 +325,8 @@ export function buildReviewRows(
       evalDepth,
       confidence,
       quality: shallow ? 'pending' : qualityFromDelta(deltaCp),
+      winrateBefore,
+      winrateAfter,
     }
   })
 }
@@ -423,7 +431,7 @@ function normalizeWhitePovWdl(fen: string, wdl: { w: number; d: number; l: numbe
   }
 }
 
-function cpToWhiteWinrate(cp: number): number {
+export function cpToWhiteWinrate(cp: number): number {
   const limited = Math.max(-2000, Math.min(2000, cp))
   const raw = 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * limited)) - 1)
   return Math.max(0, Math.min(100, raw))
@@ -466,6 +474,80 @@ export function buildWinrateSeries(
   })
 
   return series
+}
+
+// ── Critical Moments selection (M5) ─────────────────────────────────────────
+// "Worth an adult's limited study time" rather than raw centipawn loss:
+// rank by win-probability swing, drop moves that didn't change who's
+// practically winning, collapse repeat mistakes from the same already-decided
+// stretch, and cap to a small, time-control-aware ceiling.
+
+const DECIDED_HIGH_WINRATE = 92
+const DECIDED_LOW_WINRATE = 8
+
+function decidedSide(winrate: number): 'white' | 'black' | null {
+  if (winrate >= DECIDED_HIGH_WINRATE) return 'white'
+  if (winrate <= DECIDED_LOW_WINRATE) return 'black'
+  return null
+}
+
+export function selectCriticalMoments(rows: ReviewRow[], limit: number): ReviewRow[] {
+  const candidates = rows
+    .filter(row => row.quality === 'inaccuracy' || row.quality === 'mistake' || row.quality === 'blunder')
+    .filter(row => isFiniteNumber(row.winrateBefore) && isFiniteNumber(row.winrateAfter))
+    // Suppress moves that stayed on the same already-decided side before and
+    // after — e.g. a blunder deep in an already-lost position teaches
+    // nothing. A move that FLIPS which side is winning (even from a
+    // lopsided starting position — "threw away the win") is never
+    // suppressed here, since that's exactly the moment worth studying.
+    .filter(row => {
+      const before = decidedSide(row.winrateBefore!)
+      const after = decidedSide(row.winrateAfter!)
+      return !(before && after && before === after)
+    })
+
+  // Collapse consecutive candidates that land in the same already-decided
+  // stretch (position stays pinned to the same side after each) down to the
+  // single biggest swing, so a pile-up of similar-severity mistakes from one
+  // lost thread doesn't crowd out other moments. A move into contested range
+  // (decidedSide === null) always starts a fresh group.
+  const deduped: ReviewRow[] = []
+  let groupSide: 'white' | 'black' | null = null
+  for (const row of candidates.sort((a, b) => a.ply - b.ply)) {
+    const afterSide = decidedSide(row.winrateAfter!)
+    const previous = deduped.at(-1)
+    if (afterSide && afterSide === groupSide && previous) {
+      if (Math.abs(row.winrateAfter! - row.winrateBefore!) > Math.abs(previous.winrateAfter! - previous.winrateBefore!)) {
+        deduped[deduped.length - 1] = row
+      }
+    } else {
+      deduped.push(row)
+    }
+    groupSide = afterSide
+  }
+
+  return deduped
+    .sort((a, b) => Math.abs(b.winrateAfter! - b.winrateBefore!) - Math.abs(a.winrateAfter! - a.winrateBefore!))
+    .slice(0, Math.max(0, limit))
+}
+
+/**
+ * Ceiling for how many Critical Moments to surface, not a target — fewer
+ * genuine candidates just means a shorter list. Blitz/bullet games get a
+ * tighter cap per the "1 takeaway if it's blitz" principle; anything else
+ * (including unknown/unlabeled time controls) gets the standard cap.
+ */
+export function criticalMomentsLimitForTimeControl(timeControl?: string): number {
+  // PGN TimeControl: "9000" (seconds), "9000+30" (+increment), or
+  // "40/9000" (moves/seconds — the base clock is the number AFTER the
+  // slash, not the move count before it). "-" means unknown.
+  const firstPhase = (timeControl ?? '').trim().split(':')[0]
+  const secondsPart = firstPhase.includes('/') ? firstPhase.split('/')[1] : firstPhase
+  const base = /^\d+/.exec(secondsPart ?? '')?.[0]
+  if (!base) return 3
+  const baseSeconds = Number(base)
+  if (!Number.isFinite(baseSeconds) || baseSeconds <= 0) return 3
+  return baseSeconds < 600 ? 1 : 3
 }
 
 export function buildWdlSeries(
