@@ -55,14 +55,18 @@ Sourced directly from a real coach's take on 2026-era AI chess tools (`Team Inbo
 5. **Active learning** — manually recording your own takeaways beats passively scrolling AI-generated suggestions.
    Audit: the shipped `JournalModal` ("2 things that went well" / "2 things to work on") already matches this closely — manual free-text entry, nothing AI-generated to passively scroll. Likely needs only a copy/framing pass, not structural change.
 
-**M4 scope, concretely:**
-- Cap Critical Moments to a small default in Coach mode (e.g. 3, dropping to 1 for blitz/bullet time controls) rather than listing every flagged move — Priya.
-- Add a reveal-gated Coach card: show only the eval signal by default, with the best move, predicted reply, and top line hidden behind an explicit "Show the answer" action — Dara owns the interaction pattern, Priya the state/logic.
+**M4 scope, concretely (revised after Renee's pushback — see below):**
+- Cap Critical Moments to a small default in Coach mode (e.g. 3, dropping to 1 for blitz/bullet time controls) rather than listing every flagged move — Priya. **Blocked on M5**: the selection criteria must be "worth an adult's limited study time," not raw centipawn delta (a blunder in an already-lost position isn't worth surfacing over a small inaccuracy that changed the plan) — M4 and M5 need one shared selection function, not two. Sequence M5's criteria before building this cap.
+- Add a **staged, three-tier reveal** in the Coach card, not a single "Show the answer" button: (1) a plan/idea-level hint ("there's a weakness on the back rank"), (2) a square/piece-level hint, (3) the full best move + predicted reply + top line. A binary reveal collapses to "click through it every time" for players below ~1400 who can't yet find the move unaided — staged hints (per Yusupov, the Woodpecker Method) give productive struggle without dead-ending into frustration. Dara owns the interaction pattern (can present as one control, doesn't need three separate buttons visually), Priya the state/logic.
 - Gate `describeBestMove`'s one-sentence explanation behind the same reveal, rather than surfacing it alongside a hidden move.
+- Scale the **JournalModal** prompt count to match the takeaway cap instead of a hardcoded 2-and-2: 1 positive / 1 improve for blitz/bullet games, 2/2 otherwise. Fixed 2-and-2 regardless of game length directly contradicts the "1 takeaway for blitz" principle this whole pass is built on — Priya, small change.
+- Have the reveal interaction (which hint tier was used, "found it"/"missed it") emit a clean event, without wiring it anywhere yet — this is exactly the signal M8's Woodpecker drill queue needs later, and capturing it now avoids a retrofit. Not scope creep to build the consumer, just don't drop the data on the floor — Priya.
 - No change to the review pass's underlying analysis/data model — this is a disclosure/presentation pass, not new analysis capability.
 - Explicitly out of scope for M4: opening repertoires (M6) and any course/theory content system (not planned).
 
-**Owner sequencing:** Renee reviews this scope against the article and adult-improver pedagogy before build starts; Dara owns the reveal-gate interaction and the redesigned Critical Moments list; Priya implements the takeaway cap and reveal-state logic.
+**Renee's pushback (2026-08-17):** approved with the three changes above folded in — staged reveal instead of binary, cap logic shared with M5 rather than built twice, and journal count scaled to game length. Full review keeps `describeBestMove`'s eventual rewrite (once unblocked) grounded in plans/patterns rather than generic move commentary — flagged for a later content pass once the reveal ships, not blocking this scope.
+
+**Owner sequencing:** M5's critical-moment selection criteria lands first; then Dara builds the staged reveal interaction and the redesigned Critical Moments list; Priya implements the takeaway cap, reveal-state logic, and journal count scaling.
 
 ## M8 Detail — Training Feature
 
