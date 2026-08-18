@@ -534,6 +534,16 @@ function resultLabel(result: HistoricalSampleGame['result']): string {
   return 'Draw'
 }
 
+const PGN_UNKNOWN_NAME_PATTERN = /^\?+$/
+
+function pgnPlayerName(name: string | undefined, elo: string | undefined): string {
+  const trimmedName = name?.trim() ?? ''
+  if (!trimmedName || PGN_UNKNOWN_NAME_PATTERN.test(trimmedName)) return ''
+  const trimmedElo = elo?.trim() ?? ''
+  if (!trimmedElo || PGN_UNKNOWN_NAME_PATTERN.test(trimmedElo)) return trimmedName
+  return `${trimmedName} (${trimmedElo})`
+}
+
 function clamp01(value: number): number {
   if (value < 0) return 0
   if (value > 1) return 1
@@ -3133,6 +3143,13 @@ function App() {
     )
   const renderedBoardWidth = isMobile ? boardWidth : Math.max(260, boardWidth)
   const turnLabel = game.turn() === 'w' ? 'White to move' : 'Black to move'
+  const whitePlayerName = pgnPlayerName(pgnHeaders.White, pgnHeaders.WhiteElo)
+  const blackPlayerName = pgnPlayerName(pgnHeaders.Black, pgnHeaders.BlackElo)
+  const showPgnPlayerNames = Boolean(whitePlayerName || blackPlayerName)
+  const topPlayerName = orientation === 'white' ? blackPlayerName : whitePlayerName
+  const bottomPlayerName = orientation === 'white' ? whitePlayerName : blackPlayerName
+  const topPlayerColor = orientation === 'white' ? 'black' : 'white'
+  const bottomPlayerColor = orientation === 'white' ? 'white' : 'black'
   const moveNumberLabel = `Move ${fen.split(/\s+/)[5] ?? '1'}`
   const currentMoveQuality = gameTree.current.quality
   const gameModeLabel = gameMode === 'human-vs-human'
@@ -3816,6 +3833,12 @@ function App() {
                 </div>
               </div>
             )}
+            {showPgnPlayerNames && (
+              <div className={`board-player-row board-player-${topPlayerColor}`}>
+                <span className={`board-player-swatch ${topPlayerColor}`} aria-hidden="true" />
+                <span className="board-player-name">{topPlayerName || (topPlayerColor === 'white' ? 'White' : 'Black')}</span>
+              </div>
+            )}
             <div className="board-wrap">
               {engineEnabled && showWdl && (() => {
                 const evalSnap = evaluationsByFen.get(fen)
@@ -3911,6 +3934,12 @@ function App() {
                 )}
               </div>
             </div>
+            {showPgnPlayerNames && (
+              <div className={`board-player-row board-player-${bottomPlayerColor}`}>
+                <span className={`board-player-swatch ${bottomPlayerColor}`} aria-hidden="true" />
+                <span className="board-player-name">{bottomPlayerName || (bottomPlayerColor === 'white' ? 'White' : 'Black')}</span>
+              </div>
+            )}
           </div>
         </section>
 
