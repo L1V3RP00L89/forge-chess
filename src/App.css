@@ -2318,9 +2318,8 @@ body.resizing * {
 .panel .critical-moment-main {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.45rem;
+  grid-template-columns: 1fr;
+  gap: 0.22rem;
   padding: 0;
   border: 0;
   background: transparent;
@@ -2387,11 +2386,10 @@ body.resizing * {
 
 .critical-moment-impact {
   font-family: var(--font-mono);
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .critical-moment-best {
-  grid-column: 1 / -1;
   min-width: 0;
   color: var(--info);
   font-size: 0.68rem;
@@ -2590,12 +2588,52 @@ body.resizing * {
 .review-move-list li {
   padding: 0;
   overflow: hidden;
+  flex-shrink: 0;
+}
+
+.review-move-list-disclosure {
+  margin-top: var(--space-md);
+}
+
+.review-move-list-disclosure summary {
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  color: var(--text-tertiary);
+  padding: 0.4rem 0.1rem;
+  list-style: none;
+}
+
+.review-move-list-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.review-move-list-disclosure summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 0.4rem;
+  transition: transform 120ms ease;
+}
+
+.review-move-list-disclosure[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.review-move-list-disclosure summary:hover {
+  color: var(--text-secondary);
+}
+
+.review-move-list-disclosure .review-move-list {
+  max-height: 180px;
+  margin-top: 0.3rem;
 }
 
 .review-move-row {
   width: 100%;
   display: grid !important;
-  grid-template-columns: auto auto minmax(0, 1fr) minmax(4.6rem, auto) auto auto auto;
+  grid-template-columns: auto auto minmax(0, 1fr) minmax(4.6rem, auto) auto;
   gap: 0.32rem;
   align-items: center;
   padding: 0.32rem 0.48rem;
@@ -2637,9 +2675,8 @@ body.resizing * {
   .review-move-row {
     grid-template-columns: auto auto minmax(0, 1fr) auto;
     grid-template-areas:
-      "index san uci quality"
-      "index best best quality"
-      "index impact confidence quality";
+      "index san best quality"
+      "index impact impact quality";
     row-gap: 0.16rem;
   }
 
@@ -2652,10 +2689,6 @@ body.resizing * {
     grid-area: san;
   }
 
-  .review-move-row .move-uci {
-    grid-area: uci;
-  }
-
   .review-move-row .move-best {
     grid-area: best;
     min-width: 0;
@@ -2663,10 +2696,6 @@ body.resizing * {
 
   .review-move-row .move-impact {
     grid-area: impact;
-  }
-
-  .review-move-row .move-confidence {
-    grid-area: confidence;
   }
 
   .review-move-row .move-quality {
@@ -2711,35 +2740,11 @@ body.resizing * {
   font-variant-numeric: tabular-nums;
 }
 
-.move-uci {
-  font-family: var(--font-mono);
-  opacity: 0.5;
-  font-size: 0.66rem !important;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .move-impact {
   font-family: var(--font-mono);
   color: var(--text-muted) !important;
   font-size: 0.66rem !important;
   white-space: nowrap;
-}
-
-.move-confidence {
-  color: var(--text-muted) !important;
-  font-size: 0.64rem !important;
-  white-space: nowrap;
-}
-
-.confidence-shallow {
-  color: #f0b429 !important;
-}
-
-.confidence-deep {
-  color: var(--accent) !important;
 }
 
 .move-quality {

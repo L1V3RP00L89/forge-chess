@@ -358,6 +358,15 @@ function reviewImpactLabel(deltaCp: number | undefined): string {
   return `Lost ${(Math.abs(deltaCp) / 100).toFixed(2)}`
 }
 
+function criticalMomentImpactLabel(deltaCp: number | undefined): string {
+  if (typeof deltaCp !== 'number') return 'Still evaluating'
+  const lost = Math.abs(deltaCp) / 100
+  if (lost < 1) return `Cost a small edge (-${lost.toFixed(2)})`
+  if (lost < 3) return `Cost about a pawn's worth (-${lost.toFixed(2)})`
+  if (lost < 5) return `Cost a minor piece's worth (-${lost.toFixed(2)})`
+  return `Cost a piece or more (-${lost.toFixed(2)})`
+}
+
 function reviewConfidenceLabel(confidence: 'pending' | 'shallow' | 'standard' | 'deep', depth: number | undefined): string {
   if (confidence === 'pending') return 'Needs eval'
   if (confidence === 'shallow') return depth ? `Shallow d${depth}` : 'Shallow'
@@ -4468,19 +4477,6 @@ function App() {
                       <span className="chip-blunder">Blunder {reviewSummary.blunder}</span>
                       <span className="chip-pending">Pending {reviewSummary.pending}</span>
                     </div>
-                    {visibleReviewRows.length > 0 ? (
-                      <ReviewMoveList
-                        rows={visibleReviewRows}
-                        nodes={mainLineNodes}
-                        currentNodeId={gameTree.current.id}
-                        onSelectNode={navigateReviewNode}
-                      />
-                    ) : (
-                      <div className="empty-state review-empty-state">
-                        <span className="empty-state-icon"><IconSearch /></span>
-                        <p>Add moves or import a PGN, then run Review Game.</p>
-                      </div>
-                    )}
                   </div>
                   <div className="critical-moments-card">
                     <h3><span className="section-icon"><IconAlert /></span> Critical Moments</h3>
@@ -4515,7 +4511,7 @@ function App() {
                                   <span>{REVIEW_LABELS[row.quality]}</span>
                                 </span>
                                 <span className="critical-moment-impact">
-                                  {reviewImpactLabel(row.deltaCp)}
+                                  {criticalMomentImpactLabel(row.deltaCp)}
                                 </span>
                                 {bestMoveHint && (
                                   <span className="critical-moment-best">
@@ -4545,6 +4541,22 @@ function App() {
                       </p>
                     )}
                   </div>
+                  {visibleReviewRows.length > 0 ? (
+                    <details className="review-move-list-disclosure">
+                      <summary>All {visibleReviewRows.length} move{visibleReviewRows.length === 1 ? '' : 's'}</summary>
+                      <ReviewMoveList
+                        rows={visibleReviewRows}
+                        nodes={mainLineNodes}
+                        currentNodeId={gameTree.current.id}
+                        onSelectNode={navigateReviewNode}
+                      />
+                    </details>
+                  ) : (
+                    <div className="empty-state review-empty-state">
+                      <span className="empty-state-icon"><IconSearch /></span>
+                      <p>Add moves or import a PGN, then run Review Game.</p>
+                    </div>
+                  )}
                   <div className="opening-intel-card review-book-card">
                     <h3><span className="section-icon"><IconSearch /></span> Book vs Engine</h3>
                     <p className="panel-copy small command-summary">
@@ -4878,12 +4890,8 @@ const ReviewMoveList = memo(function ReviewMoveList({ rows, nodes, currentNodeId
             >
               <span className="move-index">{movePrefix}</span>
               <strong>{row.san}</strong>
-              <span className="move-uci">{row.uci}</span>
               <span className="move-best">{bestMoveHint ?? ''}</span>
               <span className="move-impact">{impactLabel}</span>
-              <span className={`move-confidence confidence-${row.confidence}`}>
-                {confidenceLabel}
-              </span>
               <span className="move-quality">{qualityLabel}</span>
             </button>
           </li>
