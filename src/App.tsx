@@ -509,7 +509,7 @@ function describeBestMove(
     : null
   const gapLabel = formatCandidateGap(gapCp)
 
-  let summary = 'Best engine candidate; use the line to check the plan.'
+  let summary = 'No single theme jumps out — walk the line and see what changes for your pieces.'
   if (san.includes('#')) summary = 'Forces mate. The follow-up line matters more than material.'
   else if (san.includes('+')) summary = 'Creates a forcing move, so the reply choices are narrower.'
   else if (move.captured) summary = 'Starts with a capture; compare the recapture in the principal variation.'
@@ -518,8 +518,8 @@ function describeBestMove(
   else if (openingTopMove === moveUci) summary = 'Matches the leading book move from the selected opening source.'
   else if (move.piece === 'p' && centerSquares.has(move.to)) summary = 'Claims central space and opens lines for pieces.'
   else if ((move.piece === 'n' || move.piece === 'b') && (fromRank === '1' || fromRank === '8')) summary = 'Develops a piece while keeping the position flexible.'
-  else if (gapCp !== null && gapCp >= 80) summary = 'The top candidate is meaningfully ahead of the alternatives.'
-  else if (gapCp !== null && gapCp <= 20) summary = 'Several candidate moves are close; choose by plan and preparation.'
+  else if (gapCp !== null && gapCp >= 80) summary = 'This is clearly the strongest option here — worth learning why, not just playing it.'
+  else if (gapCp !== null && gapCp <= 20) summary = 'A few moves are roughly equal — this is a spot to trust your own plan.'
 
   return {
     tags: tags.length ? tags.slice(0, 4) : ['Candidate'],
