@@ -360,11 +360,19 @@ function reviewImpactLabel(deltaCp: number | undefined): string {
 
 function criticalMomentImpactLabel(deltaCp: number | undefined): string {
   if (typeof deltaCp !== 'number') return 'Still evaluating'
-  const lost = Math.abs(deltaCp) / 100
-  if (lost < 1) return `Cost a small edge (-${lost.toFixed(2)})`
-  if (lost < 3) return `Cost about a pawn's worth (-${lost.toFixed(2)})`
-  if (lost < 5) return `Cost a minor piece's worth (-${lost.toFixed(2)})`
-  return `Cost a piece or more (-${lost.toFixed(2)})`
+  const swing = Math.abs(deltaCp) / 100
+  // Most critical moments are the mover's own mistakes (deltaCp < 0), but a
+  // ±1-point swing can also be a strong move or a punished opponent blunder
+  // (deltaCp > 0) — phrase those as a gain, not a cost.
+  if (deltaCp > 0) {
+    if (swing < 3) return `Gained about a pawn's worth (+${swing.toFixed(2)})`
+    if (swing < 5) return `Gained a minor piece's worth (+${swing.toFixed(2)})`
+    return `Gained a piece or more (+${swing.toFixed(2)})`
+  }
+  if (swing < 1) return `Cost a small edge (-${swing.toFixed(2)})`
+  if (swing < 3) return `Cost about a pawn's worth (-${swing.toFixed(2)})`
+  if (swing < 5) return `Cost a minor piece's worth (-${swing.toFixed(2)})`
+  return `Cost a piece or more (-${swing.toFixed(2)})`
 }
 
 function reviewConfidenceLabel(confidence: 'pending' | 'shallow' | 'standard' | 'deep', depth: number | undefined): string {

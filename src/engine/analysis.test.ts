@@ -425,6 +425,24 @@ describe('review analysis helpers', () => {
       ]
       expect(selectCriticalMoments(rows, 2).map(r => r.ply)).toEqual([2, 1])
     })
+
+    it('surfaces a ±1-point swing on a non-mistake move (e.g. punishing an opponent blunder) as a secondary candidate', () => {
+      const rows = [row({ ply: 1, quality: 'best', deltaCp: 140, winrateBefore: 50, winrateAfter: 68 })]
+      expect(selectCriticalMoments(rows, 3)).toHaveLength(1)
+    })
+
+    it('does not surface a non-mistake move with less than a full point of swing', () => {
+      const rows = [row({ ply: 1, quality: 'good', deltaCp: -50, winrateBefore: 50, winrateAfter: 45 })]
+      expect(selectCriticalMoments(rows, 3)).toEqual([])
+    })
+
+    it('lets a mistake fill slots ahead of a bigger-swing point-swing candidate', () => {
+      const rows = [
+        row({ ply: 1, quality: 'mistake', deltaCp: -80, winrateBefore: 55, winrateAfter: 45 }),
+        row({ ply: 2, quality: 'best', deltaCp: 300, winrateBefore: 20, winrateAfter: 90 }),
+      ]
+      expect(selectCriticalMoments(rows, 1).map(r => r.ply)).toEqual([1])
+    })
   })
 
   describe('critical moments limit for time control', () => {

@@ -491,9 +491,23 @@ function decidedSide(winrate: number): 'white' | 'black' | null {
   return null
 }
 
+const POINT_SWING_CP = 100
+
+function isMistakeQuality(quality: ReviewLabel): boolean {
+  return quality === 'inaccuracy' || quality === 'mistake' || quality === 'blunder'
+}
+
+// A full point (~1 pawn) of eval swing on any move — not just the mover's
+// own mistakes — is a coaching heuristic worth surfacing: opponent blunders
+// you punished, or strong moves that swung the position, teach as much as
+// your own errors even though they're graded 'best'/'good'.
+function isPointSwing(row: ReviewRow): boolean {
+  return isFiniteNumber(row.deltaCp) && Math.abs(row.deltaCp!) >= POINT_SWING_CP
+}
+
 export function selectCriticalMoments(rows: ReviewRow[], limit: number): ReviewRow[] {
   const candidates = rows
-    .filter(row => row.quality === 'inaccuracy' || row.quality === 'mistake' || row.quality === 'blunder')
+    .filter(row => isMistakeQuality(row.quality) || isPointSwing(row))
     .filter(row => isFiniteNumber(row.winrateBefore) && isFiniteNumber(row.winrateAfter))
     // Suppress moves that stayed on the same already-decided side before and
     // after — e.g. a blunder deep in an already-lost position teaches
@@ -526,9 +540,16 @@ export function selectCriticalMoments(rows: ReviewRow[], limit: number): ReviewR
     groupSide = afterSide
   }
 
-  return deduped
-    .sort((a, b) => Math.abs(b.winrateAfter! - b.winrateBefore!) - Math.abs(a.winrateAfter! - a.winrateBefore!))
-    .slice(0, Math.max(0, limit))
+  const ranked = deduped.sort(
+    (a, b) => Math.abs(b.winrateAfter! - b.winrateBefore!) - Math.abs(a.winrateAfter! - a.winrateBefore!),
+  )
+
+  // Your own mistakes fill the slots first; a ±1-point swing that isn't one
+  // of your mistakes is a secondary signal that only fills what's left over.
+  const primary = ranked.filter(row => isMistakeQuality(row.quality))
+  const secondary = ranked.filter(row => !isMistakeQuality(row.quality))
+
+  return [...primary, ...secondary].slice(0, Math.max(0, limit))
 }
 
 // PGN TimeControl: "9000" (seconds), "9000+30" (+increment), or "40/9000"
