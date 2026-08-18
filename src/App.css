@@ -2343,9 +2343,11 @@ body.resizing * {
   align-self: center;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.28rem;
-  min-height: 1.95rem;
-  padding: 0.32rem 0.48rem;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0.32rem 0.6rem;
   border-radius: var(--radius-sm);
   border: 1px solid color-mix(in srgb, var(--info) 42%, var(--border-subtle));
   background: color-mix(in srgb, var(--info) 10%, transparent);
