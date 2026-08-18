@@ -71,10 +71,10 @@ import { useCloudEvaluation } from './hooks/useCloudEvaluation'
 import { useOpeningExplorer } from './hooks/useOpeningExplorer'
 import { derivePlayModeResult, useTrainingDb } from './hooks/useTrainingDb'
 import { useTablebase } from './hooks/useTablebase'
+import { useCoachReveal } from './hooks/useCoachReveal'
 import { ANALYSIS_SETTINGS_STORAGE_KEY } from './storageKeys'
 import type { GameMode, PlayerColor } from './components/NewGameDialog'
 import { WatchControls } from './components/WatchControls'
-import { emitCoachRevealEvent, type CoachRevealTier } from './engine/coachEvents'
 import { TrainingView } from './components/TrainingView'
 import { AI_SPEED_MS, type AiSpeed } from './components/aiSpeed'
 import { WdlBar } from './components/WdlBar'
@@ -741,12 +741,16 @@ function App() {
   const [engineProfile, setEngineProfile] = useState<EngineProfileId>(persistedSettings.engineProfile)
   const [analysisTab, setAnalysisTab] = useState<AnalysisTab>(persistedSettings.analysisTab)
   const [analysisExperience, setAnalysisExperience] = useState<AnalysisExperience>(persistedSettings.analysisExperience)
+  // Named once so the Coach/Pro split reads as intent everywhere it branches,
+  // instead of `analysisExperience === 'beginner'`/`'pro'` scattered ad hoc.
+  const isCoachMode = analysisExperience === 'beginner'
+  const isProMode = analysisExperience === 'pro'
 
   useEffect(() => {
-    if (analysisExperience === 'beginner' && analysisTab === 'engine-lab') {
+    if (isCoachMode && analysisTab === 'engine-lab') {
       setAnalysisTab('analyze')
     }
-  }, [analysisExperience, analysisTab])
+  }, [isCoachMode, analysisTab])
 
   const [reviewSideFilter, setReviewSideFilter] = useState<ReviewSideFilter>('both')
   const [activePreset, setActivePreset] = useState<AnalyzePresetId | null>(persistedSettings.activePreset)
@@ -1098,7 +1102,7 @@ function App() {
     lastBestMoveFen,
     lastPonderMoveFen,
   } = useStockfishEngine(engineProfile, engineEnabled)
-  const analysisStatusAnnouncement = `${engineName}. ${status}. ${analysisExperience === 'beginner' ? 'Coach view' : 'Pro view'}.`
+  const analysisStatusAnnouncement = `${engineName}. ${status}. ${isCoachMode ? 'Coach view' : 'Pro view'}.`
 
   // ── Training DB (M8 foundation) ──────────────────────
   const { recordGame, recordJournalEntry } = useTrainingDb()
@@ -1573,66 +1577,11 @@ function App() {
   )
 
   // ── Coach card staged reveal (M4) ─────────────────────
-  // Coach mode withholds the answer behind three tiers — plan/idea tags,
-  // then a destination-square nudge, then the full move/reply/line — so a
-  // sub-1400 player gets productive struggle instead of a spoiler curtain.
   // Pro mode is unaffected: it's an explicit opt-in to full transparency.
-  const coachRevealGated = analysisExperience === 'beginner'
+  const coachReveal = useCoachReveal(fen, coachBestMove, isCoachMode)
   const coachRevealDestinationSquare = coachBestMove && coachBestMove.length >= 4
     ? coachBestMove.slice(2, 4)
     : null
-  const coachRevealTierRef = useRef<CoachRevealTier>(0)
-  // Captured once, when the user first engages the reveal (tier 0 → 1) —
-  // not continuously synced from the live coachBestMove/fen, which can
-  // already reflect the *next* position by the time a cleanup runs.
-  const coachRevealSnapshotRef = useRef<{ fen: string; bestMoveUci: string | null } | null>(null)
-  const coachRevealOutcomeRecordedRef = useRef(false)
-  const [coachRevealTier, setCoachRevealTierState] = useState<CoachRevealTier>(0)
-  const [coachRevealOutcomeGiven, setCoachRevealOutcomeGiven] = useState(false)
-
-  useEffect(() => {
-    coachRevealTierRef.current = 0
-    coachRevealSnapshotRef.current = null
-    coachRevealOutcomeRecordedRef.current = false
-    setCoachRevealTierState(0)
-    setCoachRevealOutcomeGiven(false)
-
-    return () => {
-      // Leaving this position: if the user engaged the reveal but never
-      // said whether they'd found the move themselves, log it as unrated
-      // rather than dropping the signal on the floor (M8 hook).
-      if (coachRevealTierRef.current > 0 && !coachRevealOutcomeRecordedRef.current && coachRevealSnapshotRef.current) {
-        emitCoachRevealEvent({
-          ...coachRevealSnapshotRef.current,
-          tier: coachRevealTierRef.current,
-          outcome: 'unrated',
-        })
-      }
-    }
-  }, [fen])
-
-  const revealNextCoachTier = useCallback(() => {
-    if (!coachRevealSnapshotRef.current) {
-      coachRevealSnapshotRef.current = { fen, bestMoveUci: coachBestMove }
-    }
-    setCoachRevealTierState(tier => {
-      const next = Math.min(3, tier + 1) as CoachRevealTier
-      coachRevealTierRef.current = next
-      return next
-    })
-  }, [fen, coachBestMove])
-
-  const recordCoachRevealOutcome = useCallback((outcome: 'found' | 'missed') => {
-    coachRevealOutcomeRecordedRef.current = true
-    setCoachRevealOutcomeGiven(true)
-    emitCoachRevealEvent({
-      ...(coachRevealSnapshotRef.current ?? { fen, bestMoveUci: coachBestMove }),
-      tier: coachRevealTierRef.current,
-      outcome,
-    })
-  }, [fen, coachBestMove])
-
-  const effectiveCoachRevealTier: CoachRevealTier = coachRevealGated ? coachRevealTier : 3
 
   const toggleOpeningSpeed = useCallback((speed: OpeningSpeed) => {
     setOpeningSpeeds(previous => {
@@ -1664,7 +1613,7 @@ function App() {
 
   useEffect(() => {
     if (!revealOpeningIntelRef.current) return
-    if (analysisTab !== 'analyze' || analysisExperience !== 'pro') return
+    if (analysisTab !== 'analyze' || !isProMode) return
     revealOpeningIntelRef.current = false
 
     let settleTimer: ReturnType<typeof window.setTimeout> | null = null
@@ -1696,7 +1645,7 @@ function App() {
       if (settleTimer) window.clearTimeout(settleTimer)
       if (finalTimer) window.clearTimeout(finalTimer)
     }
-  }, [analysisExperience, analysisTab, viewport.width])
+  }, [isProMode, analysisTab, viewport.width])
 
   const resetSavedWorkspace = useCallback(() => {
     try {
@@ -4031,7 +3980,7 @@ function App() {
                   {([
                     { id: 'analyze', label: 'Analyze' },
                     { id: 'review', label: 'Review' },
-                    ...(analysisExperience === 'pro' ? [{ id: 'engine-lab', label: 'Engine Lab' } as const] : []),
+                    ...(isProMode ? [{ id: 'engine-lab', label: 'Engine Lab' } as const] : []),
                   ] as const).map(tab => (
                     <button
                       key={tab.id}
@@ -4055,7 +4004,7 @@ function App() {
                 >
                   <span>{engineName}</span>
                   <strong className={`status ${status}`}>{status}</strong>
-                  <span>{analysisExperience === 'beginner' ? 'Coach view' : 'Pro view'}</span>
+                  <span>{isCoachMode ? 'Coach view' : 'Pro view'}</span>
                 </div>
               )}
             </header>
@@ -4117,7 +4066,7 @@ function App() {
                         <span>Position</span>
                         <strong>{coachEvaluation}</strong>
                       </div>
-                      {effectiveCoachRevealTier >= 3 ? (
+                      {coachReveal.effectiveTier >= 3 ? (
                         <>
                           <div>
                             <span>Best move</span>
@@ -4136,25 +4085,25 @@ function App() {
                         <div className="coach-locked" aria-live="polite">
                           <span>Best move</span>
                           <strong>
-                            {effectiveCoachRevealTier === 2 && coachRevealDestinationSquare
+                            {coachReveal.effectiveTier === 2 && coachRevealDestinationSquare
                               ? `Something's worth doing on ${coachRevealDestinationSquare}`
                               : 'Think it through first'}
                           </strong>
                         </div>
                       )}
                     </div>
-                    {effectiveCoachRevealTier >= 3 && (
+                    {coachReveal.effectiveTier >= 3 && (
                       <p>{coachLineSan || 'Start analysis to get a candidate line.'}</p>
                     )}
                     {coachMoveInsight && (
                       <div className="coach-insight">
-                        {effectiveCoachRevealTier >= 1 && (
+                        {coachReveal.effectiveTier >= 1 && (
                           <div className="coach-tags" aria-label="Best move traits">
                             {coachMoveInsight.tags.map(tag => <span key={tag}>{tag}</span>)}
                           </div>
                         )}
-                        {effectiveCoachRevealTier >= 3 && <p>{coachMoveInsight.summary}</p>}
-                        {analysisExperience === 'pro' && (
+                        {coachReveal.effectiveTier >= 3 && <p>{coachMoveInsight.summary}</p>}
+                        {isProMode && (
                           <div className="coach-metrics">
                             {coachMoveInsight.gapLabel && <span>Margin {coachMoveInsight.gapLabel}</span>}
                             {engineBookAgreement !== null && (
@@ -4165,18 +4114,18 @@ function App() {
                         )}
                       </div>
                     )}
-                    {coachRevealGated && (
+                    {coachReveal.gated && (
                       <div className="coach-reveal-controls">
-                        {effectiveCoachRevealTier < 3 ? (
-                          <button type="button" className="coach-reveal-btn" onClick={revealNextCoachTier}>
-                            {effectiveCoachRevealTier === 0 && 'Show a hint'}
-                            {effectiveCoachRevealTier === 1 && 'Show more'}
-                            {effectiveCoachRevealTier === 2 && 'Show the move'}
+                        {coachReveal.effectiveTier < 3 ? (
+                          <button type="button" className="coach-reveal-btn" onClick={coachReveal.revealNextTier}>
+                            {coachReveal.effectiveTier === 0 && 'Show a hint'}
+                            {coachReveal.effectiveTier === 1 && 'Show more'}
+                            {coachReveal.effectiveTier === 2 && 'Show the move'}
                           </button>
-                        ) : !coachRevealOutcomeGiven && (
+                        ) : !coachReveal.outcomeGiven && (
                           <div className="coach-reveal-outcome" aria-label="Did you find this move yourself?">
-                            <button type="button" onClick={() => recordCoachRevealOutcome('found')}>I had this</button>
-                            <button type="button" onClick={() => recordCoachRevealOutcome('missed')}>I didn't</button>
+                            <button type="button" onClick={() => coachReveal.recordOutcome('found')}>I had this</button>
+                            <button type="button" onClick={() => coachReveal.recordOutcome('missed')}>I didn't</button>
                           </div>
                         )}
                       </div>
@@ -4232,7 +4181,7 @@ function App() {
                       ) : null}
                     </div>
                   )}
-                  {analysisExperience === 'pro' && (
+                  {isProMode && (
                     <>
                       <div className="preset-grid">
                         {analyzePresets.map(preset => (
@@ -4254,7 +4203,7 @@ function App() {
                       </p>
                     </>
                   )}
-                  {analysisExperience === 'pro' && (currentCloudEval || cloudEvalStatus === 'loading' || cloudEvalStatus === 'missing' || cloudEvalStatus === 'error') && (
+                  {isProMode && (currentCloudEval || cloudEvalStatus === 'loading' || cloudEvalStatus === 'missing' || cloudEvalStatus === 'error') && (
                     <div className="cloud-eval-card">
                       <h3><span className="section-icon"><IconZap /></span> Cloud Eval</h3>
                       <p className="panel-copy small command-summary">
@@ -4286,7 +4235,7 @@ function App() {
                       )}
                     </div>
                   )}
-                  {analysisExperience === 'pro' && (
+                  {isProMode && (
                   <div className="opening-intel-card" ref={openingIntelRef}>
                     <div className="opening-intel-head">
                       <h3><span className="section-icon"><IconBarChart /></span> Opening Intel</h3>
@@ -4423,7 +4372,7 @@ function App() {
                       </div>
                     )}
                     {currentFenLines
-                      .slice(0, analysisExperience === 'beginner' ? 2 : undefined)
+                      .slice(0, isCoachMode ? 2 : undefined)
                       .map(line => (
                         <article key={`${line.multipv}-${line.depth}-${line.pv[0] ?? 'pv'}`}>
                           <header>
@@ -4432,7 +4381,7 @@ function App() {
                             <span>{formatWhitePovEvaluation(line.fen ?? fen, line.cp, line.mate)}</span>
                           </header>
                           <p>{pvToSan(line.fen ?? fen, line) || line.pv.slice(0, 8).join(' ')}</p>
-                          {analysisExperience === 'pro' && (
+                          {isProMode && (
                             <p className="pv-uci">{line.pv.slice(0, 8).join(' ')}</p>
                           )}
                           {showWdl && line.wdl && (
