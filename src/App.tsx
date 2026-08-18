@@ -723,6 +723,13 @@ function App() {
   const [engineProfile, setEngineProfile] = useState<EngineProfileId>(persistedSettings.engineProfile)
   const [analysisTab, setAnalysisTab] = useState<AnalysisTab>(persistedSettings.analysisTab)
   const [analysisExperience, setAnalysisExperience] = useState<AnalysisExperience>(persistedSettings.analysisExperience)
+
+  useEffect(() => {
+    if (analysisExperience === 'beginner' && analysisTab === 'engine-lab') {
+      setAnalysisTab('analyze')
+    }
+  }, [analysisExperience, analysisTab])
+
   const [reviewSideFilter, setReviewSideFilter] = useState<ReviewSideFilter>('both')
   const [activePreset, setActivePreset] = useState<AnalyzePresetId | null>(persistedSettings.activePreset)
   const [analyzeMode, setAnalyzeMode] = useState<AnalyzeMode>(persistedSettings.analyzeMode)
@@ -3986,7 +3993,7 @@ function App() {
                   {([
                     { id: 'analyze', label: 'Analyze' },
                     { id: 'review', label: 'Review' },
-                    { id: 'engine-lab', label: 'Engine Lab' },
+                    ...(analysisExperience === 'pro' ? [{ id: 'engine-lab', label: 'Engine Lab' } as const] : []),
                   ] as const).map(tab => (
                     <button
                       key={tab.id}
