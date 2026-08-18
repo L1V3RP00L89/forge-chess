@@ -3127,10 +3127,18 @@ function App() {
   const isMobile = viewport.width <= 900
   const leftPanelUnavailable = workspaceMode === 'play'
   const layoutLeftWidth = leftPanelUnavailable ? 0 : leftWidth
-  const desktopBoardChromeReserve = 44
+  const whitePlayerName = pgnPlayerName(pgnHeaders.White, pgnHeaders.WhiteElo)
+  const blackPlayerName = pgnPlayerName(pgnHeaders.Black, pgnHeaders.BlackElo)
+  const showPgnPlayerNames = Boolean(whitePlayerName || blackPlayerName)
+  const topPlayerName = orientation === 'white' ? blackPlayerName : whitePlayerName
+  const bottomPlayerName = orientation === 'white' ? whitePlayerName : blackPlayerName
+  const topPlayerColor = orientation === 'white' ? 'black' : 'white'
+  const bottomPlayerColor = orientation === 'white' ? 'white' : 'black'
+  // Two player-name rows (~34px + gap each) add to the chrome above/below the board.
+  const desktopBoardChromeReserve = showPgnPlayerNames ? 44 + 84 : 44
   const mobileBoardWidth = Math.min(
     Math.max(0, viewport.width - 16),
-    Math.max(300, Math.round(viewport.height * 0.46)),
+    Math.max(300, Math.round(viewport.height * (showPgnPlayerNames ? 0.40 : 0.46))),
   )
 
   // Mobile: prefer finger-friendly squares while respecting narrow screens.
@@ -3143,13 +3151,6 @@ function App() {
     )
   const renderedBoardWidth = isMobile ? boardWidth : Math.max(260, boardWidth)
   const turnLabel = game.turn() === 'w' ? 'White to move' : 'Black to move'
-  const whitePlayerName = pgnPlayerName(pgnHeaders.White, pgnHeaders.WhiteElo)
-  const blackPlayerName = pgnPlayerName(pgnHeaders.Black, pgnHeaders.BlackElo)
-  const showPgnPlayerNames = Boolean(whitePlayerName || blackPlayerName)
-  const topPlayerName = orientation === 'white' ? blackPlayerName : whitePlayerName
-  const bottomPlayerName = orientation === 'white' ? whitePlayerName : blackPlayerName
-  const topPlayerColor = orientation === 'white' ? 'black' : 'white'
-  const bottomPlayerColor = orientation === 'white' ? 'white' : 'black'
   const moveNumberLabel = `Move ${fen.split(/\s+/)[5] ?? '1'}`
   const currentMoveQuality = gameTree.current.quality
   const gameModeLabel = gameMode === 'human-vs-human'
