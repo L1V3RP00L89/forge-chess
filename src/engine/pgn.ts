@@ -48,6 +48,22 @@ function sanitizePgnHeaderValue(value: string): string {
         .replace(/"/g, "'")
 }
 
+const PGN_HEADER_TAG_PATTERN = /^\s*\[([A-Za-z0-9_]+)\s+"((?:[^"\\]|\\.)*)"\]\s*$/gm
+
+// A regex-only header read, deliberately not routed through parsePgnMoveTree
+// — reviewed-game list rows need just the header tags for a few hundred
+// saved games, and running the full move-tree parser on every row would be
+// wasted work for text nobody is about to navigate through.
+export function parsePgnHeadersLite(pgnText: string): Record<string, string> {
+    const headers: Record<string, string> = {}
+    for (const match of pgnText.matchAll(PGN_HEADER_TAG_PATTERN)) {
+        const [, key, rawValue] = match
+        if (!key) continue
+        headers[key] = rawValue.replace(/\\(.)/g, '$1')
+    }
+    return headers
+}
+
 export function hasMultiplePgnGames(pgnText: string): boolean {
     const eventTags = pgnText.match(PGN_EVENT_TAG_LINE_PATTERN)
     if ((eventTags?.length ?? 0) > 1) return true

@@ -43,7 +43,7 @@ import {
 } from './engine/openingExplorer'
 import { parseCandidateMoveInput } from './engine/candidateMoves'
 import { type AnalyzeMode, type UciGoLimits } from './engine/uci'
-import { flattenPgnMainLine, parsePgnMoveTree, pgnImportUserErrorMessage } from './engine/pgn'
+import { flattenPgnMainLine, parsePgnHeadersLite, parsePgnMoveTree, pgnImportUserErrorMessage } from './engine/pgn'
 import { FEN_PARSE_ERROR, validateFenForAnalysis } from './engine/fen'
 import { buildImportSweepTargets, countImportSweepCandidates, type ImportSweepTarget } from './engine/importSweep'
 import {
@@ -69,7 +69,7 @@ import { useGameTree, type GameNode } from './hooks/useGameTree'
 import { useOpening } from './hooks/useOpening'
 import { useCloudEvaluation } from './hooks/useCloudEvaluation'
 import { useOpeningExplorer } from './hooks/useOpeningExplorer'
-import { derivePlayModeResult, useTrainingDb } from './hooks/useTrainingDb'
+import { derivePlayModeResult, useTrainingDb, type SavedGameSummary } from './hooks/useTrainingDb'
 import { useTablebase } from './hooks/useTablebase'
 import { useCoachReveal } from './hooks/useCoachReveal'
 import { ANALYSIS_SETTINGS_STORAGE_KEY } from './storageKeys'
@@ -116,6 +116,7 @@ type ImportSweepProgress = { done: number; total: number; sampledFrom?: number }
 
 const LICHESS_TOKEN_PAGE_URL = 'https://lichess.org/account/oauth/token/create?'
 const SAMPLE_PGN_CACHE_LIMIT = 12
+const REVIEWED_GAMES_LIMIT = 20
 const DEFAULT_LEFT_PANEL_WIDTH = 320
 const ANALYZE_MODE_IDS: AnalyzeMode[] = ['quick', 'deep', 'infinite', 'mate', 'review']
 const ANALYSIS_TAB_IDS: AnalysisTab[] = ['analyze', 'review', 'engine-lab']
@@ -182,6 +183,8 @@ type AnalysisTarget = {
 type PgnImportOptions = {
   analyzeAfterLoad?: boolean
   fromSample?: boolean
+  /** Reopening an already-saved game: skip inserting a duplicate `games` row. */
+  savedGameId?: number
 }
 
 type FenLoadOptions = {
@@ -550,6 +553,29 @@ function pgnPlayerName(name: string | undefined, elo: string | undefined): strin
   const trimmedElo = elo?.trim() ?? ''
   if (!trimmedElo || PGN_UNKNOWN_NAME_PATTERN.test(trimmedElo)) return trimmedName
   return `${trimmedName} (${trimmedElo})`
+}
+
+// "White vs Black" when the PGN carries real player tags (an
+// imported/annotated game); games recorded straight from local play only
+// ever get chess.js's placeholder "?" headers, which pgnPlayerName already
+// filters out, so those fall back to a plain local-game label instead.
+function reviewedGameOpponentLabel(headers: Record<string, string>): string {
+  const white = pgnPlayerName(headers.White, headers.WhiteElo)
+  const black = pgnPlayerName(headers.Black, headers.BlackElo)
+  return white && black ? `${white} vs ${black}` : 'Local game'
+}
+
+function reviewedGameResultLabel(result: string | null): string {
+  if (result === '1-0') return 'White won'
+  if (result === '0-1') return 'Black won'
+  if (result === '1/2-1/2') return 'Draw'
+  return 'Unfinished'
+}
+
+function reviewedGameDateLabel(isoTimestamp: string): string {
+  const parsed = new Date(isoTimestamp)
+  if (Number.isNaN(parsed.getTime())) return isoTimestamp
+  return parsed.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 function clamp01(value: number): number {
@@ -1105,8 +1131,15 @@ function App() {
   const analysisStatusAnnouncement = `${engineName}. ${status}. ${isCoachMode ? 'Coach view' : 'Pro view'}.`
 
   // ── Training DB (M8 foundation) ──────────────────────
-  const { recordGame, recordJournalEntry } = useTrainingDb()
+  const { recordGame, recordJournalEntry, listGames } = useTrainingDb()
   const [currentGameId, setCurrentGameId] = useState<number | null>(null)
+  const [reviewedGames, setReviewedGames] = useState<SavedGameSummary[]>([])
+  const refreshReviewedGames = useCallback(async () => {
+    setReviewedGames(await listGames(REVIEWED_GAMES_LIMIT))
+  }, [listGames])
+  useEffect(() => {
+    void refreshReviewedGames()
+  }, [refreshReviewedGames])
   const recordedGameRef = useRef(false)
   useEffect(() => {
     if (workspaceMode !== 'play') return
@@ -1122,8 +1155,11 @@ function App() {
       isDraw: game.isDraw(),
       turn: game.turn(),
     })
-    recordGame(game.pgn(), result).then(setCurrentGameId)
-  }, [fen, game, recordGame, workspaceMode])
+    recordGame(game.pgn(), result).then(id => {
+      setCurrentGameId(id)
+      void refreshReviewedGames()
+    })
+  }, [fen, game, recordGame, refreshReviewedGames, workspaceMode])
 
   // ── Batch Review ─────────────────────────────────────
   const [isBatchReviewing, setIsBatchReviewing] = useState(false)
@@ -2764,13 +2800,20 @@ function App() {
       cancelPendingAiMove()
       setIsImportingGame(false)
       requestBoardReveal()
-      recordGame(pgnText, importedGame.result ?? importedGame.headers.Result ?? null).then(setCurrentGameId)
+      if (options?.savedGameId != null) {
+        setCurrentGameId(options.savedGameId)
+      } else {
+        recordGame(pgnText, importedGame.result ?? importedGame.headers.Result ?? null).then(id => {
+          setCurrentGameId(id)
+          void refreshReviewedGames()
+        })
+      }
       return { ok: true }
     } catch (error) {
       setIsImportingGame(false)
       return { ok: false, error: pgnImportUserErrorMessage(error) ?? 'Failed to parse PGN. Check the move text, headers, and move numbers.' }
     }
-  }, [cancelPendingAiMove, cancelSampleLoad, clearBatchReview, clearBoardSelection, clearImportSweep, engineEnabled, game, gameTree, newGame, recordGame, requestBoardReveal, setPgnHeaders])
+  }, [cancelPendingAiMove, cancelSampleLoad, clearBatchReview, clearBoardSelection, clearImportSweep, engineEnabled, game, gameTree, newGame, recordGame, refreshReviewedGames, requestBoardReveal, setPgnHeaders])
 
   const handleAnalysisPgnImport = useCallback(
     (pgnText: string) => handlePgnImport(pgnText, { analyzeAfterLoad: true }),
@@ -2874,6 +2917,16 @@ function App() {
     },
     [abortSampleFetch, handlePgnImport, readCachedSamplePgn, writeCachedSamplePgn],
   )
+
+  const [reopenGameError, setReopenGameError] = useState<string | null>(null)
+  const reopenSavedGame = useCallback((saved: SavedGameSummary) => {
+    cancelSampleLoad()
+    setReopenGameError(null)
+    const result = handlePgnImport(saved.pgn, { analyzeAfterLoad: true, savedGameId: saved.id })
+    if (!result.ok) {
+      setReopenGameError(result.error ?? 'Failed to reopen this game.')
+    }
+  }, [cancelSampleLoad, handlePgnImport])
 
   const handleNewGameStart = useCallback(
     ({ mode, playerColor: color, difficulty }: { mode: GameMode; playerColor: PlayerColor; difficulty: AiDifficulty }) => {
@@ -3690,6 +3743,43 @@ function App() {
                     <span className="wdl-white-label">White {wdlPoints[wdlPoints.length - 1]!.white.toFixed(1)}%</span>
                     <span className="wdl-draw-label">Draw {wdlPoints[wdlPoints.length - 1]!.draw.toFixed(1)}%</span>
                     <span className="wdl-black-label">Black {wdlPoints[wdlPoints.length - 1]!.black.toFixed(1)}%</span>
+                  </div>
+                )}
+              </section>
+              <section className="sample-library-card">
+                <header className="sample-library-head">
+                  <h3><span className="section-icon"><IconSearch /></span> Reviewed Games</h3>
+                  <span>{countLabel(reviewedGames.length, 'game')}</span>
+                </header>
+                {reopenGameError && <p className="panel-copy small error-copy">{reopenGameError}</p>}
+                {reviewedGames.length === 0 ? (
+                  <p className="panel-copy small">Games you play or import are saved here so you can come back to them.</p>
+                ) : (
+                  <div className="sample-game-list">
+                    {reviewedGames.map(saved => {
+                      const headers = parsePgnHeadersLite(saved.pgn)
+                      const label = reviewedGameOpponentLabel(headers)
+                      return (
+                        <article key={saved.id} className="sample-game-row">
+                          <header>
+                            <strong>{label}</strong>
+                            <span>{reviewedGameDateLabel(saved.playedAt)}</span>
+                          </header>
+                          <p className="panel-copy small">
+                            {reviewedGameResultLabel(saved.result)}{saved.hasJournalEntry ? ' · Journal saved' : ''}
+                          </p>
+                          <div className="sample-game-actions">
+                            <button
+                              type="button"
+                              onClick={() => reopenSavedGame(saved)}
+                              aria-label={`Reopen ${label}, ${reviewedGameDateLabel(saved.playedAt)}`}
+                            >
+                              Reopen
+                            </button>
+                          </div>
+                        </article>
+                      )
+                    })}
                   </div>
                 )}
               </section>

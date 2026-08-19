@@ -9,6 +9,7 @@ import {
   flattenPgnMainLine,
   formatPgnDate,
   hasMultiplePgnGames,
+  parsePgnHeadersLite,
   parsePgnMoveTree,
   pgnImportContentError,
   rootFenFromPgnHeaders,
@@ -531,6 +532,34 @@ describe('PGN export helpers', () => {
   it('uses the PGN termination marker as Result when the tag is missing', () => {
     const parsed = parsePgnMoveTree('1. e4 e5 1/2-1/2')
     expect(parsed.headers.Result).toBe('1/2-1/2')
+  })
+})
+
+describe('parsePgnHeadersLite', () => {
+  it('reads tag pairs without parsing the move text', () => {
+    const pgn = `[Event "Club Championship"]
+[White "l1v3rp00l89"]
+[Black "opponent"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 1-0`
+
+    expect(parsePgnHeadersLite(pgn)).toEqual({
+      Event: 'Club Championship',
+      White: 'l1v3rp00l89',
+      Black: 'opponent',
+      Result: '1-0',
+    })
+  })
+
+  it('unescapes backslash-escaped quotes in header values', () => {
+    expect(parsePgnHeadersLite('[Event "Bob \\"The Bishop\\" Smith Memorial"]\n\n1. e4 *')).toEqual({
+      Event: 'Bob "The Bishop" Smith Memorial',
+    })
+  })
+
+  it('returns an empty object when there are no headers', () => {
+    expect(parsePgnHeadersLite('1. e4 e5 *')).toEqual({})
   })
 })
 

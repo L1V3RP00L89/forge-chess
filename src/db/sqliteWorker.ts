@@ -47,15 +47,25 @@ async function run(sql: string, params: unknown[]): Promise<SqliteRow[]> {
   return rows
 }
 
-self.addEventListener('message', async (event: MessageEvent<SqliteWorkerRequest>) => {
+// wa-sqlite's OPFS VFS holds a single connection with no internal locking of
+// its own, so overlapping requests (e.g. a list refresh firing while a game
+// is still being inserted) raced against each other and surfaced as
+// "database is locked". Requests are chained onto one queue so the worker
+// only ever runs one statement at a time, in the order messages arrived.
+let queue: Promise<void> = Promise.resolve()
+
+self.addEventListener('message', (event: MessageEvent<SqliteWorkerRequest>) => {
   const { id, sql, params } = event.data
-  const response: SqliteWorkerResponse = { id, rows: [], error: null }
 
-  try {
-    response.rows = await run(sql, params ?? [])
-  } catch (error) {
-    response.error = error instanceof Error ? error.message : String(error)
-  }
+  queue = queue.then(async () => {
+    const response: SqliteWorkerResponse = { id, rows: [], error: null }
 
-  self.postMessage(response)
+    try {
+      response.rows = await run(sql, params ?? [])
+    } catch (error) {
+      response.error = error instanceof Error ? error.message : String(error)
+    }
+
+    self.postMessage(response)
+  })
 })

@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { query } from '../db/sqliteClient'
+import type { SqliteRow } from '../db/sqliteProtocol'
 
 // Mirrors chess.js's isCheckmate/isStalemate/isDraw/turn surface without
 // depending on the Chess type directly, so this is easy to unit test.
@@ -30,6 +31,26 @@ export function normalizeJournalField(value: string): string | null {
   return trimmed.length ? trimmed : null
 }
 
+export type SavedGameSummary = {
+  id: number
+  playedAt: string
+  pgn: string
+  result: string | null
+  hasJournalEntry: boolean
+}
+
+// Row shaping pulled out as a pure function so it's testable without a live
+// (worker-backed) database connection.
+export function mapSavedGameRow(row: SqliteRow): SavedGameSummary {
+  return {
+    id: Number(row.id),
+    playedAt: String(row.played_at),
+    pgn: String(row.pgn),
+    result: row.result == null ? null : String(row.result),
+    hasJournalEntry: Number(row.has_journal) === 1,
+  }
+}
+
 // Warms the OPFS worker (and applies SCHEMA_SQL) as soon as the app mounts,
 // so the database is already open by the time the first game finishes.
 // Best-effort only: OPFS isn't available everywhere (e.g. Safari private
@@ -45,7 +66,7 @@ export function useTrainingDb() {
     })
   }, [])
 
-  const recordGame = async (pgn: string, result: string | null): Promise<number | null> => {
+  const recordGame = useCallback(async (pgn: string, result: string | null): Promise<number | null> => {
     try {
       await query('INSERT INTO games (played_at, pgn, result) VALUES (?, ?, ?)', [
         new Date().toISOString(),
@@ -59,9 +80,9 @@ export function useTrainingDb() {
       console.warn('Failed to record game', error)
       return null
     }
-  }
+  }, [])
 
-  const recordJournalEntry = (gameId: number | null, entry: JournalEntryInput) => {
+  const recordJournalEntry = useCallback((gameId: number | null, entry: JournalEntryInput) => {
     query(
       'INSERT INTO journal_entries (game_id, positive_1, positive_2, improve_1, improve_2, created_at) VALUES (?, ?, ?, ?, ?, ?)',
       [
@@ -75,7 +96,24 @@ export function useTrainingDb() {
     ).catch((error) => {
       console.warn('Failed to record journal entry', error)
     })
-  }
+  }, [])
 
-  return { recordGame, recordJournalEntry }
+  const listGames = useCallback(async (limit = 50): Promise<SavedGameSummary[]> => {
+    try {
+      const rows = await query(
+        `SELECT g.id, g.played_at, g.pgn, g.result,
+                EXISTS(SELECT 1 FROM journal_entries j WHERE j.game_id = g.id) AS has_journal
+         FROM games g
+         ORDER BY g.id DESC
+         LIMIT ?`,
+        [limit],
+      )
+      return rows.map(mapSavedGameRow)
+    } catch (error) {
+      console.warn('Failed to list reviewed games', error)
+      return []
+    }
+  }, [])
+
+  return { recordGame, recordJournalEntry, listGames }
 }
