@@ -1929,6 +1929,23 @@ body.resizing * {
   }
 }
 
+.opening-lead-move {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  padding: 0.3rem 0;
+  margin: 0;
+}
+
+.opening-lead-move strong {
+  color: var(--text-primary);
+}
+
+.opening-move-disclosure {
+  margin-top: 0.2rem;
+}
+
 .opening-move-list {
   display: grid;
   gap: 0.3rem;

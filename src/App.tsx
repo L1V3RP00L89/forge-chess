@@ -953,6 +953,14 @@ function App() {
     enabled: workspaceMode === 'analysis'
       && (analysisTab === 'analyze' || (analysisTab === 'engine-lab' && hasOpeningExplorerToken)),
   })
+  // Coach mode gets a minimal, always-masters, no-token line — independent of Pro mode's
+  // source/speed/rating pickers, which shouldn't leak into what a beginner sees.
+  const coachOpeningExplorer = useOpeningExplorer({
+    source: 'masters',
+    fen: currentRootFen,
+    moves: currentPathMoves,
+    enabled: isCoachMode && workspaceMode === 'analysis' && analysisTab === 'analyze',
+  })
   const filteredSampleGames = useMemo(
     () => historicalSampleGames.filter(sample => sampleFilter === 'all' || sample.format === sampleFilter),
     [sampleFilter],
@@ -1547,6 +1555,9 @@ function App() {
     : 0
   const openingTopMoves = useMemo(() => (openingExplorer.data?.moves ?? []).slice(0, 5), [openingExplorer.data?.moves])
   const openingTopBookMove = openingTopMoves[0]
+  const openingOtherMoves = useMemo(() => openingTopMoves.slice(1), [openingTopMoves])
+  const coachOpeningTotalGames = coachOpeningExplorer.data ? openingExplorerGameCount(coachOpeningExplorer.data) : 0
+  const coachOpeningTopMove = coachOpeningExplorer.data?.moves[0]
   const currentFenLines = useMemo(() => lines.filter(line => !line.fen || line.fen === fen), [fen, lines])
   const coachLine = currentFenLines.find(line => line.multipv === 1) ?? currentFenLines[0] ?? null
   const coachCloudScore = currentCloudEval?.pvs[0]
@@ -4210,9 +4221,12 @@ function App() {
                         )}
                       </div>
                     )}
-                    {opening && (
+                    {(opening || (isCoachMode && coachOpeningTopMove)) && (
                       <p className="coach-opening">
-                        <strong>{opening.eco}</strong> {opening.name}
+                        {opening && <><strong>{opening.eco}</strong> {opening.name}</>}
+                        {isCoachMode && coachOpeningTopMove && (
+                          <> · usually {coachOpeningTopMove.san} ({percentage(moveGamesCount(coachOpeningTopMove), coachOpeningTotalGames).toFixed(0)}%)</>
+                        )}
                       </p>
                     )}
                   </div>
@@ -4411,28 +4425,37 @@ function App() {
                             Engine/book agreement: {engineBookAgreement ? 'yes' : 'no'}{currentEngineBestUci ? ` (${currentEngineBestUci})` : ''}
                           </p>
                         )}
-                        {openingTopMoves.length > 0 && (
-                          <div className="opening-move-list">
-                            {openingTopMoves.map(move => {
-                              const games = moveGamesCount(move)
-                              return (
-                                <button
-                                  key={move.uci}
-                                  type="button"
-                                  className="opening-move-row"
-                                  onClick={() => {
-                                    setShowAdvancedAnalyze(true)
-                                    setActivePreset(null)
-                                    setSearchMovesInput(move.uci)
-                                  }}
-                                >
-                                  <strong>{move.san}</strong>
-                                  <span>{percentage(games, openingTotalGames).toFixed(1)}%</span>
-                                  <span>{games.toLocaleString()}</span>
-                                </button>
-                              )
-                            })}
-                          </div>
+                        {openingTopBookMove && (
+                          <p className="panel-copy small opening-lead-move">
+                            <span>Top book move: <strong>{openingTopBookMove.san}</strong></span>
+                            <span>{percentage(moveGamesCount(openingTopBookMove), openingTotalGames).toFixed(1)}% ({moveGamesCount(openingTopBookMove).toLocaleString()} games)</span>
+                          </p>
+                        )}
+                        {openingOtherMoves.length > 0 && (
+                          <details className="review-move-list-disclosure opening-move-disclosure">
+                            <summary>Other book moves ({openingOtherMoves.length})</summary>
+                            <div className="opening-move-list">
+                              {openingOtherMoves.map(move => {
+                                const games = moveGamesCount(move)
+                                return (
+                                  <button
+                                    key={move.uci}
+                                    type="button"
+                                    className="opening-move-row"
+                                    onClick={() => {
+                                      setShowAdvancedAnalyze(true)
+                                      setActivePreset(null)
+                                      setSearchMovesInput(move.uci)
+                                    }}
+                                  >
+                                    <strong>{move.san}</strong>
+                                    <span>{percentage(games, openingTotalGames).toFixed(1)}%</span>
+                                    <span>{games.toLocaleString()}</span>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </details>
                         )}
                         {openingTopMoves.length > 0 && (
                           <button type="button" onClick={applyBookMovesToSearch}>
