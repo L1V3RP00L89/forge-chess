@@ -33,6 +33,7 @@ Grounded in what's already shipped (565 commits, spanning 2026-01-29 to 2026-06-
 | M4  | Coach-mode pedagogy pass — audit plain-language guidance against what an adult improver actually needs (plans/patterns over raw eval)        | **Shipped** — staged three-tier Coach reveal, `describeBestMove` gated behind it and reworded toward plan language, journal takeaway count scaled to time control, M8 reveal-event hook wired | Renee → Priya → Dara |
 | M5  | Review/accuracy framing pass — reframe critical-moment surfacing around "worth an adult's limited study time" rather than raw centipawn loss | **Shipped** — win-probability-based selection, already-decided suppression, and the time-control-aware cap are live (`src/engine/analysis.ts`) | Renee → Priya        |
 | M6  | Opening explorer presentation — thin, memorable repertoire framing vs. theory-dump                                                           | **Not started**                                                                                        | Renee → Dara → Priya |
+| M11 | Personal repertoire import & drill practice — import Kris's purchased PGN repertoires, practice/quiz them against deviation                  | **Not started, scoped 2026-08-19**                                                                     | Renee → Dara → Priya |
 | M7  | Full-strength engine profile completion (113MB, opt-in, CDN-fetched)                                                                         | **Confirmed working (2026-08-17)** — see note below; description corrected, LFS is not actually in play | Priya                |
 | M8  | Training feature — built-in habit-tracking/coaching plan (see below)                                                                         | **In progress** — DB foundation, post-review journal modal, and reviewed-game-history view shipped; Training tab and drill queue not yet started | Renee → Dara → Priya |
 | M9  | Coach/Pro mode logic cleanup — refactor `analysisExperience` branching in `App.tsx`, grown organically across M4/M5                          | **Shipped (2026-08-18)** — see note below                                                              | Priya                |
@@ -142,6 +143,22 @@ Sourced directly from a real coach-assigned program (ChessGoals' "Intermediate A
 **Storage:** local-only, consistent with the rest of the app's no-backend approach — implemented as SQLite over OPFS (`src/db/`, worker-backed, wired into `App.tsx` as of the M8 Step 1 DB-wiring pass) rather than localStorage/IndexedDB.
 
 **Owner sequencing:** Renee defines what counts as a "miss" for the drill queue and which badges are skill-meaningful; Dara owns the Training tab layout, journal modal, and full-screen drill-mode visuals (wireframes already sketched in team discussion); Priya implements the data model, drill-queue logic, and UI.
+
+## M11 Detail — Personal Repertoire Import & Drill Practice
+
+Raised by Kris on 2026-08-19: he's purchased opening repertoires in PGN format and wants to practice/learn them inside the app, not just review them.
+
+**Why this isn't M6:** M6 is scoped as a *presentation* problem — making the existing live Lichess/masters-database opening explorer read as curated and memorable instead of a theory dump. It does not include importing a user's own PGN lines or any quiz/drill mechanic; M4's audit explicitly noted "curated human-designed repertoires" as a real gap with "no code overlap with M4," and the brief has never scoped repertoire *ownership* or *practice* anywhere. M6 is about how the existing database is framed; M11 is about a new content type (Kris's own purchased lines) and a new interaction (drilling them), so it gets its own number rather than stretching M6's scope.
+
+**Why this isn't just M8 either:** M8's Woodpecker drill queue pulls puzzles from the user's *own missed tactics* — single positions, not multi-move lines from an external repertoire. M11 needs different data (a PGN move-tree per repertoire, not a tactics table) and a different drill mechanic (play out a line from memory, get corrected on deviation, not "solve this position"). It's adjacent in spirit — both are spaced-practice training — and should likely share UI chrome and possibly the Training tab (M8 sub-feature 3) as its home, but the underlying logic is separate. Flag for Dara/Priya to decide whether M11 drilling lives inside the M8 Training tab or as its own explorer-adjacent surface — not decided here.
+
+**Open questions before this can be scoped further (need Kris + Renee):**
+- How many repertoires, and for which side(s) (White/Black, specific openings)? Format assumed to be standard PGN with variations, but worth confirming against the actual purchased files.
+- What counts as "correct" when a line branches or transposes — exact-line matching only, or does the drill accept any theoretically sound deviation (would need engine/DB backing, not just PGN string matching)?
+- Depth of quizzing — full line to the end of book, or only the first N moves / until a critical branch point?
+- Should missed/incorrect attempts feed back into a spaced-repetition queue the way M8's Woodpecker queue does, or is this closer to flashcard-style "study this line" practice?
+
+**Not scoped yet** — this section records the ask and why it doesn't fit existing milestones; Renee should weigh in on drill pedagogy (spaced repetition vs. flashcard, line-depth) before Dara/Priya design anything.
 
 ## Pitfalls
 
