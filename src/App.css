@@ -1267,6 +1267,36 @@ body.resizing * {
   background: var(--bg-input);
 }
 
+.settings-token-section {
+  margin: 0.4rem 0 0.65rem;
+}
+
+.settings-token-section h3 {
+  margin: 0.3rem 0 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  color: var(--text-tertiary);
+}
+
+.opening-token-settings-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--info);
+  font-size: 0.68rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .opening-token-settings-link:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+  }
+}
+
 .engine-option-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

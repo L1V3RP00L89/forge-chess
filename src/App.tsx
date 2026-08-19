@@ -239,6 +239,8 @@ type PersistedAppSettings = {
   showBoardArrows: boolean
   showTopMoveArrows: boolean
   topMoveArrowCount: number
+  rememberOpeningAuthToken: boolean
+  openingAuthToken: string
 }
 
 const DEFAULT_PERSISTED_SETTINGS: PersistedAppSettings = {
@@ -272,6 +274,8 @@ const DEFAULT_PERSISTED_SETTINGS: PersistedAppSettings = {
   showBoardArrows: true,
   showTopMoveArrows: true,
   topMoveArrowCount: 3,
+  rememberOpeningAuthToken: false,
+  openingAuthToken: '',
 }
 
 const QUICK_MOVETIME_BOUNDS = { min: 50, max: 30_000, fallback: DEFAULT_PERSISTED_SETTINGS.quickMovetimeMs }
@@ -704,6 +708,14 @@ function loadPersistedSettings(): PersistedAppSettings {
         ? parsed.showTopMoveArrows
         : DEFAULT_PERSISTED_SETTINGS.showTopMoveArrows,
       topMoveArrowCount: normalizeInteger(parsed.topMoveArrowCount, 1, 5, DEFAULT_PERSISTED_SETTINGS.topMoveArrowCount),
+      rememberOpeningAuthToken: typeof parsed.rememberOpeningAuthToken === 'boolean'
+        ? parsed.rememberOpeningAuthToken
+        : DEFAULT_PERSISTED_SETTINGS.rememberOpeningAuthToken,
+      // Only trust a stored token if the remember flag is also set; an old/corrupted blob
+      // shouldn't silently reintroduce a token the user never opted to persist.
+      openingAuthToken: parsed.rememberOpeningAuthToken === true && typeof parsed.openingAuthToken === 'string'
+        ? parsed.openingAuthToken
+        : DEFAULT_PERSISTED_SETTINGS.openingAuthToken,
     }
   } catch {
     return DEFAULT_PERSISTED_SETTINGS
@@ -803,7 +815,8 @@ function App() {
   const [openingSource, setOpeningSource] = useState<OpeningDatabaseSource>(persistedSettings.openingSource)
   const [openingSpeeds, setOpeningSpeeds] = useState<OpeningSpeed[]>(persistedSettings.openingSpeeds)
   const [openingRatingPreset, setOpeningRatingPreset] = useState<OpeningRatingPresetId>(persistedSettings.openingRatingPreset)
-  const [openingAuthToken, setOpeningAuthToken] = useState('')
+  const [openingAuthToken, setOpeningAuthToken] = useState(persistedSettings.openingAuthToken)
+  const [rememberOpeningAuthToken, setRememberOpeningAuthToken] = useState(persistedSettings.rememberOpeningAuthToken)
   const [reviewBookError, setReviewBookError] = useState<string | null>(null)
   const [reviewBookTerminalPly, setReviewBookTerminalPly] = useState<number | null>(null)
   const [showBoardArrows, setShowBoardArrows] = useState<boolean>(persistedSettings.showBoardArrows)
@@ -1721,6 +1734,7 @@ function App() {
     setOpeningSpeeds(DEFAULT_PERSISTED_SETTINGS.openingSpeeds)
     setOpeningRatingPreset(DEFAULT_PERSISTED_SETTINGS.openingRatingPreset)
     setOpeningAuthToken('')
+    setRememberOpeningAuthToken(DEFAULT_PERSISTED_SETTINGS.rememberOpeningAuthToken)
     setReviewBookError(null)
     setReviewBookTerminalPly(null)
     setShowBoardArrows(DEFAULT_PERSISTED_SETTINGS.showBoardArrows)
@@ -1948,6 +1962,8 @@ function App() {
       showBoardArrows,
       showTopMoveArrows,
       topMoveArrowCount,
+      rememberOpeningAuthToken,
+      openingAuthToken: rememberOpeningAuthToken ? openingAuthToken : '',
     })
   }, [
     workspaceMode,
@@ -1966,9 +1982,11 @@ function App() {
     mateTarget,
     movesToGo,
     multiPv,
+    openingAuthToken,
     openingRatingPreset,
     openingSource,
     openingSpeeds,
+    rememberOpeningAuthToken,
     showBoardArrows,
     showTopMoveArrows,
     topMoveArrowCount,
@@ -3347,6 +3365,40 @@ function App() {
                   />
                   <span>Show board arrow overlays</span>
                 </label>
+                <div className="settings-token-section">
+                  <h3>Opening Explorer</h3>
+                  <label className="engine-option-row">
+                    <span>Lichess token</span>
+                    <input
+                      className="opening-token-input"
+                      type="password"
+                      value={openingAuthToken}
+                      aria-label="Lichess API token"
+                      onChange={event => setOpeningAuthToken(event.target.value)}
+                      autoComplete="off"
+                      spellCheck={false}
+                      placeholder="Personal API token"
+                    />
+                  </label>
+                  <label className="switch-control">
+                    <input
+                      type="checkbox"
+                      checked={rememberOpeningAuthToken}
+                      onChange={e => setRememberOpeningAuthToken(e.target.checked)}
+                    />
+                    <span>Remember this token on this device</span>
+                  </label>
+                  <div className="opening-token-meta">
+                    <span>
+                      {rememberOpeningAuthToken
+                        ? 'Saved to this browser only. Use a token with no scopes.'
+                        : 'Session only; cleared when you close this tab.'}
+                    </span>
+                    <a href={LICHESS_TOKEN_PAGE_URL} target="_blank" rel="noreferrer">
+                      Create token
+                    </a>
+                  </div>
+                </div>
                 {engineEnabled && workspaceMode === 'analysis' && (
                   <details className="advanced-settings" open>
                     <summary>Analyze controls</summary>
@@ -4347,24 +4399,15 @@ function App() {
                         ))}
                       </div>
                     </div>
-                    <label className="engine-option-row">
-                      <span>Lichess token</span>
-                      <input
-                        className="opening-token-input"
-                        type="password"
-                        value={openingAuthToken}
-                        aria-label="Lichess API token"
-                        onChange={event => setOpeningAuthToken(event.target.value)}
-                        autoComplete="off"
-                        spellCheck={false}
-                        placeholder="Session-only API token"
-                      />
-                    </label>
                     <div className="opening-token-meta">
-                      <span>Session only; never saved.</span>
-                      <a href={LICHESS_TOKEN_PAGE_URL} target="_blank" rel="noreferrer">
-                        Create token
-                      </a>
+                      <span>
+                        {hasOpeningExplorerToken
+                          ? `Lichess token set${rememberOpeningAuthToken ? ' · remembered on this device' : ' · this session only'}.`
+                          : 'No Lichess token set.'}
+                      </span>
+                      <button type="button" className="opening-token-settings-link" onClick={() => setSettingsOpen(true)}>
+                        {hasOpeningExplorerToken ? 'Manage in Settings' : 'Add token in Settings'}
+                      </button>
                     </div>
                     {openingSource === 'lichess' && (
                       <>
