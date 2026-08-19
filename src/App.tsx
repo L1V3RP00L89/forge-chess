@@ -90,7 +90,7 @@ import {
   graphWidthForIndex,
 } from './components/graphLayout'
 import { formatGraphAxisLabel, formatGraphPositionLabel } from './components/graphLabels'
-import { IconBot, IconBarChart, IconSearch, IconSwords, IconAlert, IconKing, IconRefresh, IconFlip, IconDownload, IconZap, IconSettings, IconPlay, IconStop, IconTrendingUp, IconCrown } from './components/icons'
+import { IconBot, IconBarChart, IconSearch, IconSwords, IconAlert, IconKing, IconRefresh, IconFlip, IconDownload, IconZap, IconSettings, IconPlay, IconStop, IconTrendingUp, IconCrown, IconClipboard } from './components/icons'
 import './App.css'
 
 const NewGameDialog = lazy(() =>
@@ -1288,16 +1288,6 @@ function App() {
     showWdl,
     status,
   ])
-
-  // ── Journal prompt on review completion ──────────────
-  const wasBatchReviewingRef = useRef(false)
-  useEffect(() => {
-    const wasBatchReviewing = wasBatchReviewingRef.current
-    wasBatchReviewingRef.current = isBatchReviewing
-    if (!wasBatchReviewing || isBatchReviewing) return
-    const { done, total } = batchReviewProgress
-    if (total > 0 && done === total) setShowJournalModal(true)
-  }, [batchReviewProgress, isBatchReviewing])
 
   const aiEnabled = workspaceMode === 'play' && (gameMode === 'human-vs-ai' || gameMode === 'ai-vs-ai')
   const aiPlayer = useAiPlayer(aiEnabled)
@@ -4509,6 +4499,15 @@ function App() {
                       ) : (
                         <><IconSearch /> Review Game</>
                       )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowJournalModal(true)}
+                      disabled={mainLineNodes.length <= 1}
+                      title="Write down your takeaways from this game, whenever you're ready."
+                      aria-label="Open journal"
+                    >
+                      <IconClipboard /> Journal
                     </button>
                   </div>
                   <div className="review-scaffold">
