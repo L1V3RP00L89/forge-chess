@@ -187,11 +187,16 @@ Raised by Kris on 2026-08-19: he's purchased opening repertoires in PGN format a
 
 **Why this isn't just M8 either:** M8's Woodpecker drill queue pulls puzzles from the user's *own missed tactics* — single positions, not multi-move lines from an external repertoire. M11 needs different data (a PGN move-tree per repertoire, not a tactics table) and a different drill mechanic (play out a line from memory, get corrected on deviation, not "solve this position"). It's adjacent in spirit — both are spaced-practice training — and should likely share UI chrome and possibly the Training tab (M8 sub-feature 3) as its home, but the underlying logic is separate. Flag for Dara/Priya to decide whether M11 drilling lives inside the M8 Training tab or as its own explorer-adjacent surface — not decided here.
 
-**Open questions before this can be scoped further (need Kris + Renee):**
-- How many repertoires, and for which side(s) (White/Black, specific openings)? Format assumed to be standard PGN with variations, but worth confirming against the actual purchased files.
-- What counts as "correct" when a line branches or transposes — exact-line matching only, or does the drill accept any theoretically sound deviation (would need engine/DB backing, not just PGN string matching)?
-- Depth of quizzing — full line to the end of book, or only the first N moves / until a critical branch point?
-- Should missed/incorrect attempts feed back into a spaced-repetition queue the way M8's Woodpecker queue does, or is this closer to flashcard-style "study this line" practice?
+**Open questions — resolved with Kris, 2026-08-19:**
+- **Scope:** two repertoires, one per side (White + Black). No multi-opening library management needed for v1 — just two imported files.
+- **Format:** standard PGN with variations, as assumed.
+- **Correctness:** exact-line matching only. If the played move isn't the repertoire's move at that node, it's flagged wrong — no engine/soundness judgment call, no accepting alternate-but-reasonable moves. Simplest to build and matches "drill what I actually memorized," at the cost of flagging legitimate transpositions as mistakes. Revisit if that turns out to be annoying in practice.
+- **Drill style:** spaced repetition, not flashcard/study-through. Missed lines resurface more often until reliably solved — same shape as M8's Woodpecker queue.
+- **Depth of quizzing:** not explicitly asked — defaulting to "as deep as the repertoire file goes" (quiz to wherever the purchased PGN's variation ends), since the repertoire's own author already decided where "book" stops for that line. No separate ply-cap needed; Renee to flag if this feels too long in practice once real files are in.
+
+**Technical note for Priya, found while scoping:** the `missed_tactics` table (`src/db/schema.ts`) already has exactly the columns a spaced-repetition queue needs — `next_review_at`, `review_count`, `solved_streak`. A new `repertoire_lines`-shaped table (one row per line/branch within an imported repertoire, or one row per FEN node needing a decision) can reuse this same column shape rather than inventing a second SRS pattern. `src/engine/pgn.ts`'s `parsePgnMoveTree` already builds a move tree with variations from PGN text — reusable for the import step — but note `hasMultiplePgnGames`/`PGN_MULTIPLE_GAMES_ERROR` currently reject multi-game PGN files by design; a repertoire file with many lines as separate PGN games (rather than one PGN with nested variations) would need that restriction lifted or worked around.
+
+**Next:** send to Dara for a UI pass — import flow (where do the two PGN files go, how do you pick "drill White" vs "drill Black") and drill-mode visuals, before Priya scopes implementation. Not done in this pass.
 
 **Not scoped yet** — this section records the ask and why it doesn't fit existing milestones; Renee should weigh in on drill pedagogy (spaced repetition vs. flashcard, line-depth) before Dara/Priya design anything.
 
