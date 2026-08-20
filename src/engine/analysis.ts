@@ -1,4 +1,4 @@
-import { Chess, type Move } from 'chess.js'
+import { Chess, type Move, type Square } from 'chess.js'
 import type { EngineLine } from '../hooks/useStockfishEngine'
 import type { AnalyzeMode, AnalyzePurpose } from './uci'
 
@@ -629,4 +629,161 @@ export function buildWdlSeries(
   })
 
   return series
+}
+
+export type TacticalMotifType = 'pin' | 'skewer' | 'fork' | 'discovered-check'
+
+export type TacticalMotif = {
+  type: TacticalMotifType
+  /** Square of the piece being pinned/skewered/forked, for callers that want to highlight it. */
+  targetSquare: Square
+  description: string
+}
+
+const PIECE_VALUE: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 100 }
+const PIECE_NAME: Record<string, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' }
+
+const RAY_DIRECTIONS: Record<'b' | 'r' | 'q', Array<[number, number]>> = {
+  b: [[1, 1], [1, -1], [-1, 1], [-1, -1]],
+  r: [[1, 0], [-1, 0], [0, 1], [0, -1]],
+  q: [[1, 1], [1, -1], [-1, 1], [-1, -1], [1, 0], [-1, 0], [0, 1], [0, -1]],
+}
+
+function squareToCoords(square: Square): [number, number] {
+  return [square.charCodeAt(0) - 'a'.charCodeAt(0), Number(square[1]) - 1]
+}
+
+function coordsToSquare(file: number, rank: number): Square | null {
+  if (file < 0 || file > 7 || rank < 0 || rank > 7) return null
+  return `${String.fromCharCode('a'.charCodeAt(0) + file)}${rank + 1}` as Square
+}
+
+// Ray-traces from a bishop/rook/queen's landing square. A pin is an enemy
+// piece immediately in the way with a more valuable enemy piece (or the
+// king) directly behind it on the same line; a skewer is the same shape
+// with the more valuable piece in front, forced to move off the line.
+function findPinOrSkewer(game: Chess, fromSquare: Square, pieceType: 'b' | 'r' | 'q', movedColor: 'w' | 'b'): TacticalMotif | null {
+  const enemyColor = movedColor === 'w' ? 'b' : 'w'
+  const [fromFile, fromRank] = squareToCoords(fromSquare)
+
+  for (const [df, dr] of RAY_DIRECTIONS[pieceType]) {
+    let file = fromFile + df
+    let rank = fromRank + dr
+    let front: { square: Square; type: string } | null = null
+
+    while (true) {
+      const square = coordsToSquare(file, rank)
+      if (!square) break
+      const piece = game.get(square)
+      if (piece) {
+        if (!front) {
+          if (piece.color !== enemyColor) break
+          front = { square, type: piece.type }
+        } else {
+          if (piece.color !== enemyColor) break
+          const frontValue = PIECE_VALUE[front.type]
+          const backValue = PIECE_VALUE[piece.type]
+          if (backValue > frontValue) {
+            return {
+              type: 'pin',
+              targetSquare: front.square,
+              description: piece.type === 'k'
+                ? `Pins the ${PIECE_NAME[front.type]} on ${front.square} to the king — it can't move without exposing check.`
+                : `Pins the ${PIECE_NAME[front.type]} on ${front.square} against the ${PIECE_NAME[piece.type]} on ${square}.`,
+            }
+          }
+          return {
+            type: 'skewer',
+            targetSquare: front.square,
+            description: `Skewers the ${PIECE_NAME[front.type]} on ${front.square} — it has to move, exposing the ${PIECE_NAME[piece.type]} on ${square}.`,
+          }
+        }
+      }
+      file += df
+      rank += dr
+    }
+  }
+  return null
+}
+
+// A fork: the moved piece now attacks two or more enemy pieces worth at
+// least a minor piece each.
+function findFork(game: Chess, toSquare: Square, movedColor: 'w' | 'b'): TacticalMotif | null {
+  const enemyColor = movedColor === 'w' ? 'b' : 'w'
+  const board = game.board()
+  const forkedSquares: Array<{ square: Square; type: string }> = []
+
+  for (const row of board) {
+    for (const cell of row) {
+      if (!cell || cell.color !== enemyColor) continue
+      if (PIECE_VALUE[cell.type] < PIECE_VALUE.n) continue
+      const attackers = game.attackers(cell.square, movedColor)
+      if (attackers.includes(toSquare)) {
+        forkedSquares.push({ square: cell.square, type: cell.type })
+      }
+    }
+  }
+
+  if (forkedSquares.length < 2) return null
+  forkedSquares.sort((a, b) => PIECE_VALUE[b.type] - PIECE_VALUE[a.type])
+  const [first, second] = forkedSquares
+  return {
+    type: 'fork',
+    targetSquare: first.square,
+    description: `Forks the ${PIECE_NAME[first.type]} on ${first.square} and the ${PIECE_NAME[second.type]} on ${second.square} — only one can be saved.`,
+  }
+}
+
+function findKingSquare(game: Chess, color: 'w' | 'b'): Square {
+  const board = game.board()
+  for (const row of board) {
+    for (const cell of row) {
+      if (cell && cell.type === 'k' && cell.color === color) return cell.square
+    }
+  }
+  throw new Error('king not found on board')
+}
+
+// Detects the single most notable tactical motif a move creates: a pin,
+// skewer, fork, or discovered check on the resulting position. Used to tag
+// the Coach panel's best-move (and played-move) explanations with *why* a
+// move works, not just what shape it is (capture/develop/etc).
+export function detectTacticalMotif(fen: string, moveUci: string): TacticalMotif | null {
+  if (!moveUci || moveUci.length < 4) return null
+  const game = new Chess(fen)
+  const movedColor = game.turn()
+  let move: Move
+  try {
+    move = game.move({
+      from: moveUci.slice(0, 2) as Square,
+      to: moveUci.slice(2, 4) as Square,
+      promotion: moveUci[4],
+    })
+  } catch {
+    return null
+  }
+  if (!move) return null
+
+  if (move.piece === 'b' || move.piece === 'r' || move.piece === 'q') {
+    const pinOrSkewer = findPinOrSkewer(game, move.to as Square, move.piece, movedColor)
+    if (pinOrSkewer) return pinOrSkewer
+  }
+
+  const fork = findFork(game, move.to as Square, movedColor)
+  if (fork) return fork
+
+  if (game.isCheck()) {
+    const enemyColor = movedColor === 'w' ? 'b' : 'w'
+    const kingSquare = findKingSquare(game, enemyColor)
+    const checkers = game.attackers(kingSquare, movedColor)
+    if (checkers.length && !checkers.includes(move.to as Square)) {
+      return {
+        type: 'discovered-check',
+        targetSquare: kingSquare,
+        description: 'Moving this piece uncovers check from another piece — the king has to respond to both threats.',
+      }
+    }
+  }
+
+  return null
 }

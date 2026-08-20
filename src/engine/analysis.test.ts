@@ -7,6 +7,7 @@ import {
   buildWinrateSeries,
   cpToWhiteWinrate,
   criticalMomentsLimitForTimeControl,
+  detectTacticalMotif,
   filterReviewRowsBySide,
   formatWhitePovEvaluation,
   isTerminalPositionFen,
@@ -530,5 +531,40 @@ describe('review analysis helpers', () => {
       '1... c5',
       '2. Nf3',
     ])
+  })
+})
+
+describe('detectTacticalMotif', () => {
+  it('detects a pin against the king', () => {
+    const fen = '4k3/8/4q3/8/8/8/8/R5K1 w - - 0 1'
+    const motif = detectTacticalMotif(fen, 'a1e1')
+    expect(motif?.type).toBe('pin')
+    expect(motif?.targetSquare).toBe('e6')
+  })
+
+  it('detects a skewer against a lower-value piece', () => {
+    const fen = 'k3r3/8/4q3/8/8/8/8/R5K1 w - - 0 1'
+    const motif = detectTacticalMotif(fen, 'a1e1')
+    expect(motif?.type).toBe('skewer')
+    expect(motif?.targetSquare).toBe('e6')
+  })
+
+  it('detects a fork on two pieces of at least minor value', () => {
+    const fen = 'k7/2r1r3/8/8/1N6/8/8/K7 w - - 0 1'
+    const motif = detectTacticalMotif(fen, 'b4d5')
+    expect(motif?.type).toBe('fork')
+  })
+
+  it('detects a discovered check', () => {
+    const fen = '4k3/8/8/8/4N3/8/8/4R1K1 w - - 0 1'
+    const motif = detectTacticalMotif(fen, 'e4c3')
+    expect(motif?.type).toBe('discovered-check')
+    expect(motif?.targetSquare).toBe('e8')
+  })
+
+  it('returns null when the move creates no motif', () => {
+    const game = new Chess()
+    const move = game.move('e4')
+    expect(detectTacticalMotif(new Chess().fen(), move!.lan)).toBeNull()
   })
 })

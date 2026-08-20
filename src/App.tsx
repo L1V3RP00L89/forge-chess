@@ -6,6 +6,7 @@ import {
   buildWinrateSeries,
   buildReviewRows,
   criticalMomentsLimitForTimeControl,
+  detectTacticalMotif,
   filterReviewRowsBySide,
   formatWhitePovEvaluation,
   isReviewEvaluationSufficient,
@@ -473,6 +474,12 @@ function formatCandidateGap(gapCp: number | null): string | null {
   return `+${(gapCp / 100).toFixed(2)} vs #2`
 }
 
+const TACTICAL_TAG_LABELS = new Set(['Pin', 'Skewer', 'Fork', 'Discovered'])
+
+function isTacticalTag(tag: string): boolean {
+  return TACTICAL_TAG_LABELS.has(tag) || tag.startsWith('Mate in')
+}
+
 function describeBestMove(
   fen: string,
   moveUci: string | null,
@@ -500,6 +507,22 @@ function describeBestMove(
   const fromRank = move.from[1]
   const centerSquares = new Set(['d4', 'e4', 'd5', 'e5'])
 
+  // Mate/motif tags are unshifted so they always lead the row — a forced
+  // mate or a pin outranks "this develops a piece" as a teaching point.
+  const primaryLineForMate = lines.find(line => line.pv[0] === moveUci)
+  if (primaryLineForMate?.mate && !san.includes('#')) {
+    tags.unshift(`Mate in ${Math.abs(primaryLineForMate.mate)}`)
+  }
+
+  const motif = detectTacticalMotif(fen, moveUci)
+  const motifTagLabel: Record<string, string> = {
+    pin: 'Pin',
+    skewer: 'Skewer',
+    fork: 'Fork',
+    'discovered-check': 'Discovered',
+  }
+  if (motif) tags.unshift(motifTagLabel[motif.type])
+
   if (san.includes('#')) tags.push('Mate')
   else if (san.includes('+')) tags.push('Check')
   if (move.captured) tags.push('Capture')
@@ -526,6 +549,8 @@ function describeBestMove(
 
   let summary = 'No single theme jumps out — walk the line and see what changes for your pieces.'
   if (san.includes('#')) summary = 'Forces mate. The follow-up line matters more than material.'
+  else if (primaryLineForMate?.mate) summary = `Starts a forced mate in ${Math.abs(primaryLineForMate.mate)} — the follow-up line matters more than material.`
+  else if (motif) summary = motif.description
   else if (san.includes('+')) summary = 'Creates a forcing move, so the reply choices are narrower.'
   else if (move.captured) summary = 'Starts with a capture; compare the recapture in the principal variation.'
   else if (move.flags.includes('k') || move.flags.includes('q')) summary = 'Improves king safety and connects the rooks.'
@@ -4242,7 +4267,9 @@ function App() {
                       <div className="coach-insight">
                         {coachReveal.effectiveTier >= 1 && (
                           <div className="coach-tags" aria-label="Best move traits">
-                            {coachMoveInsight.tags.map(tag => <span key={tag}>{tag}</span>)}
+                            {coachMoveInsight.tags.map(tag => (
+                              <span key={tag} className={isTacticalTag(tag) ? 'tactic' : undefined}>{tag}</span>
+                            ))}
                           </div>
                         )}
                         {coachReveal.effectiveTier >= 3 && <p>{coachMoveInsight.summary}</p>}

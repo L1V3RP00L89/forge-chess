@@ -1689,6 +1689,14 @@ body.resizing * {
   background: rgba(45, 212, 191, 0.08);
 }
 
+/* Pin/Fork/Skewer/Discovered/Mate-in-N: the tag that explains *why* a move
+   works, not just its shape — deliberately louder than the other tags. */
+.coach-tags span.tactic {
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #f5a623;
+  background: rgba(245, 158, 11, 0.14);
+}
+
 .coach-metrics {
   margin-top: 0.45rem;
 }
