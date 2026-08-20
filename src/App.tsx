@@ -3311,19 +3311,23 @@ function App() {
                     type="button"
                     className={`gc-pill ${workspaceMode === id ? 'gc-pill-active' : ''}`}
                     aria-pressed={workspaceMode === id}
+                    aria-label={label}
+                    title={label}
                     onClick={() => handleWorkspaceModeChange(id)}
                   >
                     <span className="gc-pill-icon">{icon}</span>
-                    {label}
+                    <span className="gc-pill-label">{label}</span>
                   </button>
                 ))}
                 <button
                   type="button"
                   className="gc-pill"
+                  aria-label="Training"
+                  title="Training"
                   onClick={() => setActiveView('training')}
                 >
                   <span className="gc-pill-icon"><IconCrown /></span>
-                  Training
+                  <span className="gc-pill-label">Training</span>
                 </button>
               </div>
             </div>
