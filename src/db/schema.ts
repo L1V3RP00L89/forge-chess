@@ -77,6 +77,19 @@ CREATE TABLE IF NOT EXISTS repertoire_units (
   solved_streak INTEGER NOT NULL DEFAULT 0,
   UNIQUE (repertoire_id, unit_key)
 );
+
+-- Append-only history behind repertoire_units' current next_review_at/
+-- review_count/solved_streak -- those columns are just the *current* SRS
+-- state, overwritten on every attempt; this keeps every attempt so "was this
+-- new / did I get it right / did I miss it" can be reviewed over time (e.g.
+-- a per-unit or per-repertoire history, or a grade-distribution view).
+CREATE TABLE IF NOT EXISTS repertoire_attempts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  unit_id INTEGER NOT NULL REFERENCES repertoire_units(id),
+  result TEXT NOT NULL CHECK (result IN ('introduced', 'correct', 'incorrect')),
+  solved_streak_after INTEGER NOT NULL,
+  attempted_at TEXT NOT NULL
+);
 `
 
 export const SCHEMA_TABLE_NAMES = [
@@ -87,4 +100,5 @@ export const SCHEMA_TABLE_NAMES = [
   'streak_state',
   'repertoires',
   'repertoire_units',
+  'repertoire_attempts',
 ] as const

@@ -15,6 +15,16 @@ export type RepertoireSummary = {
     drillUnitCount: number
 }
 
+export type GradeDistribution = {
+    new: number
+    f: number
+    e: number
+    d: number
+    c: number
+    b: number
+    a: number
+}
+
 export type StoredDrillUnit = {
     id: number
     unitKey: string
@@ -149,11 +159,18 @@ export function useRepertoireDb() {
 
     const listDueUnits = useCallback(async (side: RepertoireSide, limit = 20): Promise<StoredDrillUnit[]> => {
         try {
+            // Every freshly-imported unit shares the same next_review_at (import
+            // time), so that column alone is a no-op tiebreaker across an entire
+            // repertoire -- SQL doesn't promise any order among equal values.
+            // ru.id is assigned in the same tree-walk (DFS) order the units were
+            // extracted in, which keeps sibling lines from the same chapter/branch
+            // adjacent -- a plain, free way to get chapter-coherent sessions
+            // instead of shuffling the whole repertoire on every import.
             const rows = await query(
                 `SELECT ru.* FROM repertoire_units ru
                  JOIN repertoires r ON r.id = ru.repertoire_id
                  WHERE r.side = ? AND ru.next_review_at <= ?
-                 ORDER BY ru.next_review_at ASC
+                 ORDER BY ru.next_review_at ASC, ru.id ASC
                  LIMIT ?`,
                 [side, new Date().toISOString(), limit],
             )
@@ -177,8 +194,66 @@ export function useRepertoireDb() {
                 'UPDATE repertoire_units SET next_review_at = ?, review_count = ?, solved_streak = ? WHERE id = ?',
                 [next.nextReviewAt, next.reviewCount, next.solvedStreak, unitId],
             )
+            await query(
+                'INSERT INTO repertoire_attempts (unit_id, result, solved_streak_after, attempted_at) VALUES (?, ?, ?, ?)',
+                [unitId, correct ? 'correct' : 'incorrect', next.solvedStreak, new Date().toISOString()],
+            )
         } catch (error) {
             console.warn('Failed to record drill result', error)
+        }
+    }, [])
+
+    // First exposure to a unit is a walkthrough, not a test -- matches how
+    // Chessable's MoveTrainer and similar SRS tools handle brand-new material:
+    // shown once, ungraded, before it enters the normal recall-and-grade cycle.
+    // Schedules the first real review for tomorrow rather than leaving it
+    // immediately due again, so a fresh import doesn't dump the whole
+    // repertoire's worth of "due now" tests into one session.
+    const markIntroduced = useCallback(async (unitId: number): Promise<void> => {
+        try {
+            const next = new Date(Date.now() + 24 * 60 * 60_000).toISOString()
+            await query(
+                'UPDATE repertoire_units SET next_review_at = ?, review_count = review_count + 1 WHERE id = ?',
+                [next, unitId],
+            )
+            await query(
+                'INSERT INTO repertoire_attempts (unit_id, result, solved_streak_after, attempted_at) VALUES (?, ?, ?, ?)',
+                [unitId, 'introduced', 0, new Date().toISOString()],
+            )
+        } catch (error) {
+            console.warn('Failed to mark repertoire unit as introduced', error)
+        }
+    }, [])
+
+    // Current-state snapshot (not attempt history) bucketed the way spaced-
+    // repetition apps like Anki/AlgoRepetition typically show a deck's
+    // progress: New (never seen), then a rung per streak length, capped at
+    // A for anything mastered enough to be reviewed only rarely.
+    const getGradeDistribution = useCallback(async (side: RepertoireSide): Promise<GradeDistribution> => {
+        const empty: GradeDistribution = { new: 0, f: 0, e: 0, d: 0, c: 0, b: 0, a: 0 }
+        try {
+            const rows = await query(
+                `SELECT ru.review_count, ru.solved_streak FROM repertoire_units ru
+                 JOIN repertoires r ON r.id = ru.repertoire_id
+                 WHERE r.side = ?`,
+                [side],
+            )
+            const counts = { ...empty }
+            for (const row of rows) {
+                const reviewCount = Number(row.review_count)
+                const solvedStreak = Number(row.solved_streak)
+                if (reviewCount === 0) counts.new += 1
+                else if (solvedStreak === 0) counts.f += 1
+                else if (solvedStreak === 1) counts.e += 1
+                else if (solvedStreak === 2) counts.d += 1
+                else if (solvedStreak === 3) counts.c += 1
+                else if (solvedStreak === 4) counts.b += 1
+                else counts.a += 1
+            }
+            return counts
+        } catch (error) {
+            console.warn('Failed to load repertoire grade distribution', error)
+            return empty
         }
     }, [])
 
@@ -189,5 +264,7 @@ export function useRepertoireDb() {
         countDueUnits,
         listDueUnits,
         recordDrillResult,
+        markIntroduced,
+        getGradeDistribution,
     }
 }

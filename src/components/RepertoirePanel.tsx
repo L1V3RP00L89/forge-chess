@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { parseRepertoirePgn } from '../engine/repertoire'
 import type { RepertoireSide } from '../engine/repertoire'
-import { useRepertoireDb, type RepertoireSummary, type StoredDrillUnit } from '../hooks/useRepertoireDb'
+import { useRepertoireDb, type GradeDistribution, type RepertoireSummary, type StoredDrillUnit } from '../hooks/useRepertoireDb'
 import { RepertoireDrillView } from './RepertoireDrillView'
 import { IconPlay, IconTrash, IconUpload } from './icons'
 import './RepertoirePanel.css'
@@ -11,14 +11,49 @@ const SIDES: Array<{ side: RepertoireSide; label: string }> = [
     { side: 'b', label: 'Black' },
 ]
 
+const EMPTY_GRADES: GradeDistribution = { new: 0, f: 0, e: 0, d: 0, c: 0, b: 0, a: 0 }
+
+const GRADE_BARS: Array<{ key: keyof GradeDistribution; label: string; className: string }> = [
+    { key: 'new', label: 'New', className: 'new' },
+    { key: 'f', label: 'F', className: 'f' },
+    { key: 'e', label: 'E', className: 'e' },
+    { key: 'd', label: 'D', className: 'd' },
+    { key: 'c', label: 'C', className: 'c' },
+    { key: 'b', label: 'B', className: 'b' },
+    { key: 'a', label: 'A', className: 'a' },
+]
+
+function GradeBar({ grades }: { grades: GradeDistribution }) {
+    const max = Math.max(1, ...GRADE_BARS.map(({ key }) => grades[key]))
+    return (
+        <div className="repertoire-grade-bar" aria-label="Progress by mastery grade">
+            {GRADE_BARS.map(({ key, label, className }) => {
+                const count = grades[key]
+                const heightPct = count === 0 ? 4 : Math.max(8, Math.round((count / max) * 100))
+                return (
+                    <div className="repertoire-grade-col" key={key}>
+                        {count > 0 && <span className="repertoire-grade-count">{count}</span>}
+                        <div
+                            className={`repertoire-grade-fill ${className}`}
+                            style={{ height: `${heightPct}%` }}
+                        />
+                        <span className="repertoire-grade-label">{label}</span>
+                    </div>
+                )
+            })}
+        </div>
+    )
+}
+
 type SlotState = {
     summary: RepertoireSummary | null
     dueCount: number
+    grades: GradeDistribution
     loading: boolean
     error: string | null
 }
 
-const EMPTY_SLOT: SlotState = { summary: null, dueCount: 0, loading: true, error: null }
+const EMPTY_SLOT: SlotState = { summary: null, dueCount: 0, grades: EMPTY_GRADES, loading: true, error: null }
 
 export function RepertoirePanel() {
     const db = useRepertoireDb()
@@ -29,7 +64,8 @@ export function RepertoirePanel() {
     const refreshSlot = useCallback(async (side: RepertoireSide) => {
         const summary = await db.getRepertoireSummary(side)
         const dueCount = summary ? await db.countDueUnits(side) : 0
-        setSlots(prev => ({ ...prev, [side]: { summary, dueCount, loading: false, error: null } }))
+        const grades = summary ? await db.getGradeDistribution(side) : EMPTY_GRADES
+        setSlots(prev => ({ ...prev, [side]: { summary, dueCount, grades, loading: false, error: null } }))
     }, [db])
 
     useEffect(() => {
@@ -48,7 +84,7 @@ export function RepertoirePanel() {
             if (parseResult.mergedGameCount === 0) {
                 setSlots(prev => ({
                     ...prev,
-                    [side]: { summary: null, dueCount: 0, loading: false, error: 'No usable games found in that file.' },
+                    [side]: { summary: null, dueCount: 0, grades: EMPTY_GRADES, loading: false, error: 'No usable games found in that file.' },
                 }))
                 return
             }
@@ -56,7 +92,7 @@ export function RepertoirePanel() {
             if (!summary) {
                 setSlots(prev => ({
                     ...prev,
-                    [side]: { summary: null, dueCount: 0, loading: false, error: 'Import failed — see console for details.' },
+                    [side]: { summary: null, dueCount: 0, grades: EMPTY_GRADES, loading: false, error: 'Import failed — see console for details.' },
                 }))
                 return
             }
@@ -67,6 +103,7 @@ export function RepertoirePanel() {
                 [side]: {
                     summary: null,
                     dueCount: 0,
+                    grades: EMPTY_GRADES,
                     loading: false,
                     error: error instanceof Error ? error.message : 'Import failed.',
                 },
@@ -92,6 +129,10 @@ export function RepertoirePanel() {
         void db.recordDrillResult(unitId, correct)
     }, [db])
 
+    const handleIntroduced = useCallback((unitId: number) => {
+        void db.markIntroduced(unitId)
+    }, [db])
+
     const handleExitDrill = useCallback(() => {
         const side = drilling?.side
         setDrilling(null)
@@ -105,6 +146,7 @@ export function RepertoirePanel() {
                 rootFen={drilling.rootFen}
                 units={drilling.units}
                 onRecordResult={handleDrillResult}
+                onIntroduced={handleIntroduced}
                 onExit={handleExitDrill}
             />
         )
@@ -132,6 +174,7 @@ export function RepertoirePanel() {
                                     <p className="repertoire-slot-status">
                                         {slot.dueCount > 0 ? `${slot.dueCount} due now` : 'Nothing due right now'}
                                     </p>
+                                    <GradeBar grades={slot.grades} />
                                     <div className="repertoire-slot-actions">
                                         <button
                                             type="button"

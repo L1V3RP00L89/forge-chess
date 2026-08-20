@@ -54,6 +54,12 @@
     color: #f85149;
 }
 
+.repertoire-drill-feedback.learn {
+    background: rgba(88, 166, 255, 0.12);
+    border-color: rgba(88, 166, 255, 0.35);
+    color: var(--info, #58a6ff);
+}
+
 .repertoire-drill-feedback-headline {
     margin: 0;
     font-weight: 600;
