@@ -1,0 +1,38 @@
+.woodpecker-panel {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 1rem;
+    background: rgba(1, 4, 9, 0.4);
+    border: 1px solid var(--border-default, rgba(240, 246, 252, 0.10));
+    border-radius: 10px;
+}
+
+.woodpecker-panel h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.woodpecker-panel-status {
+    margin: 0 0 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary, #8b949e);
+}
+
+.woodpecker-panel-start {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 7px;
+    padding: 0.45rem 0.75rem;
+    cursor: pointer;
+    color: #0d1117;
+    background: var(--accent, #3fb950);
+    border: none;
+}

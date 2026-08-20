@@ -1,5 +1,6 @@
 import { IconBarChart, IconCrown, IconHistory, IconKing, IconPlay, IconTrendingUp } from './icons'
 import { RepertoirePanel } from './RepertoirePanel'
+import { WoodpeckerPanel } from './WoodpeckerPanel'
 import './TrainingView.css'
 
 type Props = {
@@ -50,6 +51,8 @@ export function TrainingView({ onOpenApp }: Props) {
                     </div>
                 ))}
             </div>
+
+            <WoodpeckerPanel />
 
             <RepertoirePanel />
 
