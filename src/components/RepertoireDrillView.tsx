@@ -3,7 +3,7 @@ import { Chess, type Square } from 'chess.js'
 import { Chessboard } from 'react-chessboard'
 import type { RepertoireSide } from '../engine/repertoire'
 import type { StoredDrillUnit } from '../hooks/useRepertoireDb'
-import { IconStop } from './icons'
+import { IconChevronRight, IconStop } from './icons'
 import './RepertoireDrillView.css'
 
 type Props = {
@@ -16,8 +16,10 @@ type Props = {
 
 type Feedback = { correct: boolean; expectedSan: string; comment?: string } | null
 
+// Only a correct move with nothing to read auto-advances — anything with a
+// comment, or any miss (which always shows the correct move), waits for the
+// user to hit Continue instead of racing a timer.
 const AUTOPLAY_DELAY_MS = 350
-const CORRECTION_DELAY_MS = 1100
 
 export function RepertoireDrillView({ ownerColor, rootFen, units, onRecordResult, onExit }: Props) {
     const [unitIndex, setUnitIndex] = useState(0)
@@ -27,6 +29,8 @@ export function RepertoireDrillView({ ownerColor, rootFen, units, onRecordResult
     const [locked, setLocked] = useState(false)
     const chessRef = useRef(new Chess(rootFen))
     const mistakeInUnitRef = useRef(false)
+    const pendingContinueRef = useRef<(() => void) | null>(null)
+    const [awaitingContinue, setAwaitingContinue] = useState(false)
 
     const unit = units[unitIndex]
 
@@ -41,9 +45,11 @@ export function RepertoireDrillView({ ownerColor, rootFen, units, onRecordResult
 
     useEffect(() => {
         mistakeInUnitRef.current = false
+        pendingContinueRef.current = null
         setStepIndex(0)
         setFeedback(null)
         setLocked(false)
+        setAwaitingContinue(false)
         if (unit) setupToStep(unit)
     }, [unit, setupToStep])
 
@@ -80,6 +86,14 @@ export function RepertoireDrillView({ ownerColor, rootFen, units, onRecordResult
 
         const playedUci = `${move.from}${move.to}${move.promotion ?? ''}`
         const correct = playedUci === currentStep.ownerUci
+        const playOpponentReply = () => {
+            if (!currentStep.opponentReplyUci) return
+            chess.move({
+                from: currentStep.opponentReplyUci.slice(0, 2) as Square,
+                to: currentStep.opponentReplyUci.slice(2, 4) as Square,
+                promotion: currentStep.opponentReplyUci.slice(4) || undefined,
+            })
+        }
 
         if (!correct) {
             chess.undo()
@@ -87,41 +101,48 @@ export function RepertoireDrillView({ ownerColor, rootFen, units, onRecordResult
             mistakeInUnitRef.current = true
             setFeedback({ correct: false, expectedSan: currentStep.ownerSan, comment: currentStep.comment })
             setLocked(true)
-            window.setTimeout(() => {
+            pendingContinueRef.current = () => {
                 const forced = chess.move({
                     from: currentStep.ownerUci.slice(0, 2) as Square,
                     to: currentStep.ownerUci.slice(2, 4) as Square,
                     promotion: currentStep.ownerUci.slice(4) || undefined,
                 })
-                if (forced && currentStep.opponentReplyUci) {
-                    chess.move({
-                        from: currentStep.opponentReplyUci.slice(0, 2) as Square,
-                        to: currentStep.opponentReplyUci.slice(2, 4) as Square,
-                        promotion: currentStep.opponentReplyUci.slice(4) || undefined,
-                    })
-                }
+                if (forced) playOpponentReply()
                 setFen(chess.fen())
                 advance()
-            }, CORRECTION_DELAY_MS)
+            }
+            setAwaitingContinue(true)
             return true
         }
 
         setFen(chess.fen())
         setFeedback({ correct: true, expectedSan: currentStep.ownerSan, comment: currentStep.comment })
         setLocked(true)
-        window.setTimeout(() => {
-            if (currentStep.opponentReplyUci) {
-                chess.move({
-                    from: currentStep.opponentReplyUci.slice(0, 2) as Square,
-                    to: currentStep.opponentReplyUci.slice(2, 4) as Square,
-                    promotion: currentStep.opponentReplyUci.slice(4) || undefined,
-                })
+
+        if (currentStep.comment) {
+            pendingContinueRef.current = () => {
+                playOpponentReply()
                 setFen(chess.fen())
+                advance()
             }
+            setAwaitingContinue(true)
+            return true
+        }
+
+        window.setTimeout(() => {
+            playOpponentReply()
+            setFen(chess.fen())
             advance()
-        }, currentStep.comment ? CORRECTION_DELAY_MS : AUTOPLAY_DELAY_MS)
+        }, AUTOPLAY_DELAY_MS)
         return true
     }, [advance, currentStep, locked])
+
+    const handleContinue = useCallback(() => {
+        const run = pendingContinueRef.current
+        pendingContinueRef.current = null
+        setAwaitingContinue(false)
+        run?.()
+    }, [])
 
     const sourceLabel = useMemo(() => unit?.sourceLabels[0] ?? '', [unit])
 
@@ -158,6 +179,11 @@ export function RepertoireDrillView({ ownerColor, rootFen, units, onRecordResult
                         {feedback.correct ? 'Correct' : `Not quite — the line plays ${feedback.expectedSan}`}
                     </p>
                     {feedback.comment && <p className="repertoire-drill-feedback-comment">{feedback.comment}</p>}
+                    {awaitingContinue && (
+                        <button type="button" className="repertoire-drill-continue" onClick={handleContinue}>
+                            Continue <IconChevronRight />
+                        </button>
+                    )}
                 </div>
             )}
         </div>

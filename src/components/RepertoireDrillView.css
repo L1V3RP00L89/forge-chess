@@ -66,6 +66,25 @@
     line-height: 1.4;
 }
 
+.repertoire-drill-continue {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.6rem;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #0d1117;
+    background: var(--accent, #3fb950);
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+.repertoire-drill-continue:hover {
+    filter: brightness(1.08);
+}
+
 .repertoire-drill-empty {
     display: flex;
     flex-direction: column;
