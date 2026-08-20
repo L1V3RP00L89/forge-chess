@@ -1,4 +1,5 @@
 import { IconBarChart, IconCrown, IconHistory, IconKing, IconPlay, IconTrendingUp } from './icons'
+import { RepertoirePanel } from './RepertoirePanel'
 import './TrainingView.css'
 
 type Props = {
@@ -49,6 +50,8 @@ export function TrainingView({ onOpenApp }: Props) {
                     </div>
                 ))}
             </div>
+
+            <RepertoirePanel />
 
             <button type="button" className="training-enter-app-btn" onClick={onOpenApp}>
                 <IconPlay /> Go to board

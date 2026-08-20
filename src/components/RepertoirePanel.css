@@ -1,0 +1,107 @@
+.repertoire-panel {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.repertoire-panel h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.repertoire-slots {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.repertoire-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 1rem;
+    background: rgba(1, 4, 9, 0.4);
+    border: 1px solid var(--border-default, rgba(240, 246, 252, 0.10));
+    border-radius: 10px;
+}
+
+.repertoire-slot-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.repertoire-slot-swatch {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-default, rgba(240, 246, 252, 0.2));
+}
+
+.repertoire-slot-swatch.white {
+    background: #e6edf3;
+}
+
+.repertoire-slot-swatch.black {
+    background: #161b22;
+}
+
+.repertoire-slot-label {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.repertoire-slot-status {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary, #8b949e);
+}
+
+.repertoire-slot-error {
+    margin: 0;
+    font-size: 0.78rem;
+    color: #f85149;
+}
+
+.repertoire-slot-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.repertoire-slot-primary,
+.repertoire-slot-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 7px;
+    padding: 0.45rem 0.75rem;
+    cursor: pointer;
+}
+
+.repertoire-slot-primary {
+    color: #0d1117;
+    background: var(--accent, #3fb950);
+    border: none;
+    margin-top: 0.25rem;
+    align-self: flex-start;
+}
+
+.repertoire-slot-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.repertoire-slot-secondary {
+    background: none;
+    color: var(--text-secondary, #8b949e);
+    border: 1px solid var(--border-default, rgba(240, 246, 252, 0.10));
+}
+
+.repertoire-slot-file-input {
+    display: none;
+}

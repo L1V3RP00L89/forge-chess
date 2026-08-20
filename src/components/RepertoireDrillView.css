@@ -1,0 +1,77 @@
+.repertoire-drill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.repertoire-drill-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    font-size: 0.8rem;
+    color: var(--text-secondary, #8b949e);
+}
+
+.repertoire-drill-exit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: none;
+    border: 1px solid var(--border-default, rgba(240, 246, 252, 0.10));
+    border-radius: 6px;
+    color: var(--text-secondary, #8b949e);
+    font-size: 0.75rem;
+    padding: 0.25rem 0.55rem;
+    cursor: pointer;
+}
+
+.repertoire-drill-board {
+    width: 100%;
+}
+
+.repertoire-drill-feedback {
+    width: 100%;
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.85rem;
+    border: 1px solid transparent;
+}
+
+.repertoire-drill-feedback.correct {
+    background: rgba(63, 185, 80, 0.12);
+    border-color: rgba(63, 185, 80, 0.35);
+    color: var(--accent, #3fb950);
+}
+
+.repertoire-drill-feedback.incorrect {
+    background: rgba(248, 81, 73, 0.12);
+    border-color: rgba(248, 81, 73, 0.35);
+    color: #f85149;
+}
+
+.repertoire-drill-feedback-headline {
+    margin: 0;
+    font-weight: 600;
+}
+
+.repertoire-drill-feedback-comment {
+    margin: 0.35rem 0 0;
+    color: var(--text-secondary, #8b949e);
+    font-weight: 400;
+    line-height: 1.4;
+}
+
+.repertoire-drill-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 2rem 1rem;
+    color: var(--text-secondary, #8b949e);
+    text-align: center;
+}

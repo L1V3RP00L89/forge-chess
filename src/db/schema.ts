@@ -47,6 +47,36 @@ CREATE TABLE IF NOT EXISTS streak_state (
 
 INSERT OR IGNORE INTO streak_state (id, current_streak, longest_streak, last_active_date)
 VALUES (1, 0, 0, NULL);
+
+-- M11: one imported repertoire per side (White/Black), re-import replaces it
+-- and its units wholesale rather than accumulating duplicates.
+CREATE TABLE IF NOT EXISTS repertoires (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  side TEXT NOT NULL UNIQUE CHECK (side IN ('w', 'b')),
+  source_filename TEXT,
+  root_fen TEXT NOT NULL,
+  imported_at TEXT NOT NULL,
+  game_count INTEGER NOT NULL DEFAULT 0,
+  merged_game_count INTEGER NOT NULL DEFAULT 0,
+  drill_unit_count INTEGER NOT NULL DEFAULT 0
+);
+
+-- One row per drill unit (a real decision point in the merged tree, per
+-- extractDrillUnits in src/engine/repertoire.ts) -- not one row per raw PGN
+-- line. Same SRS column shape as missed_tactics so the two can eventually
+-- share one drill-session scheduler (see docs/PROJECT_BRIEF.md M11 note).
+CREATE TABLE IF NOT EXISTS repertoire_units (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  repertoire_id INTEGER NOT NULL REFERENCES repertoires(id),
+  unit_key TEXT NOT NULL,
+  setup_uci TEXT NOT NULL,
+  steps TEXT NOT NULL,
+  source_labels TEXT NOT NULL,
+  next_review_at TEXT NOT NULL,
+  review_count INTEGER NOT NULL DEFAULT 0,
+  solved_streak INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (repertoire_id, unit_key)
+);
 `
 
 export const SCHEMA_TABLE_NAMES = [
@@ -55,4 +85,6 @@ export const SCHEMA_TABLE_NAMES = [
   'journal_entries',
   'badges',
   'streak_state',
+  'repertoires',
+  'repertoire_units',
 ] as const
