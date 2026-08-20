@@ -3462,7 +3462,14 @@ body.resizing * {
     z-index: 200;
   }
 
-  .app-brand-text {
+  /* The brand mark (icon + "Forge Chess" text) is the least useful thing to
+     spend width on in the mobile top bar — text was already hidden, and once
+     it's just a small crown with a divider line it's not worth the ~50px
+     (icon + its margin/padding/border) it was taking from an already-tight
+     row. Dropping it entirely gives the actual controls (New game/Flip/PGN,
+     Play/Analysis/Training, Settings) real breathing room instead of being
+     jammed edge-to-edge. */
+  .app-brand {
     display: none;
   }
 
@@ -3556,9 +3563,14 @@ body.resizing * {
     justify-content: center;
   }
 
+  /* The icon SVGs size themselves via `1em` (see icons.tsx), so what actually
+     needs setting here is font-size on their wrapping span, not width/height
+     on a box the SVG doesn't fill — that was the bug making these render at
+     ~12.5px against 16px everywhere else in the same row. */
   .top-mode-pills[aria-label="Workspace mode"] .gc-pill-icon {
-    width: 1rem;
-    height: 1rem;
+    font-size: 1rem;
+    width: auto;
+    height: auto;
     opacity: 1;
   }
 
