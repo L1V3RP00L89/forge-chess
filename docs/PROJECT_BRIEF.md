@@ -37,7 +37,7 @@ Grounded in what's already shipped (565 commits, spanning 2026-01-29 to 2026-06-
 | M7  | Full-strength engine profile completion (113MB, opt-in, CDN-fetched)                                                                         | **Confirmed working (2026-08-17)** — see note below; description corrected, LFS is not actually in play | Priya                |
 | M8  | Training feature — built-in habit-tracking/coaching plan (see below)                                                                         | **In progress** — DB foundation, post-review journal modal, and reviewed-game-history view shipped; Training tab and drill queue not yet started | Renee → Dara → Priya |
 | M9  | Coach/Pro mode logic cleanup — refactor `analysisExperience` branching in `App.tsx`, grown organically across M4/M5                          | **Shipped (2026-08-18)** — see note below                                                              | Priya                |
-| M10 | Top-bar declutter — remove Human vs Human/AI/AI vs AI top-bar controls, New Game becomes sole mode-selection entry point                     | **Not started**                                                                                        | Dara → Priya         |
+| M10 | Top-bar declutter — remove Human vs Human/AI/AI vs AI top-bar controls, New Game becomes sole mode-selection entry point                     | **Shipped** — see note below                                                                            | Dara → Priya         |
 
 **M3 close-out**: the repo's last commit before this re-baseline was **2026-06-01**; the gap ran roughly 2.5 months with no activity, raising the risk of silent dependency/API drift. Priya re-ran the full quality gate locally on 2026-08-17 (`npm audit`, `npm run lint`, `npm test -- --run`, `npm run build`) — all clean, nothing broke in the gap. CI should be spot-checked on the next push as a final confirmation, but local re-baseline is complete.
 
@@ -90,6 +90,13 @@ Verified visually via a scripted browser walkthrough (Playwright, headless Chrom
 - The 25 scattered `analysisExperience === 'beginner'` / `=== 'pro'` comparisons across `App.tsx` were replaced with two named booleans (`isCoachMode`, `isProMode`) declared once beside the `analysisExperience` state, so intent reads at each call site instead of being re-derived ad hoc every time.
 
 No JSX structure, CSS, or user-facing behavior changed — this was purely moving/naming, not a redesign.
+
+## M10 Detail — Top-Bar Declutter
+
+**Two separate things bundled under one milestone number, shipped at different times:**
+
+1. **Human vs Human/AI/AI vs AI top-bar controls removed.** Discovered already done (2026-08-20) while investigating a related mobile layout question — `git log -S 'aria-label="Game mode"'` shows that top-bar pill group was added and then removed across earlier commits, with no trace in the current `App.tsx`. The brief had never been updated to reflect it; this was stale bookkeeping, not new work this session. `gameMode` state itself (Human vs Human/AI/AI vs AI) still exists and drives play behavior — only the top-bar UI for selecting it is gone, consistent with "New Game becomes the sole entry point."
+2. **Mobile top bar collapsed to a single icon-only row (2026-08-20).** Kris's actual ask: on mobile, Play/Analysis/Training kept full text labels at every width and wrapped onto their own second row below the New game/Flip/PGN/Settings icons. Wrapped each pill's label text in its own `<span>` (needed to hide it in CSS while preserving an accessible name via `aria-label`/`title`, since these buttons had no explicit label before — their accessible name came entirely from the now-hidden visible text), collapsed them to icon-only circles matching the existing `.mobile-actions`/Settings treatment, and changed the mobile grid from two rows (`"brand actions settings"` / `"modes modes modes"`) to one (`"brand actions modes settings"`). Verified at 320/375/414px viewport widths: `scrollWidth` ≈ `clientWidth` at all three (no overflow, no wrap) — everything sits in one flat row down to the narrowest common phone width (iPhone SE, 320px).
 
 ## M5 Detail — Review/Accuracy Framing Pass
 
@@ -244,7 +251,7 @@ Raised by Kris during a 2026-08-16 walkthrough of the app. Six items; below is w
 - **Reviewed game history** → **M8's 4th sub-feature, shipped 2026-08-19.** See M8 Detail above.
 - **More human, plain-language AI coaching** → **folds into M4**, per Renee's own pushback note on 2026-08-17 ("`describeBestMove`'s eventual rewrite ... grounded in plans/patterns rather than generic move commentary — flagged for a later content pass once the reveal ships"). The reveal shipped 2026-08-17, so this is now unblocked. Owner: Renee (defines the language/framing) → Priya (implements). Not a new milestone number — it's M4's own deferred tail, tracked there.
 - **Clean up Coach/Pro mode logic** → **M9, shipped 2026-08-18.** See M9 Detail above.
-- **Declutter the top bar's game-mode controls** → **new milestone, M10 (not started).** Remove Human vs Human / Human vs AI / AI vs AI as top-bar options; New Game becomes the sole entry point for mode selection. Self-contained UI change, doesn't touch engine/analysis code. Owner: Dara (layout) → Priya (implementation).
+- **Declutter the top bar's game-mode controls** → **M10, shipped.** See M10 Detail above.
 - **Engine Lab is unclear** → **Resolved and shipped 2026-08-18.** Renee's call: it's a raw UCI console (manual commands, bench/perft diagnostics, engine-profile switching) — titled-player/tinkerer territory, not something the app's adult-improver audience needs. Dara's call: hide the tab entirely in Coach mode rather than show it disabled, since a greyed-out tab just adds a second "what is this" question on top of the first. Priya gated the `engine-lab` tab behind `analysisExperience === 'pro'` in `App.tsx`, with a fallback to `Analyze` if Pro→Coach happens while it's active. No further work.
 - **Chess.com integration** → **stays unmilestoned, blocked on Kris.** Scope is genuinely undefined (game import? live rating pull? something else?) — needs a direct conversation with Kris before George/Priya can even estimate it, let alone schedule it. Not actionable without that.
 
