@@ -181,6 +181,25 @@ export function useRepertoireDb() {
         }
     }, [])
 
+    // Every unit regardless of due date, in tree-walk order -- used for a
+    // passive "View Line" pass over a whole repertoire rather than the SRS
+    // queue listDueUnits draws from.
+    const listAllUnits = useCallback(async (side: RepertoireSide): Promise<StoredDrillUnit[]> => {
+        try {
+            const rows = await query(
+                `SELECT ru.* FROM repertoire_units ru
+                 JOIN repertoires r ON r.id = ru.repertoire_id
+                 WHERE r.side = ?
+                 ORDER BY ru.id ASC`,
+                [side],
+            )
+            return rows.map(mapDrillUnitRow)
+        } catch (error) {
+            console.warn('Failed to list repertoire units', error)
+            return []
+        }
+    }, [])
+
     const recordDrillResult = useCallback(async (unitId: number, correct: boolean): Promise<void> => {
         try {
             const rows = await query('SELECT review_count, solved_streak FROM repertoire_units WHERE id = ?', [unitId])
@@ -263,6 +282,7 @@ export function useRepertoireDb() {
         removeRepertoire,
         countDueUnits,
         listDueUnits,
+        listAllUnits,
         recordDrillResult,
         markIntroduced,
         getGradeDistribution,

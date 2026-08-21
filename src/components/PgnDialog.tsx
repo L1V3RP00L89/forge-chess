@@ -426,7 +426,7 @@ export function PgnDialog({ open, onClose, onImport, onLoadFen, currentFen, main
                                     ref={importFileInputRef}
                                     className="dialog-file-input"
                                     type="file"
-                                    accept=".pgn,.txt,application/x-chess-pgn,text/plain"
+                                    accept=".pgn,.txt,application/x-chess-pgn,text/plain,text/*"
                                     onChange={event => void handleImportFileChange(event)}
                                 />
                                 <button type="button" className="btn-cancel" onClick={handlePickImportFile}>

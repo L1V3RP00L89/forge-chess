@@ -3,7 +3,7 @@ import { parseRepertoirePgn } from '../engine/repertoire'
 import type { RepertoireSide } from '../engine/repertoire'
 import { useRepertoireDb, type GradeDistribution, type RepertoireSummary, type StoredDrillUnit } from '../hooks/useRepertoireDb'
 import { RepertoireDrillView } from './RepertoireDrillView'
-import { IconPlay, IconTrash, IconUpload } from './icons'
+import { IconEye, IconPlay, IconTrash, IconUpload } from './icons'
 import './RepertoirePanel.css'
 
 const SIDES: Array<{ side: RepertoireSide; label: string }> = [
@@ -58,7 +58,7 @@ const EMPTY_SLOT: SlotState = { summary: null, dueCount: 0, grades: EMPTY_GRADES
 export function RepertoirePanel() {
     const db = useRepertoireDb()
     const [slots, setSlots] = useState<Record<RepertoireSide, SlotState>>({ w: EMPTY_SLOT, b: EMPTY_SLOT })
-    const [drilling, setDrilling] = useState<{ side: RepertoireSide; rootFen: string; units: StoredDrillUnit[] } | null>(null)
+    const [drilling, setDrilling] = useState<{ side: RepertoireSide; mode: 'view' | 'study'; rootFen: string; units: StoredDrillUnit[] } | null>(null)
     const fileInputRefs = useRef<Record<RepertoireSide, HTMLInputElement | null>>({ w: null, b: null })
 
     const refreshSlot = useCallback(async (side: RepertoireSide) => {
@@ -122,7 +122,17 @@ export function RepertoirePanel() {
         if (!slot.summary) return
         const units = await db.listDueUnits(side, 20)
         if (units.length === 0) return
-        setDrilling({ side, rootFen: slot.summary.rootFen, units })
+        setDrilling({ side, mode: 'study', rootFen: slot.summary.rootFen, units })
+    }, [db, slots])
+
+    // View Line is a passive read-through of the whole repertoire -- not
+    // gated on anything being due, since it never touches SRS scheduling.
+    const handleViewLine = useCallback(async (side: RepertoireSide) => {
+        const slot = slots[side]
+        if (!slot.summary) return
+        const units = await db.listAllUnits(side)
+        if (units.length === 0) return
+        setDrilling({ side, mode: 'view', rootFen: slot.summary.rootFen, units })
     }, [db, slots])
 
     const handleDrillResult = useCallback((unitId: number, correct: boolean) => {
@@ -143,6 +153,7 @@ export function RepertoirePanel() {
         return (
             <RepertoireDrillView
                 ownerColor={drilling.side}
+                mode={drilling.mode}
                 rootFen={drilling.rootFen}
                 units={drilling.units}
                 onRecordResult={handleDrillResult}
@@ -182,7 +193,14 @@ export function RepertoirePanel() {
                                             disabled={slot.dueCount === 0}
                                             onClick={() => void handleStartDrill(side)}
                                         >
-                                            <IconPlay /> Start drill
+                                            <IconPlay /> Study line
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="repertoire-slot-secondary"
+                                            onClick={() => void handleViewLine(side)}
+                                        >
+                                            <IconEye /> View line
                                         </button>
                                         <button
                                             type="button"
@@ -208,7 +226,7 @@ export function RepertoirePanel() {
                                     <input
                                         ref={el => { fileInputRefs.current[side] = el }}
                                         type="file"
-                                        accept=".pgn,text/plain"
+                                        accept=".pgn,.txt,text/plain,text/*"
                                         className="repertoire-slot-file-input"
                                         onChange={event => {
                                             const file = event.target.files?.[0]

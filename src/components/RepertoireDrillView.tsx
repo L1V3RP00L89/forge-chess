@@ -3,11 +3,13 @@ import { Chess, type Square } from 'chess.js'
 import { Chessboard } from 'react-chessboard'
 import type { RepertoireSide } from '../engine/repertoire'
 import type { StoredDrillUnit } from '../hooks/useRepertoireDb'
-import { IconChevronRight, IconStop } from './icons'
+import { IconChevronLeft, IconChevronRight, IconStop } from './icons'
 import './RepertoireDrillView.css'
 
 type Props = {
     ownerColor: RepertoireSide
+    /** 'study' quizzes and grades via SRS; 'view' is a passive, ungraded read-through (see RepertoirePanel). */
+    mode: 'view' | 'study'
     rootFen: string
     units: StoredDrillUnit[]
     onRecordResult: (unitId: number, correct: boolean) => void
@@ -50,7 +52,7 @@ function playUci(chess: Chess, uci: string) {
 // impossible rather than papering over its symptom.
 type Cursor = { unitIndex: number; stepIndex: number }
 
-export function RepertoireDrillView({ ownerColor, rootFen, units, onRecordResult, onIntroduced, onExit }: Props) {
+export function RepertoireDrillView({ ownerColor, mode, rootFen, units, onRecordResult, onIntroduced, onExit }: Props) {
     const [cursor, setCursor] = useState<Cursor>({ unitIndex: 0, stepIndex: 0 })
     const { unitIndex, stepIndex } = cursor
     const [fen, setFen] = useState(rootFen)
@@ -61,11 +63,14 @@ export function RepertoireDrillView({ ownerColor, rootFen, units, onRecordResult
     const pendingContinueRef = useRef<(() => void) | null>(null)
     const [awaitingContinue, setAwaitingContinue] = useState(false)
 
+    const isViewMode = mode === 'view'
     const unit = units[unitIndex]
     // A unit nobody has ever drilled is a walkthrough (see markIntroduced): the
     // correct move is shown, not tested, so a brand-new import doesn't quiz the
-    // user cold on hundreds of lines they've never once seen.
-    const isLearnMode = unit ? unit.reviewCount === 0 : false
+    // user cold on hundreds of lines they've never once seen. View mode is
+    // always a walkthrough too, but (unlike a first exposure) never grades or
+    // touches SRS scheduling -- see advance() below.
+    const autoPlayStep = isViewMode || (unit ? unit.reviewCount === 0 : false)
 
     const setupToStep = useCallback((targetUnit: StoredDrillUnit): boolean => {
         const chess = new Chess(rootFen)
@@ -116,17 +121,19 @@ export function RepertoireDrillView({ ownerColor, rootFen, units, onRecordResult
             setLocked(false)
             return
         }
-        if (isLearnMode) {
-            onIntroduced(unit.id)
-        } else {
-            onRecordResult(unit.id, !mistakeInUnitRef.current)
+        if (!isViewMode) {
+            if (autoPlayStep) {
+                onIntroduced(unit.id)
+            } else {
+                onRecordResult(unit.id, !mistakeInUnitRef.current)
+            }
         }
         if (unitIndex + 1 < units.length) {
             goToNextUnitOrExit()
         } else {
             onExit()
         }
-    }, [goToNextUnitOrExit, isLearnMode, onExit, onIntroduced, onRecordResult, stepIndex, unit, unitIndex, units.length])
+    }, [autoPlayStep, goToNextUnitOrExit, isViewMode, onExit, onIntroduced, onRecordResult, stepIndex, unit, unitIndex, units.length])
 
     // A stored move that turns out to be illegal at replay time means this
     // unit's data is bad (see playUci) — nothing to test or teach, so move on
@@ -142,7 +149,7 @@ export function RepertoireDrillView({ ownerColor, rootFen, units, onRecordResult
     // Learn mode: play the step's move for the user as soon as it's current,
     // rather than waiting for a drag that was never going to be graded anyway.
     useEffect(() => {
-        if (!isLearnMode || !currentStep || awaitingContinue) return
+        if (!autoPlayStep || !currentStep || awaitingContinue) return
         const chess = chessRef.current
         const played = playUci(chess, currentStep.ownerUci)
         if (!played) {
@@ -159,10 +166,10 @@ export function RepertoireDrillView({ ownerColor, rootFen, units, onRecordResult
         }
         setAwaitingContinue(true)
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isLearnMode, currentStep, unitIndex, stepIndex])
+    }, [autoPlayStep, currentStep, unitIndex, stepIndex])
 
     const onPieceDrop = useCallback(({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string | null }) => {
-        if (isLearnMode || locked || !currentStep || !targetSquare) return false
+        if (autoPlayStep || locked || !currentStep || !targetSquare) return false
 
         const chess = chessRef.current
         let move
@@ -215,7 +222,7 @@ export function RepertoireDrillView({ ownerColor, rootFen, units, onRecordResult
             advance()
         }, AUTOPLAY_DELAY_MS)
         return true
-    }, [advance, currentStep, isLearnMode, locked])
+    }, [advance, currentStep, autoPlayStep, locked])
 
     const handleContinue = useCallback(() => {
         const run = pendingContinueRef.current
@@ -223,6 +230,48 @@ export function RepertoireDrillView({ ownerColor, rootFen, units, onRecordResult
         setAwaitingContinue(false)
         run?.()
     }, [])
+
+    // Rebuilds the board at the start of `targetStep` by replaying setup plus
+    // every fully-resolved step before it (owner move + opponent reply). This
+    // deliberately bypasses the unit-change effect above: as long as
+    // unitIndex doesn't change, that effect's dependency on `unit` never
+    // re-fires, so there's no race with setupToStep clobbering this rebuild
+    // (see the Cursor comment for why unit/step must move together elsewhere).
+    const goToStepWithinUnit = useCallback((targetUnit: StoredDrillUnit, targetStep: number) => {
+        const chess = new Chess(rootFen)
+        for (const uci of targetUnit.setupUci) {
+            if (!playUci(chess, uci)) return false
+        }
+        for (let i = 0; i < targetStep; i++) {
+            const step = targetUnit.steps[i]
+            if (!playUci(chess, step.ownerUci)) return false
+            if (step.opponentReplyUci) playUci(chess, step.opponentReplyUci)
+        }
+        chessRef.current = chess
+        setFen(chess.fen())
+        return true
+    }, [rootFen])
+
+    // Back is bounded to the current line in Study mode (going back across a
+    // graded unit boundary would mean un-grading a recorded result), but View
+    // mode is passive and can freely cross into the previous unit.
+    const canGoBack = stepIndex > 0 || (isViewMode && unitIndex > 0)
+
+    const handleBack = useCallback(() => {
+        if (!unit) return
+        pendingContinueRef.current = null
+        setAwaitingContinue(false)
+        setFeedback(null)
+        setLocked(false)
+        if (stepIndex > 0) {
+            if (!goToStepWithinUnit(unit, stepIndex - 1)) return
+            setCursor(current => ({ ...current, stepIndex: current.stepIndex - 1 }))
+            return
+        }
+        if (isViewMode && unitIndex > 0) {
+            setCursor({ unitIndex: unitIndex - 1, stepIndex: 0 })
+        }
+    }, [goToStepWithinUnit, isViewMode, stepIndex, unit, unitIndex])
 
     const sourceLabel = useMemo(() => unit?.sourceLabels[0] ?? '', [unit])
 
@@ -238,39 +287,56 @@ export function RepertoireDrillView({ ownerColor, rootFen, units, onRecordResult
     return (
         <div className="repertoire-drill">
             <div className="repertoire-drill-status">
-                <span>
-                    {isLearnMode ? 'New line' : `Line ${unitIndex + 1} of ${units.length}`}
+                <span key={`${unitIndex}-${isViewMode ? 'view' : 'study'}`} className="repertoire-drill-status-label">
+                    {isViewMode ? `Line ${unitIndex + 1} of ${units.length} · viewing` : autoPlayStep ? 'New line' : `Line ${unitIndex + 1} of ${units.length}`}
                     {sourceLabel ? ` · ${sourceLabel}` : ''}
                 </span>
                 <button type="button" className="repertoire-drill-exit" onClick={onExit} aria-label="Exit drill">
                     <IconStop /> Exit
                 </button>
             </div>
-            <div className="repertoire-drill-board">
+            <div className="repertoire-drill-board" key={unitIndex}>
                 <Chessboard
                     options={{
                         position: fen,
                         boardOrientation,
                         onPieceDrop,
-                        allowDragging: !locked && !isLearnMode,
+                        allowDragging: !locked && !autoPlayStep,
                     }}
                 />
             </div>
             {feedback && (
-                <div className={`repertoire-drill-feedback ${isLearnMode ? 'learn' : feedback.correct ? 'correct' : 'incorrect'}`}>
+                <div
+                    key={`${unitIndex}-${stepIndex}`}
+                    className={`repertoire-drill-feedback ${autoPlayStep ? 'learn' : feedback.correct ? 'correct' : 'incorrect'}`}
+                >
                     <p className="repertoire-drill-feedback-headline">
-                        {isLearnMode
+                        {autoPlayStep
                             ? `Study this move: ${feedback.expectedSan}`
                             : feedback.correct ? 'Correct' : `Not quite — the line plays ${feedback.expectedSan}`}
                     </p>
                     {feedback.comment && <p className="repertoire-drill-feedback-comment">{feedback.comment}</p>}
-                    {awaitingContinue && (
-                        <button type="button" className="repertoire-drill-continue" onClick={handleContinue}>
-                            Continue <IconChevronRight />
-                        </button>
-                    )}
                 </div>
             )}
+            <div className="repertoire-drill-nav">
+                <button
+                    type="button"
+                    className="repertoire-drill-nav-arrow"
+                    onClick={handleBack}
+                    disabled={!canGoBack}
+                    aria-label="Previous"
+                >
+                    <IconChevronLeft />
+                </button>
+                <button
+                    type="button"
+                    className="repertoire-drill-continue"
+                    onClick={handleContinue}
+                    disabled={!awaitingContinue}
+                >
+                    Continue <IconChevronRight />
+                </button>
+            </div>
         </div>
     )
 }

@@ -17,6 +17,10 @@
     color: var(--text-secondary, #8b949e);
 }
 
+.repertoire-drill-status-label {
+    animation: repertoire-drill-fade-in 200ms ease;
+}
+
 .repertoire-drill-exit {
     display: inline-flex;
     align-items: center;
@@ -32,6 +36,17 @@
 
 .repertoire-drill-board {
     width: 100%;
+    animation: repertoire-drill-board-in 220ms ease;
+}
+
+@keyframes repertoire-drill-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes repertoire-drill-board-in {
+    from { opacity: 0.35; transform: scale(0.985); }
+    to { opacity: 1; transform: scale(1); }
 }
 
 .repertoire-drill-feedback {
@@ -40,6 +55,7 @@
     padding: 0.6rem 0.8rem;
     font-size: 0.85rem;
     border: 1px solid transparent;
+    animation: repertoire-drill-fade-in 200ms ease;
 }
 
 .repertoire-drill-feedback.correct {
@@ -72,11 +88,42 @@
     line-height: 1.4;
 }
 
+.repertoire-drill-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.repertoire-drill-nav-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary, #8b949e);
+    background: none;
+    border: 1px solid var(--border-default, rgba(240, 246, 252, 0.10));
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+.repertoire-drill-nav-arrow:hover:not(:disabled) {
+    color: var(--text-primary, #e6edf3);
+    border-color: var(--text-secondary, #8b949e);
+}
+
+.repertoire-drill-nav-arrow:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
 .repertoire-drill-continue {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.3rem;
-    margin-top: 0.6rem;
+    flex: 1;
     padding: 0.4rem 0.85rem;
     font-size: 0.8rem;
     font-weight: 600;
@@ -85,10 +132,16 @@
     border: none;
     border-radius: 7px;
     cursor: pointer;
+    transition: opacity 150ms ease;
 }
 
-.repertoire-drill-continue:hover {
+.repertoire-drill-continue:hover:not(:disabled) {
     filter: brightness(1.08);
+}
+
+.repertoire-drill-continue:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
 }
 
 .repertoire-drill-empty {
