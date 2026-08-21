@@ -1,0 +1,46 @@
+.plan-start-prompt {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    text-align: center;
+    background: rgba(1, 4, 9, 0.4);
+    border: 1px solid var(--border-default, rgba(240, 246, 252, 0.10));
+    border-radius: 10px;
+}
+
+.plan-start-prompt h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.plan-start-prompt p {
+    margin: 0 0 1rem;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text-secondary, #8b949e);
+}
+
+.plan-start-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.3rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #0d1117;
+    background: var(--accent, #3fb950);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.plan-start-btn:hover:not(:disabled) {
+    filter: brightness(1.08);
+}
+
+.plan-start-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

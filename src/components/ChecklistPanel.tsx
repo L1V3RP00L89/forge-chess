@@ -17,6 +17,10 @@ function todayDateOnly(): string {
     return new Date().toISOString().slice(0, 10)
 }
 
+type Props = {
+    startedAt: string
+}
+
 type Loaded = {
     dateKey: string
     weekKey: string
@@ -68,7 +72,7 @@ function ChecklistGroup({
 // self-reported checkboxes, not auto-graded -- only the day's game item is
 // auto-ticked from real data (a game recorded today), and even that stays
 // user-toggleable afterward.
-export function ChecklistPanel() {
+export function ChecklistPanel({ startedAt }: Props) {
     const planDb = useTrainingPlanDb()
     const checklistDb = useChecklistDb()
     const [state, setState] = useState<Loaded | null>(null)
@@ -77,7 +81,6 @@ export function ChecklistPanel() {
     useEffect(() => {
         let cancelled = false
         void (async () => {
-            const startedAt = await planDb.getOrStartPlan()
             const weekNumber = weekNumberForDate(startedAt)
             if (isPlanComplete(weekNumber)) {
                 if (!cancelled) setComplete(true)
@@ -104,7 +107,7 @@ export function ChecklistPanel() {
         return () => { cancelled = true }
         // Only on mount -- planDb/checklistDb's functions are stable (useCallback).
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [startedAt])
 
     const toggleBase = useCallback((key: string, next: boolean) => {
         setState(current => {

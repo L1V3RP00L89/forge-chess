@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react'
+import { useTrainingPlanDb } from '../hooks/useTrainingPlanDb'
 import { ChecklistPanel } from './ChecklistPanel'
 import { IconBarChart, IconCrown, IconPlay, IconTrendingUp } from './icons'
+import { PlanStartPrompt } from './PlanStartPrompt'
 import { RepertoirePanel } from './RepertoirePanel'
 import { TrainingPlanSummary } from './TrainingPlanSummary'
 import { WoodpeckerPanel } from './WoodpeckerPanel'
@@ -26,6 +29,20 @@ const COMING_SOON_CARDS = [
 ]
 
 export function TrainingView({ onOpenApp }: Props) {
+    const planDb = useTrainingPlanDb()
+    // undefined = still loading, null = not started yet, string = started_at
+    const [startedAt, setStartedAt] = useState<string | null | undefined>(undefined)
+
+    useEffect(() => {
+        let cancelled = false
+        void planDb.getPlanStartedAt().then(value => {
+            if (!cancelled) setStartedAt(value)
+        })
+        return () => { cancelled = true }
+        // Only on mount -- planDb's functions are stable (useCallback).
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
     return (
         <main className="training-view">
             <header className="training-header">
@@ -34,21 +51,27 @@ export function TrainingView({ onOpenApp }: Props) {
                 <p className="training-subhead">Your 12-week adult-improver plan lives here.</p>
             </header>
 
-            <div className="training-cards">
-                <TrainingPlanSummary />
-                {COMING_SOON_CARDS.map(card => (
-                    <div className="training-card" key={card.title}>
-                        <span className="training-card-icon">{card.icon}</span>
-                        <div>
-                            <h2>{card.title}</h2>
-                            <p>{card.description}</p>
-                        </div>
-                        <span className="training-card-badge">Coming soon</span>
+            {startedAt === undefined ? null : startedAt === null ? (
+                <PlanStartPrompt onStarted={setStartedAt} />
+            ) : (
+                <>
+                    <div className="training-cards">
+                        <TrainingPlanSummary startedAt={startedAt} />
+                        {COMING_SOON_CARDS.map(card => (
+                            <div className="training-card" key={card.title}>
+                                <span className="training-card-icon">{card.icon}</span>
+                                <div>
+                                    <h2>{card.title}</h2>
+                                    <p>{card.description}</p>
+                                </div>
+                                <span className="training-card-badge">Coming soon</span>
+                            </div>
+                        ))}
                     </div>
-                ))}
-            </div>
 
-            <ChecklistPanel />
+                    <ChecklistPanel startedAt={startedAt} />
+                </>
+            )}
 
             <WoodpeckerPanel />
 

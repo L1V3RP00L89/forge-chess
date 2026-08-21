@@ -3,8 +3,11 @@ import { isPlanComplete, isRatingCheckpointWeek, isSocialCheckinWeek, weekNumber
 import { useTrainingPlanDb } from '../hooks/useTrainingPlanDb'
 import { IconBarChart, IconKing } from './icons'
 
-type PlanState = {
-    weekNumber: number
+type Props = {
+    startedAt: string
+}
+
+type StreakInfo = {
     currentStreak: number
     longestStreak: number
 }
@@ -13,33 +16,27 @@ type PlanState = {
 // streak. The day-by-day checklist itself lives in ChecklistPanel -- it
 // needs far more room than a card in this grid can offer. Rating trend and
 // badges stay "Coming soon" in TrainingView until their own data sources exist.
-export function TrainingPlanSummary() {
+export function TrainingPlanSummary({ startedAt }: Props) {
     const db = useTrainingPlanDb()
-    const [state, setState] = useState<PlanState | null>(null)
+    const [streak, setStreak] = useState<StreakInfo | null>(null)
 
     useEffect(() => {
         let cancelled = false
-        void (async () => {
-            const startedAt = await db.getOrStartPlan()
-            const streak = await db.getStreakState()
-            if (cancelled) return
-            setState({
-                weekNumber: weekNumberForDate(startedAt),
-                currentStreak: streak.currentStreak,
-                longestStreak: streak.longestStreak,
-            })
-        })()
+        void db.getStreakState().then(state => {
+            if (!cancelled) setStreak({ currentStreak: state.currentStreak, longestStreak: state.longestStreak })
+        })
         return () => { cancelled = true }
         // Only on mount -- db's functions are stable (useCallback).
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    if (!state) return null
+    if (!streak) return null
 
-    const complete = isPlanComplete(state.weekNumber)
-    const focus = complete ? null : weeklyFocusForWeek(state.weekNumber)
-    const ratingCheckpoint = !complete && isRatingCheckpointWeek(state.weekNumber)
-    const socialCheckin = !complete && isSocialCheckinWeek(state.weekNumber)
+    const weekNumber = weekNumberForDate(startedAt)
+    const complete = isPlanComplete(weekNumber)
+    const focus = complete ? null : weeklyFocusForWeek(weekNumber)
+    const ratingCheckpoint = !complete && isRatingCheckpointWeek(weekNumber)
+    const socialCheckin = !complete && isSocialCheckinWeek(weekNumber)
 
     return (
         <>
@@ -49,8 +46,8 @@ export function TrainingPlanSummary() {
                     <h2>This week's focus</h2>
                     <p>
                         {complete
-                            ? `Week ${state.weekNumber - 1} of 12 complete — plan finished`
-                            : `Week ${state.weekNumber} of 12 · ${focus}`}
+                            ? `Week ${weekNumber - 1} of 12 complete — plan finished`
+                            : `Week ${weekNumber} of 12 · ${focus}`}
                     </p>
                 </div>
                 {ratingCheckpoint && <span className="training-card-badge">Rating checkpoint</span>}
@@ -62,8 +59,8 @@ export function TrainingPlanSummary() {
                 <div>
                     <h2>Streak</h2>
                     <p>
-                        {state.currentStreak > 0
-                            ? `${state.currentStreak}-day streak (longest: ${state.longestStreak})`
+                        {streak.currentStreak > 0
+                            ? `${streak.currentStreak}-day streak (longest: ${streak.longestStreak})`
                             : 'No active streak yet — Base Work today starts one'}
                     </p>
                 </div>

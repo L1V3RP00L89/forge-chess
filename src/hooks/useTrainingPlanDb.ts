@@ -7,17 +7,30 @@ function todayDateOnly(): string {
 }
 
 export function useTrainingPlanDb() {
-    // Lazily starts the plan clock on first read rather than requiring an
-    // onboarding step -- INSERT OR IGNORE means a second call is a no-op and
-    // the original started_at wins.
-    const getOrStartPlan = useCallback(async (): Promise<string> => {
+    // null means the user hasn't started the 12-week clock yet -- the
+    // Training tab shows a "Start plan" button in that case rather than
+    // silently starting it on first visit.
+    const getPlanStartedAt = useCallback(async (): Promise<string | null> => {
         try {
-            await query('INSERT OR IGNORE INTO training_plan (id, started_at) VALUES (1, ?)', [new Date().toISOString()])
             const rows = await query('SELECT started_at FROM training_plan WHERE id = 1')
-            return String(rows[0]?.started_at ?? new Date().toISOString())
+            return rows[0] ? String(rows[0].started_at) : null
         } catch (error) {
             console.warn('Failed to load training plan start date', error)
-            return new Date().toISOString()
+            return null
+        }
+    }, [])
+
+    // Explicit user action (the "Start plan" button) -- INSERT OR IGNORE so a
+    // stray double-click can't push the clock forward and lose progress.
+    const startPlan = useCallback(async (): Promise<string> => {
+        const now = new Date().toISOString()
+        try {
+            await query('INSERT OR IGNORE INTO training_plan (id, started_at) VALUES (1, ?)', [now])
+            const rows = await query('SELECT started_at FROM training_plan WHERE id = 1')
+            return String(rows[0]?.started_at ?? now)
+        } catch (error) {
+            console.warn('Failed to start training plan', error)
+            return now
         }
     }, [])
 
@@ -68,5 +81,5 @@ export function useTrainingPlanDb() {
         }
     }, [])
 
-    return { getOrStartPlan, getStreakState, recordBaseWorkDone, hasPlayedToday }
+    return { getPlanStartedAt, startPlan, getStreakState, recordBaseWorkDone, hasPlayedToday }
 }
