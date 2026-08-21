@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react'
-import { isCheckpointWeek, isPlanComplete, weekNumberForDate, weeklyFocusForWeek } from '../engine/trainingPlan'
+import { isPlanComplete, isRatingCheckpointWeek, isSocialCheckinWeek, weekNumberForDate, weeklyFocusForWeek } from '../engine/trainingPlan'
 import { useTrainingPlanDb } from '../hooks/useTrainingPlanDb'
-import { IconBarChart, IconHistory, IconKing } from './icons'
+import { IconBarChart, IconKing } from './icons'
 
 type PlanState = {
     weekNumber: number
-    hasPlayedToday: boolean
     currentStreak: number
     longestStreak: number
 }
 
-// Renders the three Training-tab cards backed by real plan/streak data (the
-// checklist, this week's focus, and the streak) -- rating trend and badges
-// stay "Coming soon" in TrainingView until their own data sources exist.
+// The two small Training-tab summary cards: this week's focus and the
+// streak. The day-by-day checklist itself lives in ChecklistPanel -- it
+// needs far more room than a card in this grid can offer. Rating trend and
+// badges stay "Coming soon" in TrainingView until their own data sources exist.
 export function TrainingPlanSummary() {
     const db = useTrainingPlanDb()
     const [state, setState] = useState<PlanState | null>(null)
@@ -21,11 +21,10 @@ export function TrainingPlanSummary() {
         let cancelled = false
         void (async () => {
             const startedAt = await db.getOrStartPlan()
-            const [streak, played] = await Promise.all([db.getStreakState(), db.hasPlayedToday()])
+            const streak = await db.getStreakState()
             if (cancelled) return
             setState({
                 weekNumber: weekNumberForDate(startedAt),
-                hasPlayedToday: played,
                 currentStreak: streak.currentStreak,
                 longestStreak: streak.longestStreak,
             })
@@ -39,20 +38,11 @@ export function TrainingPlanSummary() {
 
     const complete = isPlanComplete(state.weekNumber)
     const focus = complete ? null : weeklyFocusForWeek(state.weekNumber)
-    const checkpoint = !complete && isCheckpointWeek(state.weekNumber)
+    const ratingCheckpoint = !complete && isRatingCheckpointWeek(state.weekNumber)
+    const socialCheckin = !complete && isSocialCheckinWeek(state.weekNumber)
 
     return (
         <>
-            <div className="training-card">
-                <span className="training-card-icon"><IconHistory /></span>
-                <div>
-                    <h2>Today's checklist</h2>
-                    <p className={state.hasPlayedToday ? 'training-checklist-done' : undefined}>
-                        {state.hasPlayedToday ? '✓ Base Work — play a game (done)' : 'Base Work — play a game'}
-                    </p>
-                </div>
-            </div>
-
             <div className="training-card">
                 <span className="training-card-icon"><IconKing /></span>
                 <div>
@@ -63,7 +53,8 @@ export function TrainingPlanSummary() {
                             : `Week ${state.weekNumber} of 12 · ${focus}`}
                     </p>
                 </div>
-                {checkpoint && <span className="training-card-badge">Checkpoint</span>}
+                {ratingCheckpoint && <span className="training-card-badge">Rating checkpoint</span>}
+                {socialCheckin && <span className="training-card-badge">Check-in week</span>}
             </div>
 
             <div className="training-card">

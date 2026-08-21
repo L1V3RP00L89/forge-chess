@@ -98,6 +98,20 @@ CREATE TABLE IF NOT EXISTS training_plan (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   started_at TEXT NOT NULL
 );
+
+-- M8: manually-toggled checklist items (most of the plan's tasks -- Woodpecker,
+-- slow-game analysis, opening/endgame/strategy review -- happen outside this
+-- app, so the app can't observe them; the user checks them off itself). A row
+-- exists only while its item is checked -- unchecking deletes it rather than
+-- storing a false. scope_key is a calendar date (YYYY-MM-DD) for Base Work
+-- items, which reset daily, or "week-N" for Extra Credit items, which reset
+-- only when a new week starts.
+CREATE TABLE IF NOT EXISTS checklist_checks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  scope_key TEXT NOT NULL,
+  item_key TEXT NOT NULL,
+  UNIQUE (scope_key, item_key)
+);
 `
 
 export const SCHEMA_TABLE_NAMES = [
@@ -110,4 +124,5 @@ export const SCHEMA_TABLE_NAMES = [
   'repertoire_units',
   'repertoire_attempts',
   'training_plan',
+  'checklist_checks',
 ] as const

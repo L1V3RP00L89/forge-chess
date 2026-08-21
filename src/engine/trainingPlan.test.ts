@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+    baseWorkItemsForDay,
     computeStreakUpdate,
-    isCheckpointWeek,
+    dayInWeekForDate,
     isPlanComplete,
+    isRatingCheckpointWeek,
+    isSocialCheckinWeek,
     weekNumberForDate,
     weeklyFocusForWeek,
 } from './trainingPlan'
@@ -42,15 +45,58 @@ describe('weeklyFocusForWeek', () => {
     })
 })
 
-describe('isCheckpointWeek', () => {
-    it('flags weeks 5, 7, and 12', () => {
-        expect(isCheckpointWeek(5)).toBe(true)
-        expect(isCheckpointWeek(7)).toBe(true)
-        expect(isCheckpointWeek(12)).toBe(true)
+describe('isRatingCheckpointWeek', () => {
+    it('flags weeks 5 and 12 (the only two the source plan asks for a rating comparison)', () => {
+        expect(isRatingCheckpointWeek(5)).toBe(true)
+        expect(isRatingCheckpointWeek(12)).toBe(true)
     })
 
-    it('does not flag a non-checkpoint week', () => {
-        expect(isCheckpointWeek(6)).toBe(false)
+    it('does not flag week 7 -- that is a social check-in, not a rating checkpoint', () => {
+        expect(isRatingCheckpointWeek(7)).toBe(false)
+    })
+
+    it('does not flag an unrelated week', () => {
+        expect(isRatingCheckpointWeek(6)).toBe(false)
+    })
+})
+
+describe('isSocialCheckinWeek', () => {
+    it('flags only week 7', () => {
+        expect(isSocialCheckinWeek(7)).toBe(true)
+        expect(isSocialCheckinWeek(5)).toBe(false)
+        expect(isSocialCheckinWeek(12)).toBe(false)
+    })
+})
+
+describe('dayInWeekForDate', () => {
+    it('is day 1 on the start date', () => {
+        expect(dayInWeekForDate('2026-08-20T00:00:00.000Z', new Date('2026-08-20T12:00:00.000Z'))).toBe(1)
+    })
+
+    it('advances through day 7 and wraps back to day 1 of the next week', () => {
+        expect(dayInWeekForDate('2026-08-20T00:00:00.000Z', new Date('2026-08-26T12:00:00.000Z'))).toBe(7)
+        expect(dayInWeekForDate('2026-08-20T00:00:00.000Z', new Date('2026-08-27T12:00:00.000Z'))).toBe(1)
+    })
+})
+
+describe('baseWorkItemsForDay', () => {
+    it('is a 15+10 game + analysis on odd days (1/3/5)', () => {
+        for (const day of [1, 3, 5]) {
+            const items = baseWorkItemsForDay(day, 'Woodpecker')
+            expect(items.map(i => i.key)).toEqual(['play-rapid', 'analyze-rapid'])
+        }
+    })
+
+    it('is four 5+5 games + analysis on even days (2/4/6)', () => {
+        for (const day of [2, 4, 6]) {
+            const items = baseWorkItemsForDay(day, 'Woodpecker')
+            expect(items.map(i => i.key)).toEqual(['play-blitz', 'analyze-blitz'])
+        }
+    })
+
+    it('is the week\'s rotating review focus on day 7, with no game', () => {
+        const items = baseWorkItemsForDay(7, 'Opening Review')
+        expect(items).toEqual([{ key: 'review-day', label: 'Opening Review — track your time' }])
     })
 })
 

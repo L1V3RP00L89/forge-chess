@@ -1,3 +1,4 @@
+import { ChecklistPanel } from './ChecklistPanel'
 import { IconBarChart, IconCrown, IconPlay, IconTrendingUp } from './icons'
 import { RepertoirePanel } from './RepertoirePanel'
 import { TrainingPlanSummary } from './TrainingPlanSummary'
@@ -15,7 +16,7 @@ const COMING_SOON_CARDS = [
     {
         icon: <IconTrendingUp />,
         title: 'Rating trend',
-        description: 'Your rating over the course of the plan, checkpointed at weeks 5, 7, and 12.',
+        description: 'Your rating over the course of the plan, checkpointed at weeks 5 and 12.',
     },
     {
         icon: <IconBarChart />,
@@ -46,6 +47,8 @@ export function TrainingView({ onOpenApp }: Props) {
                     </div>
                 ))}
             </div>
+
+            <ChecklistPanel />
 
             <WoodpeckerPanel />
 
