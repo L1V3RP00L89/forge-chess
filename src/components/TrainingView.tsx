@@ -1,5 +1,6 @@
-import { IconBarChart, IconCrown, IconHistory, IconKing, IconPlay, IconTrendingUp } from './icons'
+import { IconBarChart, IconCrown, IconPlay, IconTrendingUp } from './icons'
 import { RepertoirePanel } from './RepertoirePanel'
+import { TrainingPlanSummary } from './TrainingPlanSummary'
 import { WoodpeckerPanel } from './WoodpeckerPanel'
 import './TrainingView.css'
 
@@ -7,17 +8,10 @@ type Props = {
     onOpenApp: () => void
 }
 
+// Still unbuilt: rating trend needs a rating data source that doesn't exist
+// yet (deferred pending a chess.com/manual-entry decision), and badges need
+// Renee's skill-meaningful criteria defined before they're worth building.
 const COMING_SOON_CARDS = [
-    {
-        icon: <IconHistory />,
-        title: "Today's checklist",
-        description: 'Base Work and Extra Credit for today, pulled from your 12-week plan.',
-    },
-    {
-        icon: <IconKing />,
-        title: "This week's focus",
-        description: 'Woodpecker, Opening Review, Strategy Review, or Endgame Review — rotating weekly.',
-    },
     {
         icon: <IconTrendingUp />,
         title: 'Rating trend',
@@ -25,8 +19,8 @@ const COMING_SOON_CARDS = [
     },
     {
         icon: <IconBarChart />,
-        title: 'Streak & badges',
-        description: 'A streak counter for completed Base Work, plus badges earned from real skill milestones.',
+        title: 'Badges',
+        description: 'Skill-earned milestones (e.g. "5 forks spotted in a row") — never for games played or app opens.',
     },
 ]
 
@@ -40,6 +34,7 @@ export function TrainingView({ onOpenApp }: Props) {
             </header>
 
             <div className="training-cards">
+                <TrainingPlanSummary />
                 {COMING_SOON_CARDS.map(card => (
                     <div className="training-card" key={card.title}>
                         <span className="training-card-icon">{card.icon}</span>

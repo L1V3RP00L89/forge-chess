@@ -75,6 +75,10 @@
     color: var(--text-secondary, #8b949e);
 }
 
+.training-card p.training-checklist-done {
+    color: var(--accent, #3fb950);
+}
+
 .training-card-badge {
     position: absolute;
     top: 0.75rem;

@@ -90,6 +90,14 @@ CREATE TABLE IF NOT EXISTS repertoire_attempts (
   solved_streak_after INTEGER NOT NULL,
   attempted_at TEXT NOT NULL
 );
+
+-- M8: when the user's 12-week plan started. Single row, set lazily (INSERT
+-- OR IGNORE with the current time) the first time the Training tab needs a
+-- week number, rather than requiring an onboarding step.
+CREATE TABLE IF NOT EXISTS training_plan (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  started_at TEXT NOT NULL
+);
 `
 
 export const SCHEMA_TABLE_NAMES = [
@@ -101,4 +109,5 @@ export const SCHEMA_TABLE_NAMES = [
   'repertoires',
   'repertoire_units',
   'repertoire_attempts',
+  'training_plan',
 ] as const

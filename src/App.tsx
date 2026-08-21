@@ -72,6 +72,7 @@ import { useCloudEvaluation } from './hooks/useCloudEvaluation'
 import { useOpeningExplorer } from './hooks/useOpeningExplorer'
 import { derivePlayModeResult, useTrainingDb, type SavedGameSummary } from './hooks/useTrainingDb'
 import { useMissedTacticsCapture } from './hooks/useMissedTacticsCapture'
+import { useTrainingPlanDb } from './hooks/useTrainingPlanDb'
 import { useTablebase } from './hooks/useTablebase'
 import { useCoachReveal } from './hooks/useCoachReveal'
 import { ANALYSIS_SETTINGS_STORAGE_KEY } from './storageKeys'
@@ -1179,6 +1180,7 @@ function App() {
 
   // ── Training DB (M8 foundation) ──────────────────────
   const { recordGame, recordJournalEntry, listGames } = useTrainingDb()
+  const { recordBaseWorkDone } = useTrainingPlanDb()
   useMissedTacticsCapture()
   const [currentGameId, setCurrentGameId] = useState<number | null>(null)
   const [reviewedGames, setReviewedGames] = useState<SavedGameSummary[]>([])
@@ -1207,7 +1209,8 @@ function App() {
       setCurrentGameId(id)
       void refreshReviewedGames()
     })
-  }, [fen, game, recordGame, refreshReviewedGames, workspaceMode])
+    void recordBaseWorkDone()
+  }, [fen, game, recordGame, recordBaseWorkDone, refreshReviewedGames, workspaceMode])
 
   // ── Batch Review ─────────────────────────────────────
   const [isBatchReviewing, setIsBatchReviewing] = useState(false)
