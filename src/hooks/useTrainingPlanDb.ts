@@ -34,6 +34,22 @@ export function useTrainingPlanDb() {
         }
     }, [])
 
+    // Resets the clock to right now (Day 1, Week 1 again). Also clears
+    // checklist_checks: those rows are scoped by absolute week number
+    // ("week-3") and calendar date, both of which get reinterpreted against
+    // the new start date -- leaving them in place would resurface old,
+    // unrelated checks as already-done in the new run.
+    const restartPlan = useCallback(async (): Promise<string> => {
+        const now = new Date().toISOString()
+        try {
+            await query('UPDATE training_plan SET started_at = ? WHERE id = 1', [now])
+            await query('DELETE FROM checklist_checks')
+        } catch (error) {
+            console.warn('Failed to restart training plan', error)
+        }
+        return now
+    }, [])
+
     const getStreakState = useCallback(async (): Promise<StreakState> => {
         try {
             const rows = await query('SELECT current_streak, longest_streak, last_active_date FROM streak_state WHERE id = 1')
@@ -81,5 +97,5 @@ export function useTrainingPlanDb() {
         }
     }, [])
 
-    return { getPlanStartedAt, startPlan, getStreakState, recordBaseWorkDone, hasPlayedToday }
+    return { getPlanStartedAt, startPlan, restartPlan, getStreakState, recordBaseWorkDone, hasPlayedToday }
 }

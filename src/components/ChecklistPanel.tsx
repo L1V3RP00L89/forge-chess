@@ -86,6 +86,7 @@ export function ChecklistPanel({ startedAt }: Props) {
                 if (!cancelled) setComplete(true)
                 return
             }
+            if (!cancelled) setComplete(false)
             const dayInWeek = dayInWeekForDate(startedAt)
             const focus = weeklyFocusForWeek(weekNumber)
             const baseItems = baseWorkItemsForDay(dayInWeek, focus)

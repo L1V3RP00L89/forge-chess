@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTrainingPlanDb } from '../hooks/useTrainingPlanDb'
 import { ChecklistPanel } from './ChecklistPanel'
-import { IconBarChart, IconCrown, IconPlay, IconTrendingUp } from './icons'
+import { IconBarChart, IconCrown, IconPlay, IconRefresh, IconTrendingUp } from './icons'
 import { PlanStartPrompt } from './PlanStartPrompt'
 import { RepertoirePanel } from './RepertoirePanel'
 import { TrainingPlanSummary } from './TrainingPlanSummary'
@@ -43,6 +43,13 @@ export function TrainingView({ onOpenApp }: Props) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
+    const handleRestart = useCallback(() => {
+        if (!window.confirm('Restart the 12-week plan? This resets the clock to Day 1, Week 1, and clears your checklist progress. Your streak is unaffected.')) {
+            return
+        }
+        void planDb.restartPlan().then(setStartedAt)
+    }, [planDb])
+
     return (
         <main className="training-view">
             <header className="training-header">
@@ -70,6 +77,10 @@ export function TrainingView({ onOpenApp }: Props) {
                     </div>
 
                     <ChecklistPanel startedAt={startedAt} />
+
+                    <button type="button" className="training-restart-btn" onClick={handleRestart}>
+                        <IconRefresh /> Restart plan
+                    </button>
                 </>
             )}
 

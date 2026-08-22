@@ -112,3 +112,22 @@
     outline: 2px solid var(--info, #58a6ff);
     outline-offset: 2px;
 }
+
+.training-restart-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-tertiary, #6e7681);
+    background: none;
+    border: 1px solid var(--border-default, rgba(240, 246, 252, 0.10));
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+.training-restart-btn:hover {
+    color: var(--text-secondary, #8b949e);
+    border-color: var(--text-secondary, #8b949e);
+}
