@@ -34,8 +34,9 @@ Grounded in what's already shipped (565 commits, spanning 2026-01-29 to 2026-06-
 | M5  | Review/accuracy framing pass — reframe critical-moment surfacing around "worth an adult's limited study time" rather than raw centipawn loss | **Shipped** — win-probability-based selection, already-decided suppression, and the time-control-aware cap are live (`src/engine/analysis.ts`) | Renee → Priya        |
 | M6  | Opening explorer presentation — thin, memorable repertoire framing vs. theory-dump                                                           | **Shipped 2026-08-19 (partial — see note)**                                                            | Renee → Dara → Priya |
 | M11 | Personal repertoire import & drill practice — import Kris's purchased PGN repertoires, practice/quiz them against deviation                  | **Shipped 2026-08-20** — see note below                                                                 | Renee → Dara → Priya |
+| M12 | Chess.com integration — import a user's own Chess.com games, pull live rating for the M8 rating-trend graph                                  | **Scoped 2026-08-22** — see below, not started                                                          | Owen → Priya          |
 | M7  | Full-strength engine profile completion (113MB, opt-in, CDN-fetched)                                                                         | **Confirmed working (2026-08-17)** — see note below; description corrected, LFS is not actually in play | Priya                |
-| M8  | Training feature — built-in habit-tracking/coaching plan (see below)                                                                         | **In progress** — DB foundation, post-review journal modal, reviewed-game-history view, the Woodpecker drill queue, and the Training tab's explicit-start day-by-day checklist/weekly-focus/streak (2026-08-21) are shipped; rating trend deferred (no rating data source in the app — Kris's call, 2026-08-21) Renee's badge criteria defined 2026-08-22, ready for Priya to implement | Renee → Dara → Priya |
+| M8  | Training feature — built-in habit-tracking/coaching plan (see below)                                                                         | **In progress** — DB foundation, post-review journal modal, reviewed-game-history view, the Woodpecker drill queue, and the Training tab's explicit-start day-by-day checklist/weekly-focus/streak (2026-08-21) are shipped; rating trend deferred (no rating data source in the app — Kris's call, 2026-08-21, unblocked by M12); Renee's badge criteria defined 2026-08-22, ready for Priya to implement | Renee → Dara → Priya |
 | M9  | Coach/Pro mode logic cleanup — refactor `analysisExperience` branching in `App.tsx`, grown organically across M4/M5                          | **Shipped (2026-08-18)** — see note below                                                              | Priya                |
 | M10 | Top-bar declutter — remove Human vs Human/AI/AI vs AI top-bar controls, New Game becomes sole mode-selection entry point                     | **Shipped** — see note below                                                                            | Dara → Priya         |
 
@@ -252,6 +253,26 @@ Verified end-to-end with a scripted browser pass against both real files: import
 
 **Not scoped yet** — this section records the ask and why it doesn't fit existing milestones; Renee should weigh in on drill pedagogy (spaced repetition vs. flashcard, line-depth) before Dara/Priya design anything.
 
+## M12 Detail — Chess.com Integration
+
+Previously unmilestoned pending a direct conversation with Kris (see Backlog note below) — scope resolved 2026-08-22: **import a user's own Chess.com games, and pull live rating.** Not in scope: opening-explorer data (Lichess Explorer stays the source there — no reason to run two, and Chess.com's archive API isn't shaped for aggregate move stats the way Lichess's Explorer endpoint is).
+
+**Technical grounding (Owen, 2026-08-22)** — checked before scoping so this doesn't repeat M6's mistake of speccing against an assumption instead of the real API:
+
+- Chess.com's **Published-Data API** (`api.chess.com/pub/...`) is public, read-only, and **requires no API key or token** — a real advantage over the Lichess Explorer dependency flagged in Pitfalls below, and it removes the "session-only token" friction M6 never fully solved.
+- **Game import:** `/pub/player/{username}/games/archives` lists available YYYY/MM archive months; `/pub/player/{username}/games/{YYYY}/{MM}/pgn` returns a multi-game PGN directly. This is the same multi-game-PGN shape M11 already built a splitter for (`splitPgnGames` in `src/engine/repertoire.ts`) — likely reusable rather than a new parser, though M11's games are repertoire lines and these are played games, so the two shouldn't be conflated in storage (games belongs in the existing `games` table, not `repertoires`).
+- **Rating pull:** `/pub/player/{username}/stats` returns per-format ratings (`chess_daily`, `chess_blitz`, `chess_rapid`, `chess_bullet`, etc.) as JSON, including Glicko RD. This is a real, usable data source for M8's rating-trend graph, which has been deferred since 2026-08-21 for lack of exactly this.
+- **Rate limits:** serial requests are effectively unlimited; parallel requests can 429. A username-driven, on-demand fetch (not a background poller) stays well inside this.
+- Format is JSON-LD with `ETag`/`Last-Modified` headers supporting conditional `304` responses — worth using if this becomes a repeated per-session fetch rather than a one-time import, to avoid re-downloading unchanged archive months.
+
+**Open questions for Priya to resolve before/while building** (not resolved here, flagging rather than guessing):
+- Username entry: a new Settings field (parallel to the existing Lichess token field), stored the same opt-in local-only way — no auth flow needed since the API is tokenless, just a username string.
+- Import scope: full archive history vs. a bounded recent window (e.g., last 3 months) — full history could be a lot of games for an active player; Priya should check real response sizes against a live account before deciding, same instinct that caught M6's bad token assumption.
+- Which rating format feeds the M8 trend graph if a user plays multiple time controls — likely needs a per-format picker or a "most-played format" default, not a single hardcoded field.
+- Duplicate handling if a user both plays in-app (recorded via the existing `games` table) and imports the same period from Chess.com — out of scope to solve generally, but shouldn't silently double-count in any future stats view.
+
+**Not yet reviewed by Renee or Dara** — this is a data-source scoping pass, not a pedagogy or layout one. Once Priya has a working import, Dara should look at where it surfaces in Settings/Training, and Renee should confirm a raw rating-trend line doesn't reintroduce the "vanity metric" risk M8's badges were scoped against (a rating going up isn't automatically a skill signal — flagged for her read once there's something to look at).
+
 ## Pitfalls
 
 Risks worth naming explicitly rather than discovering mid-build:
@@ -274,7 +295,7 @@ Raised by Kris during a 2026-08-16 walkthrough of the app. Six items; below is w
 - **Clean up Coach/Pro mode logic** → **M9, shipped 2026-08-18.** See M9 Detail above.
 - **Declutter the top bar's game-mode controls** → **M10, shipped.** See M10 Detail above.
 - **Engine Lab is unclear** → **Resolved and shipped 2026-08-18.** Renee's call: it's a raw UCI console (manual commands, bench/perft diagnostics, engine-profile switching) — titled-player/tinkerer territory, not something the app's adult-improver audience needs. Dara's call: hide the tab entirely in Coach mode rather than show it disabled, since a greyed-out tab just adds a second "what is this" question on top of the first. Priya gated the `engine-lab` tab behind `analysisExperience === 'pro'` in `App.tsx`, with a fallback to `Analyze` if Pro→Coach happens while it's active. No further work.
-- **Chess.com integration** → **stays unmilestoned, blocked on Kris.** Scope is genuinely undefined (game import? live rating pull? something else?) — needs a direct conversation with Kris before George/Priya can even estimate it, let alone schedule it. Not actionable without that.
+- **Chess.com integration** → **M12, scoped 2026-08-22.** Kris chose game import + live rating pull (not opening data). See M12 Detail above.
 
 ---
 
